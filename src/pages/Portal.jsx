@@ -1,0 +1,257 @@
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import LoginForm from '../components/LoginForm.jsx';
+import { config, databases } from '../lib/appwrite.js';
+import {
+  sampleStats,
+  sampleClients,
+  sampleTasks,
+  sampleIncidents,
+} from '../assets/data/dashboard.js';
+
+const statusColours = {
+  Pending: 'text-amber-400',
+  'In Progress': 'text-emerald-400',
+  Active: 'text-emerald-400',
+  Completed: 'text-indigo-400',
+  Resolved: 'text-indigo-400',
+  Investigating: 'text-amber-400',
+  Overdue: 'text-rose-400',
+};
+
+const Portal = () => {
+  const { user, loading, logout } = useAuth();
+  const [stats, setStats] = useState(sampleStats);
+  const [clients, setClients] = useState(sampleClients);
+  const [tasks, setTasks] = useState(sampleTasks);
+  const [incidents, setIncidents] = useState(sampleIncidents);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user || !config.databaseId) return;
+      setSyncing(true);
+      setError('');
+      try {
+        const [incidentsResponse, assetsResponse, shiftsResponse] = await Promise.all([
+          config.incidentsCollectionId
+            ? databases.listDocuments(config.databaseId, config.incidentsCollectionId, [])
+            : Promise.resolve(null),
+          config.assetsCollectionId
+            ? databases.listDocuments(config.databaseId, config.assetsCollectionId, [])
+            : Promise.resolve(null),
+          config.shiftsCollectionId
+            ? databases.listDocuments(config.databaseId, config.shiftsCollectionId, [])
+            : Promise.resolve(null),
+        ]);
+
+        if (incidentsResponse) {
+          setIncidents(
+            incidentsResponse.documents.map((doc) => ({
+              title: doc.title || doc.name,
+              status: doc.status || 'Investigating',
+              location: doc.location || doc.site,
+              timestamp: doc.timestamp || doc.reportedAt,
+              summary: doc.summary || doc.description,
+            }))
+          );
+        }
+
+        if (assetsResponse) {
+          setClients(
+            assetsResponse.documents.map((doc) => ({
+              name: doc.name,
+              status: doc.status || 'Active',
+              location: doc.location,
+              billing: doc.billing || doc.contractValue,
+            }))
+          );
+        }
+
+        if (shiftsResponse) {
+          setTasks(
+            shiftsResponse.documents.map((doc) => ({
+              title: doc.title || doc.task,
+              status: doc.status || doc.state,
+              meta: doc.assignee ? `Guard: ${doc.assignee}` : doc.meta,
+              due: doc.due || doc.schedule,
+            }))
+          );
+        }
+
+        setStats((prev) => {
+          if (!shiftsResponse && !assetsResponse) return prev;
+          return prev.map((stat) => {
+            if (stat.label === 'Active Shifts' && shiftsResponse) {
+              return { ...stat, value: shiftsResponse.total }; // simplistic example
+            }
+            if (stat.label === 'Total Clients' && assetsResponse) {
+              return { ...stat, value: assetsResponse.total };
+            }
+            return stat;
+          });
+        });
+      } catch (err) {
+        setError('Using sample data. Configure Appwrite environment variables to sync live data.');
+      } finally {
+        setSyncing(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-dark via-night-sky to-night-sky text-white">
+        <p className="text-sm text-white/70">Loading portal…</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-primary-dark via-night-sky to-night-sky px-6 py-24 text-white">
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute left-1/3 top-20 h-72 w-72 rounded-full bg-accent/20 blur-3xl" />
+          <div className="absolute right-10 bottom-10 h-80 w-80 rounded-full bg-primary/30 blur-3xl" />
+        </div>
+        <div className="mx-auto max-w-4xl text-center">
+          <Link to="/" className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-accent">
+            ← Back to public site
+          </Link>
+          <h1 className="mt-10 text-4xl font-bold">Fortis Secured Portal</h1>
+          <p className="mt-4 text-white/70">
+            Access incident management, guard operations, asset tracking and realtime reporting tailored to your role.
+          </p>
+        </div>
+        <div className="mt-16">
+          <LoginForm />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary-dark via-night-sky to-night-sky px-6 py-10 text-white">
+      <div className="mx-auto max-w-6xl">
+        <header className="glass-panel mb-10 flex flex-col gap-6 px-8 py-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-wide text-white">FORTIS SECURITY</h1>
+            <p className="text-sm text-white/70">Security Management Dashboard</p>
+          </div>
+          <div className="text-sm text-white/70">
+            <p className="text-xs uppercase tracking-[0.4em] text-accent">Signed in</p>
+            <p className="text-white">{user.name || user.email}</p>
+            <p className="text-white/60">{user.email}</p>
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white hover:border-accent"
+              >
+                Sign out
+              </button>
+              <Link
+                to="/"
+                className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white/70 hover:border-accent"
+              >
+                Public site
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        {error && (
+          <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-6 py-4 text-sm text-amber-200">
+            {error}
+          </div>
+        )}
+
+        <section className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          {stats.map((stat) => (
+            <article key={stat.label} className="glass-panel p-6">
+              <p className="text-sm text-white/60">{stat.label}</p>
+              <p className="mt-2 text-4xl font-bold text-accent">{stat.value}</p>
+              {stat.helper && <p className="mt-2 text-xs text-white/50">{stat.helper}</p>}
+            </article>
+          ))}
+        </section>
+
+        <section className="mt-10 grid gap-6 lg:grid-cols-2">
+          <article className="glass-panel p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-white">Clients</h2>
+              {syncing ? <span className="text-xs text-white/50">Syncing…</span> : null}
+            </div>
+            <div className="mt-6 space-y-5">
+              {clients.map((client) => (
+                <div key={client.name} className="border-b border-white/10 pb-4 last:border-none last:pb-0">
+                  <div className="flex flex-wrap items-start justify-between gap-2 text-sm text-white">
+                    <p className="font-semibold">{client.name}</p>
+                    <span className={`text-xs font-semibold uppercase tracking-widest ${statusColours[client.status] || 'text-white/70'}`}>
+                      {client.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-white/70">{client.location}</p>
+                  {client.billing && <p className="mt-1 text-sm text-accent">{client.billing}</p>}
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="glass-panel p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-white">Recent Tasks</h2>
+              {syncing ? <span className="text-xs text-white/50">Syncing…</span> : null}
+            </div>
+            <div className="mt-6 space-y-5">
+              {tasks.map((task) => (
+                <div key={`${task.title}-${task.status}`} className="border-b border-white/10 pb-4 last:border-none last:pb-0">
+                  <div className="flex flex-wrap items-start justify-between gap-2 text-sm text-white">
+                    <p className="font-semibold">{task.title}</p>
+                    <span className={`text-xs font-semibold uppercase tracking-widest ${statusColours[task.status] || 'text-white/70'}`}>
+                      {task.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-white/70">{task.meta}</p>
+                  <p className="mt-1 text-xs text-white/40">{task.due}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
+
+        <section className="mt-10 glass-panel p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-white">Recent Incidents</h2>
+            {syncing ? <span className="text-xs text-white/50">Syncing…</span> : null}
+          </div>
+          <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {incidents.map((incident) => (
+              <article key={`${incident.title}-${incident.location}`} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-white">{incident.title}</h3>
+                  <span className={`text-xs font-semibold uppercase tracking-widest ${statusColours[incident.status] || 'text-white/70'}`}>
+                    {incident.status}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-white/60">{incident.location}</p>
+                <p className="mt-1 text-xs text-white/40">{incident.timestamp}</p>
+                <p className="mt-3 text-sm text-white/70">{incident.summary}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <p className="mt-10 text-center text-xs text-white/40">
+          Connected to Appwrite • Project ID: {config.projectId || 'configure VITE_APPWRITE_PROJECT_ID'}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default Portal;
