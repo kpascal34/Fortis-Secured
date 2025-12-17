@@ -1,83 +1,162 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const Hero = () => (
-  <section className="relative overflow-hidden pb-32 pt-36">
-    <div className="absolute inset-0 -z-10">
-      <div className="absolute left-1/2 top-1/2 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/20 blur-3xl" />
-      <div className="absolute inset-0 bg-gradient-to-b from-night-sky via-night-sky/95 to-night-sky" />
-    </div>
-    <div className="section-container grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-center">
-      <div className="space-y-8">
-        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.4em] text-white/70">
-          Intelligence-led security
-        </span>
-        <h1 className="text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
-          Modern protection for complex facilities
-        </h1>
-        <p className="max-w-xl text-lg text-white/70">
-          Fortis Secured pairs specialist guarding with a unified operations portal so industrial, retail and commercial
-          properties can anticipate threats, manage teams and prove compliance in real time.
-        </p>
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <a
-            className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-3 text-sm font-semibold text-night-sky shadow-lg shadow-accent/30 hover:bg-accent/90"
-            href="#contact"
-          >
-            Book a consultation
-          </a>
-          <a
-            className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-3 text-sm font-semibold text-white hover:border-accent"
-            href="#platform"
-          >
-            Explore the platform
-          </a>
-        </div>
-        <dl className="flex flex-wrap gap-6 text-sm text-white/60">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-            <dt className="font-semibold text-white">24/7 Ops Centre</dt>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-accent" />
-            <dt className="font-semibold text-white">Appwrite Secured</dt>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-violet-400" />
-            <dt className="font-semibold text-white">ISO 27001 Ready</dt>
-          </div>
-        </dl>
+const Hero = () => {
+  // Slideshow images
+  const images = [
+    '/hero-slide-1.jpg',
+    '/hero-slide-2.jpg',
+    '/hero-slide-3.jpg',
+    '/hero-slide-4.jpg',
+    '/hero-slide-5.jpg',
+    '/hero-slide-6.jpg',
+  ];
+  
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [offsetY, setOffsetY] = useState(0);
+  const imgRef = useRef(null);
+
+  useEffect(() => {
+    const handleScroll = () => setOffsetY(window.scrollY || 0);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Auto-advance slideshow every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [images.length]);
+
+  // Smoother parallax effect with easing
+  const parallax = Math.round(offsetY * 0.15);
+  const parallaxStyle = {
+    transform: `translateY(${parallax}px)`,
+    transition: 'transform 0.1s cubic-bezier(0.215, 0.61, 0.355, 1)',
+  };
+
+  return (
+    <section className="relative overflow-hidden pb-32 pt-28 bg-white text-gray-900">
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute right-0 top-0 h-[520px] w-[520px] bg-primary/10 blur-3xl" />
+        <div className="absolute left-0 bottom-0 h-[340px] w-[340px] bg-primary/5 blur-2xl" />
       </div>
-      <div className="glass-panel relative overflow-hidden p-8">
-        <div className="absolute -right-10 top-10 h-40 w-40 rounded-full bg-accent/40 blur-3xl" />
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold text-white">Live site posture</h3>
-            <ul className="mt-4 space-y-3 text-sm text-white/70">
-              <li className="flex items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                Metro Shopping Centre · Guards on duty
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                Riverside Offices · Incident triage
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
-                Industrial Park · Patrol in progress
-              </li>
-            </ul>
+
+      <div className="section-container grid gap-12 lg:grid-cols-1 lg:items-center">
+        {/* Text column */}
+        <div className="order-2 lg:order-1 mx-auto max-w-3xl space-y-8 text-center">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="text-4xl font-light leading-tight sm:text-5xl lg:text-6xl text-gray-900"
+          >
+            Raising Standards in <span className="text-primary font-medium">Professional Security</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mx-auto max-w-3xl text-lg text-gray-700 font-light leading-relaxed"
+          >
+            At Fortis Security we provide professional, reliable and fully compliant security services across Yorkshire
+            and Greater Manchester. Our reputation is built on operational excellence, transparency and a commitment to
+            raising standards across the private security sector.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-center"
+          >
+            <a
+              className="group inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-base font-medium text-white shadow-xl hover:bg-primary-dark transition-all hover:shadow-primary/25"
+              href="#contact"
+            >
+              Book a consultation
+              <svg className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+
+            <a
+              className="ml-0 hidden sm:inline-flex group items-center justify-center rounded-full border border-primary/20 px-6 py-3 text-sm font-medium text-primary hover:bg-primary/5 transition-all"
+              href="#contact"
+            >
+              Contact us
+            </a>
+          </motion.div>
+        </div>
+
+        {/* image moved to a dedicated section below (see next block) */}
+      </div>
+
+      {/* New full-width image section with curved top edge and slideshow */}
+      <div className="relative mt-16 -mx-6 sm:-mx-8">
+        <div className="relative w-full overflow-hidden">
+          {/* Slideshow container with parallax and curved top using clip-path */}
+          <div 
+            style={{ 
+              transform: `translateY(${Math.round(offsetY * 0.18)}px)`, 
+              transition: 'transform 120ms ease-out',
+              clipPath: 'ellipse(120% 100% at 50% 100%)'
+            }}
+            className="relative"
+          >
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={currentImageIndex}
+                src={images[currentImageIndex]}
+                alt="Fortis security professionals at work"
+                className="w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] object-cover object-center"
+                loading="eager"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1 }}
+              />
+            </AnimatePresence>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-white">
-            <p className="text-sm uppercase tracking-[0.3em] text-white/60">Response KPI</p>
-            <p className="mt-2 text-4xl font-bold">04:21</p>
-            <p className="text-xs uppercase text-white/60">Avg. dispatch time</p>
-            <p className="mt-4 text-sm text-white/70">Synced in real-time from the Fortis portal</p>
+          
+          {/* Slideshow indicators */}
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
+            {images.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentImageIndex(index)}
+                className={`h-2 rounded-full transition-all ${
+                  index === currentImageIndex ? 'w-8 bg-white' : 'w-2 bg-white/50'
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
           </div>
         </div>
       </div>
-    </div>
-  </section>
-);
+
+      {/* Floating accents retained */}
+      <div className="absolute left-1/4 top-1/4 h-4 w-4 rounded-full bg-primary/30 blur-sm animate-float" />
+      <div className="absolute right-1/4 bottom-1/4 h-6 w-6 rounded-full bg-accent/30 blur-sm animate-float-delayed" />
+      <div className="absolute right-1/3 top-1/3 h-3 w-3 rounded-full bg-primary/30 blur-sm animate-float-slow" />
+    </section>
+  );
+};
+
+// Add these animations to your tailwind.config.js
+// animation: {
+//   float: 'float 8s ease-in-out infinite',
+//   'float-delayed': 'float 8s ease-in-out 2s infinite',
+//   'float-slow': 'float 10s ease-in-out 1s infinite',
+// },
+// keyframes: {
+//   float: {
+//     '0%, 100%': { transform: 'translate(0, 0)' },
+//     '50%': { transform: 'translate(10px, -10px)' },
+//   },
+// },
 
 export default Hero;

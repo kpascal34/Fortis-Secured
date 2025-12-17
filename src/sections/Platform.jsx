@@ -25,15 +25,15 @@ const capabilities = [
 ];
 
 const Platform = () => (
-  <section id="platform" className="relative py-24">
-    <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary-dark via-night-sky to-night-sky" />
+  <section id="platform" className="relative py-24 bg-white">
+    <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50" />
     <div className="section-container">
       <header className="max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-[0.4em] text-accent">Fortis Portal</p>
-        <h2 className="mt-4 text-3xl font-bold text-white sm:text-4xl">
+        <h2 className="mt-4 text-3xl font-bold text-gray-900 sm:text-4xl">
           Operate with confidence from any device
         </h2>
-        <p className="mt-4 text-base text-white/70">
+        <p className="mt-4 text-base text-gray-600">
           A secure Appwrite-powered platform delivering realtime notifications, incident management, asset controls and guard
           collaboration tailored to your role.
         </p>
@@ -41,20 +41,20 @@ const Platform = () => (
       <div className="mt-16 grid gap-10 lg:grid-cols-2">
         {capabilities.map((item) => (
           <article key={item.title} className="glass-panel p-10">
-            <h3 className="text-2xl font-semibold text-white">{item.title}</h3>
-            <p className="mt-4 text-sm text-white/70">{item.description}</p>
+            <h3 className="text-2xl font-semibold text-gray-900">{item.title}</h3>
+            <p className="mt-4 text-sm text-gray-600">{item.description}</p>
             {item.stats && (
-              <dl className="mt-8 grid grid-cols-3 gap-4 text-center text-white">
+              <dl className="mt-8 grid grid-cols-3 gap-4 text-center text-gray-900">
                 {item.stats.map((stat) => (
                   <div key={stat.label}>
                     <dt className="text-3xl font-extrabold text-accent">{stat.value}</dt>
-                    <dd className="mt-2 text-xs uppercase tracking-wider text-white/60">{stat.label}</dd>
+                    <dd className="mt-2 text-xs uppercase tracking-wider text-gray-600">{stat.label}</dd>
                   </div>
                 ))}
               </dl>
             )}
             {item.bullets && (
-              <ul className="mt-6 space-y-3 text-sm text-white">
+              <ul className="mt-6 space-y-3 text-sm text-gray-700">
                 {item.bullets.map((bullet) => (
                   <li key={bullet} className="flex items-start gap-3">
                     <span className="mt-2 h-1.5 w-1.5 rounded-full bg-accent" />

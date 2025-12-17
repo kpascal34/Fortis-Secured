@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { account } from '../lib/appwrite.js';
+import { account, config } from '../lib/appwrite.js';
 
 const AuthContext = createContext({
   user: null,
@@ -14,9 +14,36 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = useCallback(async () => {
     try {
-      const result = await account.get();
+      // Skip auth if in demo mode or Appwrite not configured
+      if (config.isDemoMode || !account) {
+        console.log('Running in demo mode - no authentication required');
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      
+      // Only attempt to fetch user if Appwrite is properly configured
+      if (!config.endpoint || 
+          !config.projectId ||
+          config.projectId === 'demo-project' ||
+          config.projectId === 'your_project_id') {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 5000)
+      );
+      
+      const result = await Promise.race([account.get(), timeoutPromise]);
       setUser(result);
     } catch (error) {
+      // Silently fail in demo mode
+      if (!config.isDemoMode) {
+        console.error('Auth fetch error:', error);
+      }
       setUser(null);
     } finally {
       setLoading(false);
@@ -28,13 +55,19 @@ export const AuthProvider = ({ children }) => {
   }, [fetchUser]);
 
   const login = useCallback(async ({ email, password }) => {
+    if (config.isDemoMode || !account) {
+      console.log('Demo mode - login skipped');
+      return;
+    }
     await account.createEmailSession(email, password);
     await fetchUser();
   }, [fetchUser]);
 
   const logout = useCallback(async () => {
     try {
-      await account.deleteSession('current');
+      if (account && !config.isDemoMode) {
+        await account.deleteSession('current');
+      }
     } finally {
       setUser(null);
     }

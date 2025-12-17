@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>http://localhost:5173/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/services/manned-guarding</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/services/door-supervision</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/services/event-security</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/services/corporate-security</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/services/construction-site-security</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/privacy-policy</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/terms</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/cookie-policy</loc>
+  </url>
+</urlset>

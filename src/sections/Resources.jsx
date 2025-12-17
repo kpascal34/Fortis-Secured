@@ -19,13 +19,13 @@ const resources = [
 ];
 
 const Resources = () => (
-  <section id="resources" className="relative py-24">
-    <div className="absolute inset-0 -z-10 bg-gradient-to-b from-night-sky to-night-sky/90" />
+  <section id="resources" className="relative py-24 bg-white">
+    <div className="absolute inset-0 -z-10 bg-gradient-to-b from-white to-gray-50" />
     <div className="section-container">
       <header className="mx-auto max-w-2xl text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.4em] text-accent">Resources</p>
-        <h2 className="mt-4 text-3xl font-bold text-white sm:text-4xl">Bring the Fortis methodology to your next programme</h2>
-        <p className="mt-4 text-base text-white/70">
+        <h2 className="mt-4 text-3xl font-bold text-gray-900 sm:text-4xl">Bring the Fortis methodology to your next programme</h2>
+        <p className="mt-4 text-base text-gray-600">
           Insights, templates and readiness guides to accelerate your mobilisation and ongoing assurance.
         </p>
       </header>
@@ -34,10 +34,10 @@ const Resources = () => (
           <article key={resource.title} className="glass-panel flex h-full flex-col justify-between p-8">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-accent">Featured</p>
-              <h3 className="mt-4 text-xl font-semibold text-white">{resource.title}</h3>
-              <p className="mt-3 text-sm text-white/70">{resource.description}</p>
+              <h3 className="mt-4 text-xl font-semibold text-gray-900">{resource.title}</h3>
+              <p className="mt-3 text-sm text-gray-600">{resource.description}</p>
             </div>
-            <a className="mt-6 inline-flex items-center text-sm font-semibold text-accent hover:text-white" href="#contact">
+            <a className="mt-6 inline-flex items-center text-sm font-semibold text-accent hover:text-primary-dark transition-colors" href="#contact">
               {resource.action}
               <span className="ml-2 text-lg">→</span>
             </a>

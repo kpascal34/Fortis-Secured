@@ -9,7 +9,7 @@ import Contact from '../sections/Contact.jsx';
 import Footer from '../components/Footer.jsx';
 
 const PublicSite = () => (
-  <div className="relative min-h-screen overflow-hidden bg-night-sky text-white">
+  <div className="relative min-h-screen overflow-hidden bg-white text-gray-900">
     <Navbar />
     <main>
       <Hero />
