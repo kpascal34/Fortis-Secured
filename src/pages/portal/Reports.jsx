@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { calculatePercentage } from '../../lib/validation';
 import {
   AiOutlineFileText,
   AiOutlineBarChart,
@@ -20,6 +21,8 @@ const Reports = () => {
     endDate: new Date().toISOString().split('T')[0],
   });
   const [generating, setGenerating] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [validationMessage, setValidationMessage] = useState('');
 
   const reportCategories = [
     {
@@ -136,12 +139,86 @@ const Reports = () => {
     },
   ];
 
+  const generateKPIData = (reportId) => {
+    // Mock data for demonstration - in production, fetch from database
+    const mockMetrics = {
+      'shift-coverage': {
+        totalShifts: 150,
+        filledShifts: 142,
+        totalIncidents: 8,
+      },
+      'guard-performance': {
+        attendanceRecords: 2500,
+        presentDays: 2425,
+        incidentsHandled: 45,
+        trainingCompleted: 38,
+      },
+      'incident-analysis': {
+        totalIncidents: 85,
+        resolved: 78,
+        averageResponseTime: 4.2,
+      },
+      'license-compliance': {
+        totalLicenses: 200,
+        validLicenses: 195,
+        expiringCerts: 5,
+      },
+      'training-compliance': {
+        totalStaff: 150,
+        trainingCompleted: 142,
+        overdue: 8,
+      },
+      'invoice-summary': {
+        invoiced: 50000,
+        paid: 45000,
+        overdue: 3000,
+      },
+    };
+
+    const metrics = mockMetrics[reportId] || {};
+    const kpis = {};
+
+    // Calculate percentages based on report type
+    switch (reportId) {
+      case 'shift-coverage':
+        kpis.coverage = calculatePercentage(metrics.filledShifts, metrics.totalShifts);
+        kpis.unfilled = metrics.totalShifts - metrics.filledShifts;
+        break;
+      case 'guard-performance':
+        kpis.attendance = calculatePercentage(metrics.presentDays, metrics.attendanceRecords);
+        kpis.training = calculatePercentage(metrics.trainingCompleted, 40);
+        break;
+      case 'incident-analysis':
+        kpis.resolution = calculatePercentage(metrics.resolved, metrics.totalIncidents);
+        break;
+      case 'license-compliance':
+        kpis.compliance = calculatePercentage(metrics.validLicenses, metrics.totalLicenses);
+        kpis.expiringRate = calculatePercentage(metrics.expiringCerts, metrics.totalLicenses);
+        break;
+      case 'training-compliance':
+        kpis.completion = calculatePercentage(metrics.trainingCompleted, metrics.totalStaff);
+        kpis.overdueRate = calculatePercentage(metrics.overdue, metrics.totalStaff);
+        break;
+      case 'invoice-summary':
+        kpis.paidRate = calculatePercentage(metrics.paid, metrics.invoiced);
+        kpis.overdueRate = calculatePercentage(metrics.overdue, metrics.invoiced);
+        break;
+      default:
+        break;
+    }
+
+    return { metrics, kpis };
+  };
+
   const handleGenerateReport = (reportId) => {
     setGenerating(true);
+    const reportContent = generateKPIData(reportId);
+    
     setTimeout(() => {
+      setReportData(reportContent);
       setGenerating(false);
-      alert(`Report "${reportId}" generated successfully! Download started.`);
-    }, 2000);
+      setValidationMessage(`Report "${reportId}" generated successfully!`);
+    }, 1500);
   };
 
   const exportFormats = ['PDF', 'Excel', 'CSV', 'JSON'];

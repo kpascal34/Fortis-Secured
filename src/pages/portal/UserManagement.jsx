@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
 import { demoGuards } from '../../data/demoGuards';
+import { validateRequired, validateEmail, parseDate } from '../../lib/validation';
 import {
   AiOutlineUser,
   AiOutlineTeam,
@@ -31,6 +32,8 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [formErrors, setFormErrors] = useState({});
+  const [validationMessage, setValidationMessage] = useState('');
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -251,14 +254,70 @@ const UserManagement = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingUser(null);
+    setFormErrors({});
+    setValidationMessage('');
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      role: 'guard',
+      status: 'active',
+      department: '',
+      permissions: [],
+      licenseNumber: '',
+      licenseExpiry: '',
+      address: '',
+      emergencyContact: '',
+      emergencyPhone: '',
+    });
+  };
+
+  const validateUserForm = () => {
+    const errors = {};
+    
+    // Validate required fields
+    const validation = validateRequired(formData, ['firstName', 'lastName', 'email', 'role']);
+    if (!validation.isValid) {
+      Object.assign(errors, validation.errors);
+    }
+    
+    // Validate email
+    if (formData.email && !validateEmail(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    // Validate names
+    if (formData.firstName.trim().length < 2) {
+      errors.firstName = 'First name must be at least 2 characters';
+    }
+    
+    if (formData.lastName.trim().length < 2) {
+      errors.lastName = 'Last name must be at least 2 characters';
+    }
+    
+    // Validate license expiry if license number provided
+    if (formData.licenseNumber && !formData.licenseExpiry) {
+      errors.licenseExpiry = 'License expiry date is required when license number is provided';
+    }
+    
+    if (formData.licenseExpiry) {
+      const expiryDate = parseDate(formData.licenseExpiry);
+      if (expiryDate < new Date()) {
+        errors.licenseExpiry = 'License expiry date must be in the future';
+      }
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.firstName || !formData.lastName || !formData.email) {
-      alert('Please fill in all required fields');
+    if (!validateUserForm()) {
+      setValidationMessage('Please fix the errors above before submitting.');
       return;
     }
 
@@ -275,16 +334,17 @@ const UserManagement = () => {
           u.$id === editingUser.$id ? { ...u, ...userData } : u
         );
         setUsers(updatedUsers);
+        setValidationMessage('User updated successfully!');
       } else {
         const newUser = {
           $id: ID.unique(),
           ...userData,
         };
         setUsers([newUser, ...users]);
+        setValidationMessage('User created successfully!');
       }
 
-      handleCloseModal();
-      alert(editingUser ? 'User updated successfully!' : 'User created successfully!');
+      setTimeout(() => handleCloseModal(), 1000);
     } catch (error) {
       console.error('Error saving user:', error);
       alert('Failed to save user');

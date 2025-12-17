@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
 import { demoGuards } from '../../data/demoGuards';
+import { validateRequired, parseDate, formatDate } from '../../lib/validation';
 import {
   AiOutlineCheckCircle,
   AiOutlineClockCircle,
@@ -31,6 +32,8 @@ const Tasks = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('');
+  const [formErrors, setFormErrors] = useState({});
+  const [validationMessage, setValidationMessage] = useState('');
 
   const [formData, setFormData] = useState({
     title: '',
@@ -145,10 +148,60 @@ const Tasks = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingTask(null);
+    setFormErrors({});
+    setValidationMessage('');
+    setFormData({
+      title: '',
+      description: '',
+      priority: 'medium',
+      status: 'pending',
+      assignedTo: '',
+      clientId: '',
+      siteId: '',
+      shiftId: '',
+      dueDate: '',
+      dueTime: '',
+      taskType: 'general',
+      notes: '',
+    });
+  };
+
+  const validateTaskForm = () => {
+    const errors = {};
+    
+    // Validate required fields
+    const validation = validateRequired(formData, ['title']);
+    if (!validation.isValid) {
+      Object.assign(errors, validation.errors);
+    }
+    
+    // Additional validations
+    if (formData.title.trim().length < 3) {
+      errors.title = 'Task title must be at least 3 characters';
+    }
+    
+    if (formData.title.trim().length > 100) {
+      errors.title = 'Task title must not exceed 100 characters';
+    }
+    
+    if (formData.dueDate && formData.dueTime) {
+      const dueDateTime = parseDate(`${formData.dueDate}T${formData.dueTime}`);
+      if (dueDateTime < new Date() && formData.status !== 'completed') {
+        errors.dueDate = 'Due date/time must be in the future for pending tasks';
+      }
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateTaskForm()) {
+      setValidationMessage('Please fix the errors above before submitting.');
+      return;
+    }
     
     try {
       const taskData = {
@@ -163,6 +216,7 @@ const Tasks = () => {
           t.$id === editingTask.$id ? { ...t, ...taskData } : t
         );
         setTasks(updatedTasks);
+        setValidationMessage('Task updated successfully!');
         
         // When collection exists, use:
         // await databases.updateDocument(config.databaseId, config.tasksCollectionId, editingTask.$id, taskData);
@@ -173,16 +227,16 @@ const Tasks = () => {
           ...taskData,
         };
         setTasks([newTask, ...tasks]);
+        setValidationMessage('Task created successfully!');
         
         // When collection exists, use:
         // await databases.createDocument(config.databaseId, config.tasksCollectionId, ID.unique(), taskData);
       }
 
-      handleCloseModal();
-      alert(editingTask ? 'Task updated successfully!' : 'Task created successfully!');
+      setTimeout(() => handleCloseModal(), 1000);
     } catch (error) {
       console.error('Error saving task:', error);
-      alert('Failed to save task');
+      setValidationMessage(`Failed to save task: ${error.message}`);
     }
   };
 
@@ -569,19 +623,38 @@ const Tasks = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Validation Message */}
+              {validationMessage && (
+                <div className={`p-3 rounded-lg text-sm border ${ 
+                  validationMessage.includes('successfully')
+                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                    : 'bg-red-500/20 text-red-400 border-red-500/30'
+                }`} role="alert">
+                  {validationMessage}
+                </div>
+              )}
+
               {/* Title */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-white">
+                <label htmlFor="task-title" className="mb-2 block text-sm font-medium text-white">
                   Task Title <span className="text-red-400">*</span>
                 </label>
                 <input
+                  id="task-title"
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-                  placeholder="Enter task title"
+                  aria-invalid={!!formErrors.title}
+                  aria-describedby={formErrors.title ? 'title-error' : undefined}
+                  className={`w-full rounded-lg border bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all ${
+                    formErrors.title ? 'border-red-500/50 bg-red-500/10' : 'border-white/10'
+                  }`}
+                  placeholder="Enter task title (min 3 characters)"
                   required
                 />
+                {formErrors.title && (
+                  <p id="title-error" className="mt-1 text-xs text-red-400">{formErrors.title}</p>
+                )}
               </div>
 
               {/* Description */}
@@ -664,22 +737,31 @@ const Tasks = () => {
               {/* Due Date and Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Due Date</label>
+                  <label htmlFor="due-date" className="mb-2 block text-sm font-medium text-white">Due Date</label>
                   <input
+                    id="due-date"
                     type="date"
                     value={formData.dueDate}
                     onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    aria-invalid={!!formErrors.dueDate}
+                    aria-describedby={formErrors.dueDate ? 'duedate-error' : undefined}
+                    className={`w-full rounded-lg border bg-white/5 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all ${
+                      formErrors.dueDate ? 'border-red-500/50 bg-red-500/10' : 'border-white/10'
+                    }`}
                   />
+                  {formErrors.dueDate && (
+                    <p id="duedate-error" className="mt-1 text-xs text-red-400">{formErrors.dueDate}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Due Time</label>
+                  <label htmlFor="due-time" className="mb-2 block text-sm font-medium text-white">Due Time</label>
                   <input
+                    id="due-time"
                     type="time"
                     value={formData.dueTime}
                     onChange={(e) => setFormData({ ...formData, dueTime: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all"
                   />
                 </div>
               </div>
