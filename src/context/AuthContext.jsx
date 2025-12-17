@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { account, config } from '../lib/appwrite.js';
+import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from '../lib/analyticsUtils.js';
 
 const AuthContext = createContext({
   user: null,
@@ -61,6 +62,9 @@ export const AuthProvider = ({ children }) => {
     }
     await account.createEmailSession(email, password);
     await fetchUser();
+    
+    // Track login event
+    trackEvent(EVENT_CATEGORIES.USER, EVENT_TYPES.LOGIN, { email });
   }, [fetchUser]);
 
   const logout = useCallback(async () => {
@@ -68,10 +72,13 @@ export const AuthProvider = ({ children }) => {
       if (account && !config.isDemoMode) {
         await account.deleteSession('current');
       }
+      
+      // Track logout event
+      trackEvent(EVENT_CATEGORIES.USER, EVENT_TYPES.LOGOUT, { userId: user?.$id });
     } finally {
       setUser(null);
     }
-  }, []);
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>

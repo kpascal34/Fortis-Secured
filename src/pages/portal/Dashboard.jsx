@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import PortalHeader from '../../components/PortalHeader';
 import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
+import { trackModuleAccess } from '../../lib/analyticsUtils';
 import {
   sampleStats,
   sampleClients,
@@ -34,8 +35,10 @@ const Dashboard = () => {
   const [loading, setLoading] = React.useState(true);
 
   useEffect(() => {
+    // Track dashboard access
+    trackModuleAccess('dashboard', user);
     fetchDashboardData();
-  }, []);
+  }, [user]);
 
   const fetchDashboardData = async () => {
     try {

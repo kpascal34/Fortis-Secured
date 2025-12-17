@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { initializeWebVitalsMonitoring, detectPerformanceIssues } from './lib/performance.js';
+import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from './lib/analyticsUtils.js';
 import PublicSite from './pages/PublicSite.jsx';
 import PortalLayout from './layouts/PortalLayout.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -42,6 +43,68 @@ import MySchedule from './pages/portal/MySchedule.jsx';
 import OpenShifts from './pages/portal/OpenShifts.jsx';
 import AuditLog from './pages/portal/AuditLog.jsx';
 import ClientPortal from './pages/portal/ClientPortal.jsx';
+import Analytics from './pages/portal/Analytics.jsx';
+
+const AppContent = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Track page views
+    trackEvent(EVENT_CATEGORIES.NAVIGATION, EVENT_TYPES.PAGE_VIEW, {
+      path: location.pathname,
+      search: location.search,
+    });
+  }, [location]);
+
+  return (
+    <Routes>
+      {/* Public Site Routes */}
+      <Route path="/" element={<PublicSite />} />
+      <Route path="/services" element={<Services />} />
+      <Route path="/services/manned-guarding" element={<MannedGuarding />} />
+      <Route path="/services/door-supervision" element={<DoorSupervision />} />
+      <Route path="/services/event-security" element={<EventSecurity />} />
+      <Route path="/services/corporate-security" element={<CorporateSecurity />} />
+      <Route path="/services/construction-site-security" element={<ConstructionSiteSecurity />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/join-the-team" element={<JoinTheTeam />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/cookie-policy" element={<CookiePolicy />} />
+
+      {/* Portal Routes */}
+      <Route path="/portal" element={<PortalLayout />}>
+        <Route index element={<Dashboard />} />
+        <Route path="clients" element={<Clients />} />
+        <Route path="clients/:id" element={<ClientDetail />} />
+        <Route path="sites" element={<Sites />} />
+        <Route path="posts" element={<Posts />} />
+        <Route path="guards" element={<Guards />} />
+        <Route path="scheduling" element={<Scheduling />} />
+        <Route path="my-schedule" element={<MySchedule />} />
+        <Route path="open-shifts" element={<OpenShifts />} />
+        <Route path="time" element={<TimeTracking />} />
+        <Route path="tasks" element={<Tasks />} />
+        <Route path="incidents" element={<Incidents />} />
+        <Route path="assets" element={<Assets />} />
+        <Route path="messages" element={<Messages />} />
+        <Route path="finance" element={<Finance />} />
+        <Route path="ai" element={<AIAssistant />} />
+        <Route path="users" element={<UserManagement />} />
+        <Route path="hr" element={<HR />} />
+        <Route path="payroll" element={<Payroll />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="analytics" element={<Analytics />} />
+        <Route path="audit" element={<AuditLog />} />
+        <Route path="client-portal" element={<ClientPortal />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
 
 const App = () => {
   useEffect(() => {
@@ -56,51 +119,7 @@ const App = () => {
 
   return (
     <AuthProvider>
-      <Routes>
-        {/* Public Site Routes */}
-        <Route path="/" element={<PublicSite />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/services/manned-guarding" element={<MannedGuarding />} />
-        <Route path="/services/door-supervision" element={<DoorSupervision />} />
-        <Route path="/services/event-security" element={<EventSecurity />} />
-        <Route path="/services/corporate-security" element={<CorporateSecurity />} />
-        <Route path="/services/construction-site-security" element={<ConstructionSiteSecurity />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/join-the-team" element={<JoinTheTeam />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/cookie-policy" element={<CookiePolicy />} />
-
-        {/* Portal Routes */}
-        <Route path="/portal" element={<PortalLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="clients" element={<Clients />} />
-          <Route path="clients/:id" element={<ClientDetail />} />
-          <Route path="sites" element={<Sites />} />
-          <Route path="posts" element={<Posts />} />
-          <Route path="guards" element={<Guards />} />
-          <Route path="scheduling" element={<Scheduling />} />
-          <Route path="my-schedule" element={<MySchedule />} />
-          <Route path="open-shifts" element={<OpenShifts />} />
-          <Route path="time" element={<TimeTracking />} />
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="incidents" element={<Incidents />} />
-          <Route path="assets" element={<Assets />} />
-          <Route path="messages" element={<Messages />} />
-          <Route path="finance" element={<Finance />} />
-          <Route path="ai" element={<AIAssistant />} />
-          <Route path="users" element={<UserManagement />} />
-          <Route path="hr" element={<HR />} />
-          <Route path="payroll" element={<Payroll />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="audit" element={<AuditLog />} />
-          <Route path="client-portal" element={<ClientPortal />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <AppContent />
     </AuthProvider>
   );
 };

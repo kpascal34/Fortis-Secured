@@ -38,6 +38,7 @@ const navigation = [
   { name: 'HR & Compliance', href: '/portal/hr', icon: AiOutlineAudit },
   { name: 'Payroll', href: '/portal/payroll', icon: AiOutlineDollar },
   { name: 'Reports', href: '/portal/reports', icon: AiOutlineBarChart },
+  { name: 'Analytics', href: '/portal/analytics', icon: AiOutlineBarChart },
   { name: 'Audit Log', href: '/portal/audit', icon: AiOutlineAudit },
   { name: 'AI Assistant', href: '/portal/ai', icon: AiOutlineRobot },
   { name: 'User Management', href: '/portal/users', icon: AiOutlineTeam },
