@@ -3,9 +3,20 @@ import { Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PortalNav from '../components/PortalNav';
 import LoginForm from '../components/LoginForm';
+import { useSEO } from '../lib/seo.js';
 
 const PortalLayout = () => {
   const { user, loading, logout } = useAuth();
+
+  const title = loading
+    ? 'Loading Portal | Fortis Secured'
+    : !user
+    ? 'Portal Login | Fortis Secured'
+    : 'Portal | Fortis Secured';
+  const description = !user
+    ? 'Sign in to the Fortis Secured portal to manage operations.'
+    : 'Fortis Secured portal for operations, reporting and management.';
+  useSEO({ title, description, noIndex: true });
 
   if (loading) {
     return (

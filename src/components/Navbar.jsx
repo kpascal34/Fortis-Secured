@@ -4,34 +4,26 @@ import { motion } from 'framer-motion';
 
 const navigation = [
   { href: '/', label: 'Home' },
-  { href: '/services', label: 'Services', children: [
-    { href: '/services/manned-guarding', label: 'Manned Guarding' },
-    { href: '/services/door-supervision', label: 'Door Supervision' },
-    { href: '/services/event-security', label: 'Event Security' },
-    { href: '/services/corporate-security', label: 'Corporate Security' },
-    { href: '/services/construction-site-security', label: 'Construction Site Security' },
-  ] },
+  {
+    href: '/services',
+    label: 'Services',
+    children: [
+      { href: '/services/manned-guarding', label: 'Manned Guarding' },
+      { href: '/services/door-supervision', label: 'Door Supervision' },
+      { href: '/services/event-security', label: 'Event Security' },
+      { href: '/services/corporate-security', label: 'Corporate Security' },
+      { href: '/services/construction-site-security', label: 'Construction Site Security' },
+    ],
+  },
+  { href: '/about', label: 'About Us' },
+  { href: '/contact', label: 'Contact' },
   { href: '/join-the-team', label: 'Join the Team' },
-  { href: '#about', label: 'About Us', isAnchor: true },
-  { href: '#contact', label: 'Contact', isAnchor: true },
 ];
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const location = useLocation();
-
-  const handleScroll = (event, targetId) => {
-    event.preventDefault();
-    const element = document.getElementById(targetId.replace('#', ''));
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-      setOpen(false);
-    } else if (location.pathname !== '/') {
-      // If we're not on the home page, navigate there first
-      window.location.href = `/${targetId}`;
-    }
-  };
 
   return (
     <motion.header
@@ -43,7 +35,14 @@ const Navbar = () => {
       <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
         <div className="flex h-24 items-center justify-between">
           <Link to="/" className="group inline-flex items-center">
-            <img src="/FORTIS-2.gif" alt="Fortis Security" className="h-24 w-auto transform hover:scale-105 transition-transform duration-200" />
+            <img
+              src="/FORTIS-2.gif"
+              alt="Fortis Secured - Professional Security Services Logo"
+              title="Fortis Secured Home"
+              className="h-24 w-auto transform hover:scale-105 transition-transform duration-200"
+              loading="eager"
+              decoding="auto"
+            />
           </Link>
           <nav className="hidden md:flex items-center gap-12">
             {navigation.map((item) => (
@@ -73,24 +72,13 @@ const Navbar = () => {
                   </div>
                 </div>
               ) : (
-                item.isAnchor ? (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    onClick={(e) => handleScroll(e, item.href)}
-                    className="text-sm font-medium text-gray-800 hover:text-primary transition cursor-pointer"
-                  >
-                    {item.label}
-                  </a>
-                ) : (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className="text-sm font-medium text-gray-800 hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full"
-                  >
-                    {item.label}
-                  </Link>
-                )
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className="text-sm font-medium text-gray-800 hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full"
+                >
+                  {item.label}
+                </Link>
               )
             ))}
             <Link
@@ -145,25 +133,14 @@ const Navbar = () => {
                 )}
               </div>
             ) : (
-              item.isAnchor ? (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  onClick={(e) => handleScroll(e, item.href)}
-                  className="block rounded-md px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 cursor-pointer"
-                >
-                  {item.label}
-                </a>
-              ) : (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className="block rounded-md px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100"
-                  onClick={() => setOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              )
+              <Link
+                key={item.href}
+                to={item.href}
+                className="block rounded-md px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100"
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
             )
           ))}
           <Link

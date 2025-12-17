@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
 import { demoGuards, activeDemoGuards } from '../../data/demoGuards';
+import { parseNumber, formatCurrency } from '../../lib/validation';
 import {
   SHIFT_STATUS,
   STATUS_LABELS,
@@ -381,6 +382,17 @@ const OpenShifts = () => {
     return colors[urgency] || 'gray';
   };
 
+  // Safely compute average pay rate from available shifts
+  const getAveragePayRate = () => {
+    if (!openShifts || openShifts.length === 0) return '0.00';
+    const rates = openShifts
+      .map((s) => parseNumber(s.payRate))
+      .filter((n) => Number.isFinite(n));
+    if (rates.length === 0) return '0.00';
+    const avg = rates.reduce((sum, n) => sum + n, 0) / rates.length;
+    return parseNumber(avg).toFixed(2);
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-dark via-night-sky to-night-sky">
@@ -424,7 +436,7 @@ const OpenShifts = () => {
           <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
             <p className="text-sm text-white/70">Avg. Pay Rate</p>
             <p className="mt-2 text-3xl font-bold text-white">
-              £{(openShifts.reduce((sum, s) => sum + (s.payRate || 0), 0) / openShifts.length).toFixed(2)}
+              £{getAveragePayRate()}
             </p>
           </div>
         </div>
@@ -504,7 +516,7 @@ const OpenShifts = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-accent">£{shift.payRate}</p>
+                      <p className="text-2xl font-bold text-accent">{formatCurrency(shift.payRate)}</p>
                       <p className="text-xs text-white/60">/hour</p>
                     </div>
                   </div>
@@ -631,7 +643,7 @@ const OpenShifts = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="rounded-lg bg-white/5 border border-white/10 p-4">
                         <p className="text-sm text-white/50">Pay Rate</p>
-                        <p className="mt-1 text-2xl font-bold text-accent">£{selectedShift.payRate}/hr</p>
+                        <p className="mt-1 text-2xl font-bold text-accent">{formatCurrency(selectedShift.payRate)}/hr</p>
                       </div>
                       <div className="rounded-lg bg-white/5 border border-white/10 p-4">
                         <p className="text-sm text-white/50">Duration</p>

@@ -1,15 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { initializeWebVitalsMonitoring, detectPerformanceIssues } from './lib/performance.js';
 import PublicSite from './pages/PublicSite.jsx';
 import PortalLayout from './layouts/PortalLayout.jsx';
 import NotFound from './pages/NotFound.jsx';
 // Public Site Pages
+import Services from './pages/Services.jsx';
 import MannedGuarding from './pages/services/MannedGuarding.jsx';
 import DoorSupervision from './pages/services/DoorSupervision.jsx';
 import EventSecurity from './pages/services/EventSecurity.jsx';
 import CorporateSecurity from './pages/services/CorporateSecurity.jsx';
 import ConstructionSiteSecurity from './pages/services/ConstructionSiteSecurity.jsx';
+import About from './pages/About.jsx';
+import Contact from './pages/Contact.jsx';
+import JoinTheTeam from './pages/JoinTheTeam.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import Terms from './pages/Terms.jsx';
 import CookiePolicy from './pages/CookiePolicy.jsx';
@@ -38,50 +43,66 @@ import OpenShifts from './pages/portal/OpenShifts.jsx';
 import AuditLog from './pages/portal/AuditLog.jsx';
 import ClientPortal from './pages/portal/ClientPortal.jsx';
 
-const App = () => (
-  <AuthProvider>
-    <Routes>
-      {/* Public Site Routes */}
-      <Route path="/" element={<PublicSite />} />
-      <Route path="/services/manned-guarding" element={<MannedGuarding />} />
-      <Route path="/services/door-supervision" element={<DoorSupervision />} />
-      <Route path="/services/event-security" element={<EventSecurity />} />
-      <Route path="/services/corporate-security" element={<CorporateSecurity />} />
-      <Route path="/services/construction-site-security" element={<ConstructionSiteSecurity />} />
-      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-      <Route path="/terms" element={<Terms />} />
-      <Route path="/cookie-policy" element={<CookiePolicy />} />
+const App = () => {
+  useEffect(() => {
+    // Initialize Web Vitals monitoring on mount
+    initializeWebVitalsMonitoring();
+    
+    // Detect and log performance issues in development
+    if (process.env.NODE_ENV === 'development') {
+      detectPerformanceIssues();
+    }
+  }, []);
 
-      {/* Portal Routes */}
-      <Route path="/portal" element={<PortalLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="clients" element={<Clients />} />
-        <Route path="clients/:id" element={<ClientDetail />} />
-        <Route path="sites" element={<Sites />} />
-        <Route path="posts" element={<Posts />} />
-        <Route path="guards" element={<Guards />} />
-        <Route path="scheduling" element={<Scheduling />} />
-        <Route path="my-schedule" element={<MySchedule />} />
-        <Route path="open-shifts" element={<OpenShifts />} />
-        <Route path="time" element={<TimeTracking />} />
-        <Route path="tasks" element={<Tasks />} />
-        <Route path="incidents" element={<Incidents />} />
-        <Route path="assets" element={<Assets />} />
-        <Route path="messages" element={<Messages />} />
-        <Route path="finance" element={<Finance />} />
-        <Route path="ai" element={<AIAssistant />} />
-        <Route path="users" element={<UserManagement />} />
-        <Route path="hr" element={<HR />} />
-        <Route path="payroll" element={<Payroll />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="audit" element={<AuditLog />} />
-        <Route path="client-portal" element={<ClientPortal />} />
-        <Route path="settings" element={<Settings />} />
-      </Route>
+  return (
+    <AuthProvider>
+      <Routes>
+        {/* Public Site Routes */}
+        <Route path="/" element={<PublicSite />} />
+        <Route path="/services" element={<Services />} />
+        <Route path="/services/manned-guarding" element={<MannedGuarding />} />
+        <Route path="/services/door-supervision" element={<DoorSupervision />} />
+        <Route path="/services/event-security" element={<EventSecurity />} />
+        <Route path="/services/corporate-security" element={<CorporateSecurity />} />
+        <Route path="/services/construction-site-security" element={<ConstructionSiteSecurity />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/join-the-team" element={<JoinTheTeam />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/cookie-policy" element={<CookiePolicy />} />
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  </AuthProvider>
-);
+        {/* Portal Routes */}
+        <Route path="/portal" element={<PortalLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="clients" element={<Clients />} />
+          <Route path="clients/:id" element={<ClientDetail />} />
+          <Route path="sites" element={<Sites />} />
+          <Route path="posts" element={<Posts />} />
+          <Route path="guards" element={<Guards />} />
+          <Route path="scheduling" element={<Scheduling />} />
+          <Route path="my-schedule" element={<MySchedule />} />
+          <Route path="open-shifts" element={<OpenShifts />} />
+          <Route path="time" element={<TimeTracking />} />
+          <Route path="tasks" element={<Tasks />} />
+          <Route path="incidents" element={<Incidents />} />
+          <Route path="assets" element={<Assets />} />
+          <Route path="messages" element={<Messages />} />
+          <Route path="finance" element={<Finance />} />
+          <Route path="ai" element={<AIAssistant />} />
+          <Route path="users" element={<UserManagement />} />
+          <Route path="hr" element={<HR />} />
+          <Route path="payroll" element={<Payroll />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="audit" element={<AuditLog />} />
+          <Route path="client-portal" element={<ClientPortal />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AuthProvider>
+  );
+};
 
 export default App;

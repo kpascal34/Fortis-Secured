@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { demoGuards, activeDemoGuards } from '../../data/demoGuards';
+import { parseNumber, formatCurrency, formatHours } from '../../lib/validation';
 import {
   AiOutlineDollar,
   AiOutlineCalendar,
@@ -39,31 +40,31 @@ const Payroll = () => {
       name: `${guard.firstName} ${guard.lastName}`,
       regularHours,
       overtimeHours,
-      hourlyRate: hourlyRate.toFixed(2),
-      overtimeRate: overtimeRate.toFixed(2),
-      regularPay: regularPay.toFixed(2),
-      overtimePay: overtimePay.toFixed(2),
-      grossPay: grossPay.toFixed(2),
-      tax: tax.toFixed(2),
-      ni: ni.toFixed(2),
-      netPay: netPay.toFixed(2),
+      hourlyRate: parseNumber(hourlyRate),
+      overtimeRate: parseNumber(overtimeRate),
+      regularPay: parseNumber(regularPay),
+      overtimePay: parseNumber(overtimePay),
+      grossPay: parseNumber(grossPay),
+      tax: parseNumber(tax),
+      ni: parseNumber(ni),
+      netPay: parseNumber(netPay),
       status: index % 3 === 0 ? 'processed' : 'pending',
       bankAccount: '**** **** **** ' + Math.floor(1000 + Math.random() * 9000),
     };
   });
 
   const totalStats = {
-    totalGross: payrollData.reduce((sum, p) => sum + parseFloat(p.grossPay), 0).toFixed(2),
-    totalNet: payrollData.reduce((sum, p) => sum + parseFloat(p.netPay), 0).toFixed(2),
-    totalTax: payrollData.reduce((sum, p) => sum + parseFloat(p.tax), 0).toFixed(2),
-    totalNI: payrollData.reduce((sum, p) => sum + parseFloat(p.ni), 0).toFixed(2),
+    totalGross: parseNumber(payrollData.reduce((sum, p) => sum + parseNumber(p.grossPay), 0)),
+    totalNet: parseNumber(payrollData.reduce((sum, p) => sum + parseNumber(p.netPay), 0)),
+    totalTax: parseNumber(payrollData.reduce((sum, p) => sum + parseNumber(p.tax), 0)),
+    totalNI: parseNumber(payrollData.reduce((sum, p) => sum + parseNumber(p.ni), 0)),
     totalHours: payrollData.reduce((sum, p) => sum + p.regularHours + p.overtimeHours, 0),
   };
 
   const stats = [
-    { label: 'Total Gross Pay', value: `£${totalStats.totalGross}`, icon: AiOutlineDollar, color: 'blue' },
-    { label: 'Total Net Pay', value: `£${totalStats.totalNet}`, icon: AiOutlineBank, color: 'green' },
-    { label: 'Total Hours', value: totalStats.totalHours, icon: AiOutlineClockCircle, color: 'yellow' },
+    { label: 'Total Gross Pay', value: formatCurrency(totalStats.totalGross), icon: AiOutlineDollar, color: 'blue' },
+    { label: 'Total Net Pay', value: formatCurrency(totalStats.totalNet), icon: AiOutlineBank, color: 'green' },
+    { label: 'Total Hours', value: formatHours(totalStats.totalHours), icon: AiOutlineClockCircle, color: 'yellow' },
     { label: 'Staff Count', value: payrollData.length, icon: AiOutlineUser, color: 'purple' },
   ];
 
@@ -167,7 +168,7 @@ const Payroll = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-white">£{payroll.netPay}</p>
+                      <p className="text-lg font-bold text-white">{formatCurrency(payroll.netPay)}</p>
                       <p className="text-sm text-white/60">Net Pay</p>
                       <span
                         className={`inline-block mt-2 rounded-full px-3 py-1 text-xs ${

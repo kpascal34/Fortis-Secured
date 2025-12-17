@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../lib/appwrite';
 import { ID } from 'appwrite';
+import { validateRequired, validateEmail, validateRange, parseDate, formatCurrency } from '../lib/validation';
 import { AiOutlineClose, AiOutlineLoading3Quarters } from 'react-icons/ai';
 
 const ClientFormModal = ({ client, onClose }) => {
@@ -22,6 +23,8 @@ const ClientFormModal = ({ client, onClose }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [formErrors, setFormErrors] = useState({});
+  const [validationMessage, setValidationMessage] = useState('');
 
   useEffect(() => {
     if (client) {
@@ -49,9 +52,55 @@ const ClientFormModal = ({ client, onClose }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const validateClientForm = () => {
+    const errors = {};
+    
+    // Validate required fields
+    const validation = validateRequired(formData, ['companyName', 'contactPerson', 'phone', 'email']);
+    if (!validation.isValid) {
+      Object.assign(errors, validation.errors);
+    }
+    
+    // Validate email
+    if (formData.email && !validateEmail(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    // Validate phone format (basic check)
+    if (formData.phone && formData.phone.replace(/\D/g, '').length < 10) {
+      errors.phone = 'Phone number must have at least 10 digits';
+    }
+    
+    // Validate contract dates if both provided
+    if (formData.contractStartDate && formData.contractEndDate) {
+      const startDate = parseDate(formData.contractStartDate);
+      const endDate = parseDate(formData.contractEndDate);
+      if (endDate <= startDate) {
+        errors.contractEndDate = 'End date must be after start date';
+      }
+    }
+    
+    // Validate contract value if provided
+    if (formData.contractValue) {
+      const value = parseFloat(formData.contractValue);
+      if (isNaN(value) || value < 0) {
+        errors.contractValue = 'Contract value must be a valid positive number';
+      }
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    if (!validateClientForm()) {
+      setValidationMessage('Please fix the errors above before submitting.');
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -63,6 +112,7 @@ const ClientFormModal = ({ client, onClose }) => {
           client.$id,
           formData
         );
+        setValidationMessage('Client updated successfully!');
       } else {
         // Create new client
         await databases.createDocument(
@@ -71,11 +121,14 @@ const ClientFormModal = ({ client, onClose }) => {
           ID.unique(),
           formData
         );
+        setValidationMessage('Client created successfully!');
       }
-      onClose(true); // Pass true to indicate refresh needed
+      
+      setTimeout(() => onClose(true), 1000); // Pass true to indicate refresh needed
     } catch (err) {
       console.error('Error saving client:', err);
       setError(err.message || 'Failed to save client. Please try again.');
+      setValidationMessage(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -99,6 +152,33 @@ const ClientFormModal = ({ client, onClose }) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Validation Message */}
+          {validationMessage && (
+            <div
+              role="alert"
+              className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+                validationMessage.includes('Error')
+                  ? 'border-red-500/50 bg-red-500/10 text-red-300'
+                  : validationMessage.includes('success')
+                  ? 'border-green-500/50 bg-green-500/10 text-green-300'
+                  : 'border-amber-500/50 bg-amber-500/10 text-amber-300'
+              }`}
+              aria-live="polite"
+            >
+              {validationMessage}
+            </div>
+          )}
+
+          {error && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300"
+              aria-live="polite"
+            >
+              {error}
+            </div>
+          )}
+
           {/* Company Information */}
           <div>
             <h3 className="mb-4 text-lg font-medium text-white">Company Information</h3>
@@ -113,9 +193,20 @@ const ClientFormModal = ({ client, onClose }) => {
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.companyName ? 'true' : 'false'}
+                  aria-describedby={formErrors.companyName ? 'companyName-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none transition-colors ${
+                    formErrors.companyName
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                   placeholder="Enter company name"
                 />
+                {formErrors.companyName && (
+                  <p id="companyName-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.companyName}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -163,9 +254,20 @@ const ClientFormModal = ({ client, onClose }) => {
                   name="contactPerson"
                   value={formData.contactPerson}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.contactPerson ? 'true' : 'false'}
+                  aria-describedby={formErrors.contactPerson ? 'contactPerson-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none transition-colors ${
+                    formErrors.contactPerson
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                   placeholder="Enter contact name"
                 />
+                {formErrors.contactPerson && (
+                  <p id="contactPerson-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.contactPerson}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -178,9 +280,20 @@ const ClientFormModal = ({ client, onClose }) => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.phone ? 'true' : 'false'}
+                  aria-describedby={formErrors.phone ? 'phone-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none transition-colors ${
+                    formErrors.phone
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                   placeholder="e.g., 01234 567890"
                 />
+                {formErrors.phone && (
+                  <p id="phone-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.phone}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -193,9 +306,20 @@ const ClientFormModal = ({ client, onClose }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.email ? 'true' : 'false'}
+                  aria-describedby={formErrors.email ? 'email-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none transition-colors ${
+                    formErrors.email
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                   placeholder="contact@company.com"
                 />
+                {formErrors.email && (
+                  <p id="email-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.email}
+                  </p>
+                )}
               </div>
 
               <div className="sm:col-span-2">
@@ -258,8 +382,19 @@ const ClientFormModal = ({ client, onClose }) => {
                   name="contractEndDate"
                   value={formData.contractEndDate}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.contractEndDate ? 'true' : 'false'}
+                  aria-describedby={formErrors.contractEndDate ? 'contractEndDate-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors ${
+                    formErrors.contractEndDate
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                 />
+                {formErrors.contractEndDate && (
+                  <p id="contractEndDate-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.contractEndDate}
+                  </p>
+                )}
               </div>
 
               <div className="sm:col-span-2">
@@ -269,9 +404,20 @@ const ClientFormModal = ({ client, onClose }) => {
                   name="contractValue"
                   value={formData.contractValue}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.contractValue ? 'true' : 'false'}
+                  aria-describedby={formErrors.contractValue ? 'contractValue-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none transition-colors ${
+                    formErrors.contractValue
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                   placeholder="Annual contract value"
                 />
+                {formErrors.contractValue && (
+                  <p id="contractValue-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.contractValue}
+                  </p>
+                )}
               </div>
 
               <div className="sm:col-span-2">

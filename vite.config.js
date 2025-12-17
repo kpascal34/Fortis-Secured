@@ -47,8 +47,8 @@ export default defineConfig(({ mode }) => ({
       },
     },
     
-    // Chunk size warnings
-    chunkSizeWarningLimit: 1000,
+    // Chunk size warnings (larger limit for smoother chunking)
+    chunkSizeWarningLimit: 1500,
     
     // Rollup options for code splitting
     rollupOptions: {
@@ -92,6 +92,9 @@ export default defineConfig(({ mode }) => ({
     
     // Report compressed size
     reportCompressedSize: true,
+    
+    // Image inline threshold - only inline very small images
+    assetsInlineLimit: 4096, // 4KB threshold
   },
   
   // Optimize dependencies

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../lib/appwrite';
 import { ID } from 'appwrite';
+import { validateRequired, parseDate, formatCurrency } from '../lib/validation';
 import { AiOutlineClose, AiOutlineLoading3Quarters } from 'react-icons/ai';
 
 const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
@@ -28,6 +29,8 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [formErrors, setFormErrors] = useState({});
+  const [validationMessage, setValidationMessage] = useState('');
 
   const shiftTypes = [
     'Static Guarding',
@@ -119,9 +122,83 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
     return hours.toFixed(2);
   };
 
+  const validateShiftForm = () => {
+    const errors = {};
+
+    // Validate required fields
+    if (!validateRequired(formData.clientId)) {
+      errors.clientId = 'Client is required';
+    }
+
+    if (!validateRequired(formData.siteId)) {
+      errors.siteId = 'Site is required';
+    }
+
+    if (!validateRequired(formData.shiftDate)) {
+      errors.shiftDate = 'Shift date is required';
+    } else {
+      const shiftDate = parseDate(formData.shiftDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (shiftDate < today) {
+        errors.shiftDate = 'Shift date must be today or in the future';
+      }
+    }
+
+    if (!validateRequired(formData.startTime)) {
+      errors.startTime = 'Start time is required';
+    }
+
+    if (!validateRequired(formData.endTime)) {
+      errors.endTime = 'End time is required';
+    } else if (formData.startTime && formData.endTime) {
+      if (formData.endTime <= formData.startTime) {
+        errors.endTime = 'End time must be after start time';
+      }
+    }
+
+    if (!validateRequired(formData.requiredHeadcount) || parseInt(formData.requiredHeadcount) < 1) {
+      errors.requiredHeadcount = 'Headcount must be at least 1';
+    }
+
+    if (!validateRequired(formData.payRate) || parseFloat(formData.payRate) <= 0) {
+      errors.payRate = 'Pay rate must be greater than 0';
+    }
+
+    if (!validateRequired(formData.billRate) || parseFloat(formData.billRate) <= 0) {
+      errors.billRate = 'Bill rate must be greater than 0';
+    }
+
+    // Validate recurring fields if recurring
+    if (formData.isRecurring) {
+      if (!validateRequired(formData.recurringPattern)) {
+        errors.recurringPattern = 'Recurring pattern is required';
+      }
+      if (!validateRequired(formData.recurringEndDate)) {
+        errors.recurringEndDate = 'Recurring end date is required';
+      } else {
+        const endDate = parseDate(formData.recurringEndDate);
+        const shiftDate = parseDate(formData.shiftDate);
+        if (endDate < shiftDate) {
+          errors.recurringEndDate = 'Recurring end date must be after shift date';
+        }
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setValidationMessage('');
+
+    if (!validateShiftForm()) {
+      setValidationMessage('Please fix the errors above before submitting.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -138,6 +215,7 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
           shift.$id,
           shiftData
         );
+        setValidationMessage('Shift updated successfully!');
       } else {
         // Check if recurring
         if (formData.isRecurring && formData.recurringEndDate) {
@@ -149,7 +227,7 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
             ID.unique(),
             shiftData
           );
-          alert('Recurring shift creation will generate multiple instances. This feature is under development.');
+          setValidationMessage('Recurring shift creation will generate multiple instances. This feature is under development.');
         } else {
           await databases.createDocument(
             config.databaseId,
@@ -157,12 +235,15 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
             ID.unique(),
             shiftData
           );
+          setValidationMessage('Shift created successfully!');
         }
       }
-      onClose(true);
+      setTimeout(() => onClose(true), 1000);
     } catch (err) {
       console.error('Error saving shift:', err);
-      setError(err.message || 'Failed to save shift. Please try again.');
+      const errorMsg = err.message || 'Failed to save shift. Please try again.';
+      setError(errorMsg);
+      setValidationMessage(`Error: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
@@ -190,6 +271,33 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Validation Message */}
+          {validationMessage && (
+            <div
+              role="alert"
+              className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+                validationMessage.includes('Error')
+                  ? 'border-red-500/50 bg-red-500/10 text-red-300'
+                  : validationMessage.includes('success')
+                  ? 'border-green-500/50 bg-green-500/10 text-green-300'
+                  : 'border-amber-500/50 bg-amber-500/10 text-amber-300'
+              }`}
+              aria-live="polite"
+            >
+              {validationMessage}
+            </div>
+          )}
+
+          {error && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-300"
+              aria-live="polite"
+            >
+              {error}
+            </div>
+          )}
+
           {/* Client & Location */}
           <div>
             <h3 className="mb-4 text-lg font-medium text-white">Client & Location</h3>
@@ -203,7 +311,13 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                   name="clientId"
                   value={formData.clientId}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none [&>option]:bg-night-sky [&>option]:text-white"
+                  aria-invalid={formErrors.clientId ? 'true' : 'false'}
+                  aria-describedby={formErrors.clientId ? 'clientId-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none [&>option]:bg-night-sky [&>option]:text-white transition-colors ${
+                    formErrors.clientId
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                 >
                   <option value="">Select client</option>
                   {clients && clients.length > 0 ? (
@@ -216,6 +330,11 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                     <option value="" disabled>No clients available</option>
                   )}
                 </select>
+                {formErrors.clientId && (
+                  <p id="clientId-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.clientId}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -228,7 +347,13 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                   value={formData.siteId}
                   onChange={handleChange}
                   disabled={!formData.clientId}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none disabled:opacity-50 [&>option]:bg-night-sky [&>option]:text-white"
+                  aria-invalid={formErrors.siteId ? 'true' : 'false'}
+                  aria-describedby={formErrors.siteId ? 'siteId-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none disabled:opacity-50 [&>option]:bg-night-sky [&>option]:text-white transition-colors ${
+                    formErrors.siteId
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                 >
                   <option value="">Select site</option>
                   {filteredSites && filteredSites.length > 0 ? (
@@ -243,6 +368,11 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                     <option value="" disabled>Select a client first</option>
                   )}
                 </select>
+                {formErrors.siteId && (
+                  <p id="siteId-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.siteId}
+                  </p>
+                )}
                 {formData.clientId && filteredSites.length === 0 && (
                   <p className="mt-2 text-xs text-yellow-400">
                     This client has no sites. Go to Sites page to create one.
@@ -290,8 +420,19 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                   name="shiftDate"
                   value={formData.shiftDate}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.shiftDate ? 'true' : 'false'}
+                  aria-describedby={formErrors.shiftDate ? 'shiftDate-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors ${
+                    formErrors.shiftDate
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                 />
+                {formErrors.shiftDate && (
+                  <p id="shiftDate-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.shiftDate}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -304,8 +445,19 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                   name="startTime"
                   value={formData.startTime}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.startTime ? 'true' : 'false'}
+                  aria-describedby={formErrors.startTime ? 'startTime-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors ${
+                    formErrors.startTime
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                 />
+                {formErrors.startTime && (
+                  <p id="startTime-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.startTime}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -318,8 +470,19 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                   name="endTime"
                   value={formData.endTime}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.endTime ? 'true' : 'false'}
+                  aria-describedby={formErrors.endTime ? 'endTime-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors ${
+                    formErrors.endTime
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                 />
+                {formErrors.endTime && (
+                  <p id="endTime-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.endTime}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -352,8 +515,19 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                   min="1"
                   value={formData.requiredHeadcount}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.requiredHeadcount ? 'true' : 'false'}
+                  aria-describedby={formErrors.requiredHeadcount ? 'requiredHeadcount-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors ${
+                    formErrors.requiredHeadcount
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                 />
+                {formErrors.requiredHeadcount && (
+                  <p id="requiredHeadcount-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.requiredHeadcount}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -391,9 +565,20 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                   name="payRate"
                   value={formData.payRate}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.payRate ? 'true' : 'false'}
+                  aria-describedby={formErrors.payRate ? 'payRate-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none transition-colors ${
+                    formErrors.payRate
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                   placeholder="e.g., 12.50"
                 />
+                {formErrors.payRate && (
+                  <p id="payRate-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.payRate}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -403,9 +588,20 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                   name="billRate"
                   value={formData.billRate}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none"
+                  aria-invalid={formErrors.billRate ? 'true' : 'false'}
+                  aria-describedby={formErrors.billRate ? 'billRate-error' : undefined}
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none transition-colors ${
+                    formErrors.billRate
+                      ? 'border-red-500 focus:border-red-400'
+                      : 'border-white/10 focus:border-accent'
+                  }`}
                   placeholder="e.g., 18.00"
                 />
+                {formErrors.billRate && (
+                  <p id="billRate-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.billRate}
+                  </p>
+                )}
               </div>
 
               <div>

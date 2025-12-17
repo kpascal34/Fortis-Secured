@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
 import { demoGuards } from '../../data/demoGuards';
+import { validateRequired, validateRange, parseDate, formatCurrency } from '../../lib/validation';
 import {
   AiOutlineDollar,
   AiOutlineFileText,
@@ -62,6 +63,9 @@ const Finance = () => {
     rate: 0,
     amount: 0,
   });
+
+  const [formErrors, setFormErrors] = useState({});
+  const [validationMessage, setValidationMessage] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -463,11 +467,60 @@ const Finance = () => {
     };
   };
 
+  const validateInvoiceForm = () => {
+    const errors = {};
+
+    // Validate invoice number
+    if (!validateRequired(formData.invoiceNumber)) {
+      errors.invoiceNumber = 'Invoice number is required';
+    }
+
+    // Validate client selection
+    if (!validateRequired(formData.clientId)) {
+      errors.clientId = 'Please select a client';
+    }
+
+    // Validate invoice date
+    if (!validateRequired(formData.invoiceDate)) {
+      errors.invoiceDate = 'Invoice date is required';
+    }
+
+    // Validate due date exists and is after invoice date
+    if (!validateRequired(formData.dueDate)) {
+      errors.dueDate = 'Due date is required';
+    } else if (formData.invoiceDate && formData.dueDate) {
+      const invoiceDate = parseDate(formData.invoiceDate);
+      const dueDate = parseDate(formData.dueDate);
+      if (dueDate <= invoiceDate) {
+        errors.dueDate = 'Due date must be after invoice date';
+      }
+    }
+
+    // Validate at least one item
+    if (!formData.items || formData.items.length === 0) {
+      errors.items = 'At least one invoice item is required';
+    }
+
+    // Validate tax rate
+    if (formData.taxRate < 0 || formData.taxRate > 100) {
+      errors.taxRate = 'Tax rate must be between 0 and 100%';
+    }
+
+    // Validate total is positive
+    if (formData.total <= 0) {
+      errors.total = 'Invoice total must be greater than zero';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setValidationMessage('');
 
-    if (!formData.clientId || formData.items.length === 0) {
-      alert('Please select a client and add at least one item');
+    if (!validateInvoiceForm()) {
+      setValidationMessage('Please fix the errors above before submitting.');
       return;
     }
 
@@ -483,19 +536,20 @@ const Finance = () => {
           inv.$id === editingInvoice.$id ? { ...inv, ...invoiceData } : inv
         );
         setInvoices(updatedInvoices);
+        setValidationMessage('Invoice updated successfully!');
       } else {
         const newInvoice = {
           $id: ID.unique(),
           ...invoiceData,
         };
         setInvoices([newInvoice, ...invoices]);
+        setValidationMessage('Invoice created successfully!');
       }
 
-      handleCloseModal();
-      alert(editingInvoice ? 'Invoice updated successfully!' : 'Invoice created successfully!');
+      setTimeout(() => handleCloseModal(), 1000);
     } catch (error) {
       console.error('Error saving invoice:', error);
-      alert('Failed to save invoice');
+      setValidationMessage(`Error: ${error.message || 'Failed to save invoice'}`);
     }
   };
 
@@ -1002,6 +1056,23 @@ const Finance = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Validation Message */}
+              {validationMessage && (
+                <div
+                  role="alert"
+                  className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+                    validationMessage.includes('Error')
+                      ? 'border-red-500/50 bg-red-500/10 text-red-300'
+                      : validationMessage.includes('success')
+                      ? 'border-green-500/50 bg-green-500/10 text-green-300'
+                      : 'border-amber-500/50 bg-amber-500/10 text-amber-300'
+                  }`}
+                  aria-live="polite"
+                >
+                  {validationMessage}
+                </div>
+              )}
+
               {/* Invoice Number, Client, Status */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
@@ -1011,10 +1082,21 @@ const Finance = () => {
                     type="text"
                     value={formData.invoiceNumber}
                     onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
+                    aria-invalid={formErrors.invoiceNumber ? 'true' : 'false'}
+                    aria-describedby={formErrors.invoiceNumber ? 'invoiceNumber-error' : undefined}
                     aria-label="Invoice number"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all"
+                    className={`w-full rounded-lg border bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-night-sky transition-all ${
+                      formErrors.invoiceNumber
+                        ? 'border-red-500 focus:border-red-400 focus:ring-red-400'
+                        : 'border-white/10 focus:border-accent focus:ring-accent'
+                    }`}
                     placeholder="INV-2025-001"
                   />
+                  {formErrors.invoiceNumber && (
+                    <p id="invoiceNumber-error" className="mt-1 text-sm text-red-400">
+                      {formErrors.invoiceNumber}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1025,8 +1107,14 @@ const Finance = () => {
                     id="client-select"
                     value={formData.clientId}
                     onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                    aria-invalid={formErrors.clientId ? 'true' : 'false'}
+                    aria-describedby={formErrors.clientId ? 'clientId-error' : undefined}
                     aria-label="Select a client for this invoice"
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky [&>option]:bg-night-sky [&>option]:text-white transition-all"
+                    className={`w-full rounded-lg border bg-night-sky py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-night-sky [&>option]:bg-night-sky [&>option]:text-white transition-all ${
+                      formErrors.clientId
+                        ? 'border-red-500 focus:border-red-400 focus:ring-red-400'
+                        : 'border-white/10 focus:border-accent focus:ring-accent'
+                    }`}
                     required
                   >
                     <option value="">Select Client</option>
@@ -1036,6 +1124,11 @@ const Finance = () => {
                       </option>
                     ))}
                   </select>
+                  {formErrors.clientId && (
+                    <p id="clientId-error" className="mt-1 text-sm text-red-400">
+                      {formErrors.clientId}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1063,8 +1156,19 @@ const Finance = () => {
                     type="date"
                     value={formData.invoiceDate}
                     onChange={(e) => setFormData({ ...formData, invoiceDate: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    aria-invalid={formErrors.invoiceDate ? 'true' : 'false'}
+                    aria-describedby={formErrors.invoiceDate ? 'invoiceDate-error' : undefined}
+                    className={`w-full rounded-lg border bg-white/5 px-4 py-2 text-white focus:outline-none focus:ring-1 transition-all ${
+                      formErrors.invoiceDate
+                        ? 'border-red-500 focus:border-red-400 focus:ring-red-400'
+                        : 'border-white/10 focus:border-accent focus:ring-accent'
+                    }`}
                   />
+                  {formErrors.invoiceDate && (
+                    <p id="invoiceDate-error" className="mt-1 text-sm text-red-400">
+                      {formErrors.invoiceDate}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1073,8 +1177,19 @@ const Finance = () => {
                     type="date"
                     value={formData.dueDate}
                     onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    aria-invalid={formErrors.dueDate ? 'true' : 'false'}
+                    aria-describedby={formErrors.dueDate ? 'dueDate-error' : undefined}
+                    className={`w-full rounded-lg border bg-white/5 px-4 py-2 text-white focus:outline-none focus:ring-1 transition-all ${
+                      formErrors.dueDate
+                        ? 'border-red-500 focus:border-red-400 focus:ring-red-400'
+                        : 'border-white/10 focus:border-accent focus:ring-accent'
+                    }`}
                   />
+                  {formErrors.dueDate && (
+                    <p id="dueDate-error" className="mt-1 text-sm text-red-400">
+                      {formErrors.dueDate}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1203,7 +1318,13 @@ const Finance = () => {
                         type="number"
                         value={formData.taxRate}
                         onChange={(e) => handleTaxRateChange(parseFloat(e.target.value) || 0)}
-                        className="w-20 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-sm text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                        aria-invalid={formErrors.taxRate ? 'true' : 'false'}
+                        aria-describedby={formErrors.taxRate ? 'taxRate-error' : undefined}
+                        className={`w-20 rounded-lg border bg-white/5 px-3 py-1 text-sm text-white focus:outline-none focus:ring-1 transition-all ${
+                          formErrors.taxRate
+                            ? 'border-red-500 focus:border-red-400 focus:ring-red-400'
+                            : 'border-white/10 focus:border-accent focus:ring-accent'
+                        }`}
                         min="0"
                         step="0.01"
                       />
@@ -1211,6 +1332,11 @@ const Finance = () => {
                       <span className="text-white font-medium w-24 text-right">£{Number(formData.taxAmount || 0).toFixed(2)}</span>
                     </div>
                   </div>
+                  {formErrors.taxRate && (
+                    <p id="taxRate-error" className="text-sm text-red-400">
+                      {formErrors.taxRate}
+                    </p>
+                  )}
                   <div className="flex justify-between text-xl font-bold text-white pt-3 border-t border-white/10">
                     <span>Total</span>
                     <span>£{Number(formData.total || 0).toFixed(2)}</span>

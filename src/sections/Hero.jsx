@@ -1,15 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { preloadCriticalImages } from '../lib/imageMetadata';
 
 const Hero = () => {
-  // Slideshow images
+  // Slideshow images with descriptive alt text
   const images = [
-    '/hero-slide-1.jpg',
-    '/hero-slide-2.jpg',
-    '/hero-slide-3.jpg',
-    '/hero-slide-4.jpg',
-    '/hero-slide-5.jpg',
-    '/hero-slide-6.jpg',
+    { src: '/hero-slide-1.jpg', alt: 'Professional security officer on patrol - Fortis Secured' },
+    { src: '/hero-slide-2.jpg', alt: 'Security team coordination and operations center' },
+    { src: '/hero-slide-3.jpg', alt: 'Door supervision and access control services' },
+    { src: '/hero-slide-4.jpg', alt: 'Corporate security and building protection' },
+    { src: '/hero-slide-5.jpg', alt: 'Construction site security and perimeter guarding' },
+    { src: '/hero-slide-6.jpg', alt: 'Event security and crowd management services' },
   ];
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -21,6 +22,11 @@ const Hero = () => {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+    // Preload first hero image for LCP optimization
+    useEffect(() => {
+      preloadCriticalImages();
+    }, []);
 
   // Auto-advance slideshow every 5 seconds
   useEffect(() => {
@@ -110,10 +116,11 @@ const Hero = () => {
             <AnimatePresence mode="wait">
               <motion.img
                 key={currentImageIndex}
-                src={images[currentImageIndex]}
-                alt="Fortis security professionals at work"
+                src={images[currentImageIndex].src}
+                alt={images[currentImageIndex].alt}
                 className="w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] object-cover object-center"
-                loading="eager"
+                loading="lazy"
+                decoding="async"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}

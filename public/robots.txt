@@ -1,0 +1,20 @@
+# Fortis Secured Robots.txt
+# Allow public crawling; disallow sensitive routes
+
+User-agent: *
+Allow: /
+Allow: /services/
+Allow: /about
+Allow: /contact
+Allow: /join-the-team
+Allow: /privacy-policy
+Allow: /terms
+Allow: /cookie-policy
+Disallow: /portal
+Disallow: /portal/
+Disallow: /.env
+Disallow: /src/
+Disallow: /node_modules/
+
+# Sitemap reference
+Sitemap: https://fortis-secured.vercel.app/sitemap.xml

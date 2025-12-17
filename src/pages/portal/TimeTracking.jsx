@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
 import { demoGuards } from '../../data/demoGuards';
+import { calculateHours, parseNumber, formatCurrency } from '../../lib/validation';
 import {
   AiOutlineClockCircle,
   AiOutlineCalendar,
@@ -89,29 +90,44 @@ const TimeTracking = () => {
 
   const calculateHours = (checkInTime, checkOutTime) => {
     if (!checkInTime || !checkOutTime) return null;
-    const diff = new Date(checkOutTime) - new Date(checkInTime);
-    return (diff / (1000 * 60 * 60)).toFixed(2);
+    try {
+      const diff = new Date(checkOutTime) - new Date(checkInTime);
+      if (diff < 0) return null;
+      return parseNumber(diff / (1000 * 60 * 60));
+    } catch (error) {
+      console.warn('Error calculating hours:', error);
+      return null;
+    }
   };
 
   const calculateScheduledHours = (startTime, endTime) => {
     if (!startTime || !endTime) return 0;
-    const [startH, startM] = startTime.split(':').map(Number);
-    const [endH, endM] = endTime.split(':').map(Number);
-    const startMinutes = startH * 60 + startM;
-    const endMinutes = endH * 60 + endM;
-    return ((endMinutes - startMinutes) / 60).toFixed(2);
+    try {
+      const [startH, startM] = (startTime || '').split(':').map(v => parseInt(v, 10));
+      const [endH, endM] = (endTime || '').split(':').map(v => parseInt(v, 10));
+      
+      if (isNaN(startH) || isNaN(endH)) return 0;
+      
+      const startMinutes = (startH || 0) * 60 + (startM || 0);
+      const endMinutes = (endH || 0) * 60 + (endM || 0);
+      
+      return parseNumber((endMinutes - startMinutes) / 60);
+    } catch (error) {
+      console.warn('Error calculating scheduled hours:', error);
+      return 0;
+    }
   };
 
   const getTimeStatus = (entry, shift) => {
     if (!entry.checkInTime) return { status: 'pending', label: 'Not Started', color: 'bg-gray-500' };
     if (!entry.checkOutTime) return { status: 'in-progress', label: 'In Progress', color: 'bg-blue-500' };
     
-    const actualHours = parseFloat(calculateHours(entry.checkInTime, entry.checkOutTime));
-    const scheduledHours = parseFloat(calculateScheduledHours(shift.startTime, shift.endTime));
+    const actualHours = parseNumber(calculateHours(entry.checkInTime, entry.checkOutTime) || 0);
+    const scheduledHours = parseNumber(calculateScheduledHours(shift.startTime, shift.endTime) || 0);
     
     if (entry.status === 'no-show') return { status: 'no-show', label: 'No Show', color: 'bg-red-500' };
-    if (actualHours < scheduledHours * 0.9) return { status: 'short', label: 'Short Hours', color: 'bg-yellow-500' };
-    if (actualHours > scheduledHours * 1.1) return { status: 'overtime', label: 'Overtime', color: 'bg-purple-500' };
+    if (scheduledHours > 0 && actualHours < scheduledHours * 0.9) return { status: 'short', label: 'Short Hours', color: 'bg-yellow-500' };
+    if (scheduledHours > 0 && actualHours > scheduledHours * 1.1) return { status: 'overtime', label: 'Overtime', color: 'bg-purple-500' };
     
     return { status: 'complete', label: 'Complete', color: 'bg-green-500' };
   };
