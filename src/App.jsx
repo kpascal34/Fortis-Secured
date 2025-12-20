@@ -50,6 +50,7 @@ const AuditLog = lazy(() => import('./pages/portal/AuditLog.jsx'));
 const ClientPortal = lazy(() => import('./pages/portal/ClientPortal.jsx'));
 const Analytics = lazy(() => import('./pages/portal/Analytics.jsx'));
 const RecurringPatterns = lazy(() => import('./pages/portal/RecurringPatterns.jsx'));
+const ScheduleDemo = lazy(() => import('./pages/ScheduleDemo.jsx'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -77,6 +78,7 @@ const AppContent = () => {
       <Routes>
         {/* Public Site Routes */}
         <Route path="/" element={<PublicSite />} />
+        <Route path="/schedule-demo" element={<ScheduleDemo />} />
         <Route path="/services" element={<Services />} />
         <Route path="/services/manned-guarding" element={<MannedGuarding />} />
         <Route path="/services/door-supervision" element={<DoorSupervision />} />
