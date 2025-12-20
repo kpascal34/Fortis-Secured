@@ -51,6 +51,8 @@ const ClientPortal = lazy(() => import('./pages/portal/ClientPortal.jsx'));
 const Analytics = lazy(() => import('./pages/portal/Analytics.jsx'));
 const RecurringPatterns = lazy(() => import('./pages/portal/RecurringPatterns.jsx'));
 const ScheduleDemo = lazy(() => import('./pages/ScheduleDemo.jsx'));
+const SchedulingWithDragDrop = lazy(() => import('./pages/portal/SchedulingWithDragDrop.jsx'));
+const StaffScheduleView = lazy(() => import('./pages/portal/StaffScheduleView.jsx'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -101,8 +103,10 @@ const AppContent = () => {
           <Route path="posts" element={<Posts />} />
           <Route path="guards" element={<Guards />} />
           <Route path="scheduling" element={<Scheduling />} />
+          <Route path="scheduling-drag-drop" element={<SchedulingWithDragDrop />} />
           <Route path="recurring-patterns" element={<RecurringPatterns />} />
           <Route path="my-schedule" element={<MySchedule />} />
+          <Route path="my-schedule-view" element={<StaffScheduleView />} />
           <Route path="open-shifts" element={<OpenShifts />} />
           <Route path="shift-applications" element={<ShiftApplications />} />
           <Route path="time" element={<TimeTracking />} />
