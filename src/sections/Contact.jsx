@@ -106,7 +106,7 @@ const Contact = () => {
                     value={form.name}
                     onChange={handleChange}
                     className="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-accent focus:outline-none"
-                    placeholder="Jordan Blake"
+                    placeholder="Your name"
                   />
                 </label>
                 <label className="flex flex-col text-sm text-gray-600">
@@ -118,7 +118,7 @@ const Contact = () => {
                     value={form.company}
                     onChange={handleChange}
                     className="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-accent focus:outline-none"
-                    placeholder="Riverside Offices"
+                    placeholder="Company or site"
                   />
                 </label>
               </div>
@@ -143,7 +143,7 @@ const Contact = () => {
                     value={form.phone}
                     onChange={handleChange}
                     className="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-accent focus:outline-none"
-                    placeholder="+44 7700 900123"
+                    placeholder="Contact number"
                   />
                 </label>
               </div>

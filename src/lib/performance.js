@@ -35,28 +35,39 @@ export function initializeWebVitalsMonitoring() {
 
     // Track Interaction to Next Paint (INP)
     try {
-      const inpObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        const longestEntry = entries.reduce((prev, current) =>
-          current.duration > prev.duration ? current : prev
-        );
-        
-        if (longestEntry.duration) {
-          reportMetric(
-            'INP',
-            longestEntry.duration,
-            longestEntry.duration < 200 ? 'good' : longestEntry.duration < 500 ? 'needs-improvement' : 'poor'
+      const supportsInteraction =
+        'PerformanceObserver' in window &&
+        Array.isArray(PerformanceObserver.supportedEntryTypes) &&
+        PerformanceObserver.supportedEntryTypes.includes('interaction');
+
+      if (supportsInteraction) {
+        const inpObserver = new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          const longestEntry = entries.reduce((prev, current) =>
+            current.duration > prev.duration ? current : prev
           );
           
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[INP] ${longestEntry.duration.toFixed(0)}ms`);
+          if (longestEntry.duration) {
+            reportMetric(
+              'INP',
+              longestEntry.duration,
+              longestEntry.duration < 200 ? 'good' : longestEntry.duration < 500 ? 'needs-improvement' : 'poor'
+            );
+            
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[INP] ${longestEntry.duration.toFixed(0)}ms`);
+            }
           }
-        }
-      });
-      
-      inpObserver.observe({ entryTypes: ['interaction'] });
+        });
+        
+        inpObserver.observe({ entryTypes: ['interaction'] });
+      } else if (process.env.NODE_ENV === 'development') {
+        console.log('INP monitoring not supported by this browser');
+      }
     } catch (e) {
-      console.warn('INP monitoring not supported:', e);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('INP monitoring not supported:', e);
+      }
     }
 
     // Track Cumulative Layout Shift (CLS)

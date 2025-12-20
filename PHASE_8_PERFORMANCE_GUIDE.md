@@ -312,30 +312,30 @@ if (hasPermission) {
 }
 ```
 
-### Service Worker (`public/service-worker.js`)
+### Service Worker (Vite-PWA Generated)
 
-**Features:**
+**Features (auto-generated via `vite-plugin-pwa`):**
 - **App Shell Caching** - Instant loads for repeat visits
 - **Runtime Caching** - Images, fonts, API responses
 - **Cache Strategies:**
-  - **Cache First** - Static assets, images
-  - **Network First** - HTML, API requests
-  - **Stale While Revalidate** - Fonts
-- **Background Sync** - Offline actions replayed when online
-- **Push Notifications** - Real-time updates
+  - **Cache First** - Static assets, images, Google Fonts
+  - **Network First** - HTML, API requests (Appwrite)
+  - **Expiration** - Images (7d), API (5m), static (30d)
+- **Background Sync** - Offline actions queue
+- **Push Notifications** - Real-time updates ready
 
-**Cache Breakdown:**
+**Configuration via `vite.config.js` Workbox:**
 ```javascript
-const CACHE_NAME = 'fortis-secured-v1.0.0';
-const RUNTIME_CACHE = 'fortis-runtime-v1.0.0';
-const API_CACHE = 'fortis-api-v1.0.0';
-
-// Cache durations
-const CACHE_DURATION = {
-  images: 7 * 24 * 60 * 60,    // 7 days
-  api: 5 * 60,                 // 5 minutes
-  static: 30 * 24 * 60 * 60,   // 30 days
-};
+runtimeCaching: [
+  { urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+    handler: 'CacheFirst',
+    options: { cacheName: 'google-fonts-cache', maxAgeSeconds: 31536000 }
+  },
+  { urlPattern: /^https:\/\/cloud\.appwrite\.io\/.*/i,
+    handler: 'NetworkFirst',
+    options: { cacheName: 'appwrite-api-cache', maxAgeSeconds: 300 }
+  }
+]
 ```
 
 ### Manifest (`public/manifest.json`)
@@ -932,14 +932,15 @@ window.location.reload();
 **Files Created:**
 - `src/lib/apiCache.js` (450+ lines) - API caching utility
 - `src/lib/pwa.js` (500+ lines) - PWA management
-- `public/service-worker.js` (400+ lines) - Service worker
-- `public/manifest.json` - PWA manifest
+- `.env.example` - Environment configuration template
 
 **Files Modified:**
 - `src/App.jsx` - Lazy loading implementation
-- `src/main.jsx` - PWA initialization
-- `vite.config.js` - Build optimizations
-- `index.html` - PWA meta tags
+- `src/main.jsx` - PWA initialization (Vite-PWA runtime)
+- `src/lib/pwa.js` - Vite-PWA registration with legacy SW cleanup
+- `vite.config.js` - Build optimizations + PWA workbox config
+- `index.html` - PWA meta tags, manifest auto-injected by Vite-PWA
+- `public/manifest.json` - Updated icon references
 - `package.json` - vite-plugin-pwa dependency
 
 **Performance Gains:**

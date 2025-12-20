@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../lib/appwrite';
 import { Query, ID } from 'appwrite';
-import { activeDemoGuards } from '../data/demoGuards';
 import {
   AiOutlineClose,
   AiOutlineUser,
@@ -51,102 +50,9 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
         guardsData = guardsRes.documents;
         assignmentsData = assignmentsRes.documents;
       } catch (error) {
-        console.error('Error fetching from database, using demo guards:', error);
-        
-        // Use demo guards that match Guards.jsx and UserManagement.jsx
-        guardsData = [
-          {
-            $id: 'demo-guard-1',
-            firstName: 'Michael',
-            lastName: 'Brown',
-            email: 'michael.brown@fortissecured.com',
-            phone: '+44 7700 900010',
-            status: 'active',
-            role: 'supervisor',
-            siaLicenceNumber: 'SIA-001234',
-            siaExpiryDate: '2026-12-31',
-            dbsStatus: 'cleared',
-            rightToWorkStatus: 'verified',
-          },
-          {
-            $id: 'demo-guard-2',
-            firstName: 'James',
-            lastName: 'Wilson',
-            email: 'james.wilson@fortissecured.com',
-            phone: '+44 7700 900011',
-            status: 'active',
-            role: 'guard',
-            siaLicenceNumber: 'SIA-001235',
-            siaExpiryDate: '2026-08-15',
-            dbsStatus: 'cleared',
-            rightToWorkStatus: 'verified',
-          },
-          {
-            $id: 'demo-guard-4',
-            firstName: 'David',
-            lastName: 'Anderson',
-            email: 'david.anderson@fortissecured.com',
-            phone: '+44 7700 900013',
-            status: 'active',
-            role: 'team_leader',
-            siaLicenceNumber: 'SIA-001237',
-            siaExpiryDate: '2027-03-15',
-            dbsStatus: 'cleared',
-            rightToWorkStatus: 'verified',
-          },
-          {
-            $id: 'demo-guard-5',
-            firstName: 'Sophie',
-            lastName: 'Martinez',
-            email: 'sophie.martinez@fortissecured.com',
-            phone: '+44 7700 900014',
-            status: 'active',
-            role: 'guard',
-            siaLicenceNumber: 'SIA-001238',
-            siaExpiryDate: '2026-09-30',
-            dbsStatus: 'cleared',
-            rightToWorkStatus: 'verified',
-          },
-          {
-            $id: 'demo-guard-6',
-            firstName: 'Thomas',
-            lastName: 'Johnson',
-            email: 'thomas.johnson@fortissecured.com',
-            phone: '+44 7700 900015',
-            status: 'active',
-            role: 'guard',
-            siaLicenceNumber: 'SIA-001239',
-            siaExpiryDate: '2026-10-12',
-            dbsStatus: 'cleared',
-            rightToWorkStatus: 'verified',
-          },
-          {
-            $id: 'demo-guard-7',
-            firstName: 'Emily',
-            lastName: 'Roberts',
-            email: 'emily.roberts@fortissecured.com',
-            phone: '+44 7700 900016',
-            status: 'active',
-            role: 'guard',
-            siaLicenceNumber: 'SIA-001240',
-            siaExpiryDate: '2027-01-18',
-            dbsStatus: 'cleared',
-            rightToWorkStatus: 'verified',
-          },
-          {
-            $id: 'demo-guard-8',
-            firstName: 'Daniel',
-            lastName: 'Thompson',
-            email: 'daniel.thompson@fortissecured.com',
-            phone: '+44 7700 900017',
-            status: 'active',
-            role: 'guard',
-            siaLicenceNumber: 'SIA-001241',
-            siaExpiryDate: '2026-12-05',
-            dbsStatus: 'cleared',
-            rightToWorkStatus: 'verified',
-          },
-        ];
+        console.error('Error fetching guards/assignments from database:', error);
+        guardsData = [];
+        assignmentsData = [];
       }
 
       setGuards(guardsData);

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
-import { demoGuards } from '../../data/demoGuards';
 import { validateRequired, validateEmail, parseDate } from '../../lib/validation';
 import {
   exportUsersToCSV,
@@ -125,97 +124,15 @@ const UserManagement = () => {
         );
         guardsData = guardsRes.documents;
       } catch (guardError) {
-        console.log('Guards collection not available, using demo guards:', guardError);
-        // Create demo guards if collection is not available
-        guardsData = [
-          {
-            $id: 'demo-guard-1',
-            firstName: 'Michael',
-            lastName: 'Brown',
-            email: 'michael.brown@fortissecured.com',
-            phone: '+44 7700 900010',
-          },
-          {
-            $id: 'demo-guard-2',
-            firstName: 'James',
-            lastName: 'Wilson',
-            email: 'james.wilson@fortissecured.com',
-            phone: '+44 7700 900011',
-          },
-          {
-            $id: 'demo-guard-3',
-            firstName: 'Olivia',
-            lastName: 'Taylor',
-            email: 'olivia.taylor@fortissecured.com',
-            phone: '+44 7700 900012',
-          },
-          {
-            $id: 'demo-guard-4',
-            firstName: 'David',
-            lastName: 'Anderson',
-            email: 'david.anderson@fortissecured.com',
-            phone: '+44 7700 900013',
-          },
-          {
-            $id: 'demo-guard-5',
-            firstName: 'Sophie',
-            lastName: 'Martinez',
-            email: 'sophie.martinez@fortissecured.com',
-            phone: '+44 7700 900014',
-          },
-        ];
+        console.log('Guards collection not available. Connect Appwrite to load live data.', guardError);
+        guardsData = [];
       }
       
       setGuards(guardsData);
 
       // Only initialize once - use the guards as users
       if (!initialized) {
-        // Add admin and manager users
-        const adminUsers = [
-          {
-            $id: 'admin-1',
-            firstName: 'John',
-            lastName: 'Doe',
-            email: 'john.doe@fortissecured.com',
-            phone: '+44 7700 900000',
-            role: 'admin',
-            status: 'active',
-            department: 'Administration',
-            permissions: permissions.map(p => p.id),
-            lastLogin: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date('2024-01-15').toISOString(),
-          },
-          {
-            $id: 'manager-1',
-            firstName: 'Sarah',
-            lastName: 'Williams',
-            email: 'sarah.williams@fortissecured.com',
-            phone: '+44 7700 900001',
-            role: 'manager',
-            status: 'active',
-            department: 'Operations',
-            permissions: ['view_dashboard', 'manage_guards', 'manage_shifts', 'approve_timesheets', 'view_clients', 'view_incidents', 'view_assets', 'view_invoices', 'view_reports'],
-            lastLogin: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date('2024-02-20').toISOString(),
-          },
-          {
-            $id: 'dispatcher-1',
-            firstName: 'Emma',
-            lastName: 'Davis',
-            email: 'emma.davis@fortissecured.com',
-            phone: '+44 7700 900003',
-            role: 'dispatcher',
-            status: 'active',
-            department: 'Operations',
-            permissions: ['view_dashboard', 'view_guards', 'manage_shifts', 'view_shifts', 'view_timesheets', 'view_incidents', 'view_clients'],
-            lastLogin: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-            createdAt: new Date('2024-04-05').toISOString(),
-          },
-        ];
-
-        // Combine admin users with guards (guards are schedulable staff)
-        const allUsers = [...adminUsers, ...guardsData];
-        setUsers(allUsers);
+        setUsers(guardsData);
         setInitialized(true);
       }
     } catch (error) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
+import { useAuth } from '../../context/AuthContext';
 import {
   AiOutlineMessage,
   AiOutlineSend,
@@ -24,7 +25,8 @@ const Messages = () => {
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const [view, setView] = useState('inbox'); // inbox, sent, starred, archived
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentUser] = useState({ $id: 'current-user-id', name: 'Current User' }); // Mock current user
+  const { user: authUser } = useAuth();
+  const currentUser = authUser || { $id: 'anonymous-user', name: 'User' };
 
   const [newMessage, setNewMessage] = useState({
     recipients: [],
@@ -51,60 +53,7 @@ const Messages = () => {
 
       setGuards(guardsRes.documents);
 
-      // Only initialize demo messages if messages array is empty
-      if (messages.length === 0) {
-        const demoMessages = [
-        {
-          $id: '1',
-          senderId: 'guard-1',
-          senderName: 'John Smith',
-          recipients: [currentUser.$id],
-          subject: 'Shift Swap Request',
-          body: 'Hi, I was wondering if you could swap shifts with me this Saturday? I have a family emergency.',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          read: false,
-          starred: false,
-          priority: 'high',
-          replies: [],
-        },
-        {
-          $id: '2',
-          senderId: currentUser.$id,
-          senderName: currentUser.name,
-          recipients: ['guard-2'],
-          subject: 'Site Access Update',
-          body: 'The access codes for the main entrance have been updated. New code is 4729.',
-          timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-          read: true,
-          starred: false,
-          priority: 'normal',
-          replies: [],
-        },
-        {
-          $id: '3',
-          senderId: 'guard-3',
-          senderName: 'Sarah Johnson',
-          recipients: [currentUser.$id, 'guard-4'],
-          subject: 'Equipment Check',
-          body: 'Reminder: All radios need to be checked in by 6 PM today for maintenance.',
-          timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          read: true,
-          starred: true,
-          priority: 'normal',
-          replies: [
-            {
-              id: 'r1',
-              senderId: currentUser.$id,
-              senderName: currentUser.name,
-              body: 'Confirmed. I will check in my radio by 5 PM.',
-              timestamp: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(),
-            }
-          ],
-        },
-      ];
-
-        setMessages(demoMessages);
-      }
+      // Do not seed demo messages; keep empty until data is available
     } catch (error) {
       console.error('Error fetching data:', error);
       alert('Failed to load messages');

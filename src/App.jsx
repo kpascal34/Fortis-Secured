@@ -45,9 +45,11 @@ const HR = lazy(() => import('./pages/portal/HR.jsx'));
 const Payroll = lazy(() => import('./pages/portal/Payroll.jsx'));
 const MySchedule = lazy(() => import('./pages/portal/MySchedule.jsx'));
 const OpenShifts = lazy(() => import('./pages/portal/OpenShifts.jsx'));
+const ShiftApplications = lazy(() => import('./pages/portal/ShiftApplications.jsx'));
 const AuditLog = lazy(() => import('./pages/portal/AuditLog.jsx'));
 const ClientPortal = lazy(() => import('./pages/portal/ClientPortal.jsx'));
 const Analytics = lazy(() => import('./pages/portal/Analytics.jsx'));
+const RecurringPatterns = lazy(() => import('./pages/portal/RecurringPatterns.jsx'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -97,8 +99,10 @@ const AppContent = () => {
           <Route path="posts" element={<Posts />} />
           <Route path="guards" element={<Guards />} />
           <Route path="scheduling" element={<Scheduling />} />
+          <Route path="recurring-patterns" element={<RecurringPatterns />} />
           <Route path="my-schedule" element={<MySchedule />} />
           <Route path="open-shifts" element={<OpenShifts />} />
+          <Route path="shift-applications" element={<ShiftApplications />} />
           <Route path="time" element={<TimeTracking />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="incidents" element={<Incidents />} />

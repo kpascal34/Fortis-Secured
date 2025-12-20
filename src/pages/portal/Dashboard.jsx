@@ -4,12 +4,6 @@ import PortalHeader from '../../components/PortalHeader';
 import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
 import { trackModuleAccess } from '../../lib/analyticsUtils';
-import {
-  sampleStats,
-  sampleClients,
-  sampleTasks,
-  sampleIncidents,
-} from '../../assets/data/dashboard';
 
 const statusColours = {
   Pending: 'text-amber-400',
@@ -26,10 +20,20 @@ const statusColours = {
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [stats, setStats] = React.useState(sampleStats);
+  const baseStats = React.useMemo(
+    () => [
+      { label: 'Total Clients', value: 0, helper: '' },
+      { label: 'Active Shifts', value: 0, helper: '' },
+      { label: 'Pending Tasks', value: 0, helper: '' },
+      { label: 'Total Guards', value: 0, helper: '' },
+    ],
+    []
+  );
+
+  const [stats, setStats] = React.useState(baseStats);
   const [clients, setClients] = React.useState([]);
-  const [tasks, setTasks] = React.useState(sampleTasks);
-  const [incidents, setIncidents] = React.useState(sampleIncidents);
+  const [tasks, setTasks] = React.useState([]);
+  const [incidents, setIncidents] = React.useState([]);
   const [syncing, setSyncing] = React.useState(false);
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(true);
@@ -45,36 +49,35 @@ const Dashboard = () => {
       setSyncing(true);
       setError('');
       
-      // Fetch clients
       const clientsResponse = await databases.listDocuments(
         config.databaseId,
         config.clientsCollectionId,
         [Query.limit(5), Query.orderDesc('$createdAt')]
       );
-      
-      // Transform clients data for dashboard display
-      const clientsData = clientsResponse.documents.map(client => ({
-        name: client.companyName,
+
+      const clientsData = clientsResponse.documents.map((client) => ({
+        name: client.companyName || 'Client',
         location: client.city || client.address || 'Location not provided',
         status: client.status?.charAt(0).toUpperCase() + client.status?.slice(1) || 'Active',
-        billing: client.contractValue ? `£${parseFloat(client.contractValue).toLocaleString()}/year` : null,
+        billing: client.contractValue
+          ? `£${parseFloat(client.contractValue).toLocaleString()}/year`
+          : null,
       }));
-      
+
       setClients(clientsData);
-      
-      // Update stats with real client counts
+
       const totalClients = clientsResponse.total;
-      const activeClients = clientsResponse.documents.filter(c => c.status === 'active').length;
-      
+      const activeClients = clientsResponse.documents.filter((c) => c.status === 'active').length;
+
       setStats([
-        { label: 'Total Clients', value: totalClients, helper: `${activeClients} active` },
-        ...sampleStats.slice(1),
+        { label: 'Total Clients', value: totalClients, helper: activeClients ? `${activeClients} active` : '' },
+        ...baseStats.slice(1),
       ]);
-      
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
-      setError('Unable to load dashboard data. Using sample data.');
-      setClients(sampleClients);
+      setError('Unable to load dashboard data. Connect Appwrite to display live metrics.');
+      setClients([]);
+      setStats(baseStats);
     } finally {
       setSyncing(false);
       setLoading(false);

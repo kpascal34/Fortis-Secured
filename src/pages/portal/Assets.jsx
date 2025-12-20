@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
-import { demoGuards } from '../../data/demoGuards';
 import {
   AiOutlineInbox,
   AiOutlineTool,
@@ -77,8 +76,9 @@ const Assets = () => {
         guardsData = guardsRes.documents;
         setSites(sitesRes.documents);
       } catch (error) {
-        console.log('Using demo guards:', error);
-        guardsData = demoGuards;
+        console.error('Guards/sites collection not yet available:', error);
+        guardsData = [];
+        setSites([]);
       }
 
       setGuards(guardsData);

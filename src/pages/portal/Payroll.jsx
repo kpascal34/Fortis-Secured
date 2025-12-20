@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { demoGuards, activeDemoGuards } from '../../data/demoGuards';
 import { parseNumber, formatCurrency, formatHours } from '../../lib/validation';
 import {
   AiOutlineDollar,
@@ -23,35 +22,7 @@ const Payroll = () => {
     { id: 'november', label: 'November 2025', dateRange: '01 Nov - 30 Nov 2025' },
   ];
 
-  const payrollData = activeDemoGuards.map((guard, index) => {
-    const regularHours = 80 + Math.floor(Math.random() * 20);
-    const overtimeHours = Math.floor(Math.random() * 10);
-    const hourlyRate = 12.5 + Math.random() * 5;
-    const overtimeRate = hourlyRate * 1.5;
-    const regularPay = regularHours * hourlyRate;
-    const overtimePay = overtimeHours * overtimeRate;
-    const grossPay = regularPay + overtimePay;
-    const tax = grossPay * 0.2;
-    const ni = grossPay * 0.12;
-    const netPay = grossPay - tax - ni;
-
-    return {
-      guardId: guard.$id,
-      name: `${guard.firstName} ${guard.lastName}`,
-      regularHours,
-      overtimeHours,
-      hourlyRate: parseNumber(hourlyRate),
-      overtimeRate: parseNumber(overtimeRate),
-      regularPay: parseNumber(regularPay),
-      overtimePay: parseNumber(overtimePay),
-      grossPay: parseNumber(grossPay),
-      tax: parseNumber(tax),
-      ni: parseNumber(ni),
-      netPay: parseNumber(netPay),
-      status: index % 3 === 0 ? 'processed' : 'pending',
-      bankAccount: '**** **** **** ' + Math.floor(1000 + Math.random() * 9000),
-    };
-  });
+  const payrollData = [];
 
   const totalStats = {
     totalGross: parseNumber(payrollData.reduce((sum, p) => sum + parseNumber(p.grossPay), 0)),
@@ -150,39 +121,45 @@ const Payroll = () => {
 
           {viewMode === 'summary' ? (
             <div className="space-y-3">
-              {payrollData.map((payroll) => (
-                <div
-                  key={payroll.guardId}
-                  className="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/20">
-                        <AiOutlineUser className="text-accent" />
+              {payrollData.length === 0 ? (
+                <p className="text-sm text-white/60">
+                  No payroll records available yet. Connect your data source to begin processing pay runs.
+                </p>
+              ) : (
+                payrollData.map((payroll) => (
+                  <div
+                    key={payroll.guardId}
+                    className="rounded-lg border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/20">
+                          <AiOutlineUser className="text-accent" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white">{payroll.name}</p>
+                          <p className="text-sm text-white/60 mt-1">
+                            {payroll.regularHours}h regular + {payroll.overtimeHours}h overtime
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-white">{payroll.name}</p>
-                        <p className="text-sm text-white/60 mt-1">
-                          {payroll.regularHours}h regular + {payroll.overtimeHours}h overtime
-                        </p>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-white">{formatCurrency(payroll.netPay)}</p>
+                        <p className="text-sm text-white/60">Net Pay</p>
+                        <span
+                          className={`inline-block mt-2 rounded-full px-3 py-1 text-xs ${
+                            payroll.status === 'processed'
+                              ? 'bg-green-500/20 text-green-500'
+                              : 'bg-yellow-500/20 text-yellow-500'
+                          }`}
+                        >
+                          {payroll.status}
+                        </span>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-white">{formatCurrency(payroll.netPay)}</p>
-                      <p className="text-sm text-white/60">Net Pay</p>
-                      <span
-                        className={`inline-block mt-2 rounded-full px-3 py-1 text-xs ${
-                          payroll.status === 'processed'
-                            ? 'bg-green-500/20 text-green-500'
-                            : 'bg-yellow-500/20 text-yellow-500'
-                        }`}
-                      >
-                        {payroll.status}
-                      </span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">

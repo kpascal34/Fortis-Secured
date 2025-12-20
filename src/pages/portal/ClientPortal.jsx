@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
+import { useAuth } from '../../context/AuthContext';
 import {
   AiOutlineCalendar,
   AiOutlineClockCircle,
@@ -16,11 +17,8 @@ const ClientPortal = () => {
   const [shifts, setShifts] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentClient] = useState({
-    $id: 'client-1',
-    companyName: 'Acme Corporation',
-    contactName: 'John Doe',
-  }); // Simulated logged-in client
+  const { user } = useAuth();
+  const currentClient = user || { $id: 'client', companyName: 'Client', contactName: 'User' };
   
   const [view, setView] = useState('calendar'); // 'calendar', 'list'
   const [filterSite, setFilterSite] = useState('all');
@@ -35,182 +33,8 @@ const ClientPortal = () => {
     try {
       setLoading(true);
 
-      // Demo data - client can only see their own sites and shifts
-      const demoSites = [
-        {
-          $id: 'site-1',
-          siteName: 'Central Shopping Mall',
-          address: '123 High Street, London',
-          clientId: 'client-1',
-          postsRequired: 3,
-        },
-        {
-          $id: 'site-2',
-          siteName: 'Office Tower B',
-          address: '456 Business Park, London',
-          clientId: 'client-1',
-          postsRequired: 2,
-        },
-        {
-          $id: 'site-3',
-          siteName: 'Warehouse Complex',
-          address: '789 Industrial Estate, London',
-          clientId: 'client-1',
-          postsRequired: 4,
-        },
-      ];
-
-      const demoShifts = [
-        // This week
-        {
-          $id: 'shift-1',
-          siteId: 'site-1',
-          siteName: 'Central Shopping Mall',
-          date: '2025-12-16',
-          startTime: '06:00',
-          endTime: '14:00',
-          guardName: 'John Smith',
-          guardId: 'guard-1',
-          status: 'confirmed',
-          postName: 'Main Entrance',
-        },
-        {
-          $id: 'shift-2',
-          siteId: 'site-1',
-          siteName: 'Central Shopping Mall',
-          date: '2025-12-16',
-          startTime: '14:00',
-          endTime: '22:00',
-          guardName: 'Michael Brown',
-          guardId: 'guard-2',
-          status: 'confirmed',
-          postName: 'Main Entrance',
-        },
-        {
-          $id: 'shift-3',
-          siteId: 'site-1',
-          siteName: 'Central Shopping Mall',
-          date: '2025-12-16',
-          startTime: '08:00',
-          endTime: '16:00',
-          guardName: 'Emily Davis',
-          guardId: 'guard-3',
-          status: 'confirmed',
-          postName: 'CCTV Room',
-        },
-        {
-          $id: 'shift-4',
-          siteId: 'site-2',
-          siteName: 'Office Tower B',
-          date: '2025-12-17',
-          startTime: '08:00',
-          endTime: '16:00',
-          guardName: 'David Wilson',
-          guardId: 'guard-4',
-          status: 'confirmed',
-          postName: 'Reception',
-        },
-        {
-          $id: 'shift-5',
-          siteId: 'site-2',
-          siteName: 'Office Tower B',
-          date: '2025-12-17',
-          startTime: '22:00',
-          endTime: '06:00',
-          guardName: 'Sarah Johnson',
-          guardId: 'guard-5',
-          status: 'confirmed',
-          postName: 'Night Patrol',
-        },
-        {
-          $id: 'shift-6',
-          siteId: 'site-3',
-          siteName: 'Warehouse Complex',
-          date: '2025-12-18',
-          startTime: '00:00',
-          endTime: '08:00',
-          guardName: 'James Taylor',
-          guardId: 'guard-6',
-          status: 'confirmed',
-          postName: 'Gate Control',
-        },
-        {
-          $id: 'shift-7',
-          siteId: 'site-3',
-          siteName: 'Warehouse Complex',
-          date: '2025-12-18',
-          startTime: '08:00',
-          endTime: '16:00',
-          guardName: 'John Smith',
-          guardId: 'guard-1',
-          status: 'confirmed',
-          postName: 'Gate Control',
-        },
-        {
-          $id: 'shift-8',
-          siteId: 'site-3',
-          siteName: 'Warehouse Complex',
-          date: '2025-12-18',
-          startTime: '16:00',
-          endTime: '00:00',
-          guardName: 'Michael Brown',
-          guardId: 'guard-2',
-          status: 'confirmed',
-          postName: 'Gate Control',
-        },
-        {
-          $id: 'shift-9',
-          siteId: 'site-1',
-          siteName: 'Central Shopping Mall',
-          date: '2025-12-19',
-          startTime: '06:00',
-          endTime: '14:00',
-          guardName: 'Emily Davis',
-          guardId: 'guard-3',
-          status: 'confirmed',
-          postName: 'Main Entrance',
-        },
-        {
-          $id: 'shift-10',
-          siteId: 'site-2',
-          siteName: 'Office Tower B',
-          date: '2025-12-20',
-          startTime: '08:00',
-          endTime: '16:00',
-          guardName: 'David Wilson',
-          guardId: 'guard-4',
-          status: 'confirmed',
-          postName: 'Reception',
-        },
-        // Next week
-        {
-          $id: 'shift-11',
-          siteId: 'site-1',
-          siteName: 'Central Shopping Mall',
-          date: '2025-12-23',
-          startTime: '06:00',
-          endTime: '14:00',
-          guardName: 'John Smith',
-          guardId: 'guard-1',
-          status: 'published',
-          postName: 'Main Entrance',
-        },
-        {
-          $id: 'shift-12',
-          siteId: 'site-3',
-          siteName: 'Warehouse Complex',
-          date: '2025-12-24',
-          startTime: '00:00',
-          endTime: '08:00',
-          guardName: 'James Taylor',
-          guardId: 'guard-6',
-          status: 'published',
-          postName: 'Gate Control',
-        },
-      ];
-
-      setSites(demoSites);
-      setShifts(demoShifts);
+      setSites([]);
+      setShifts([]);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching client data:', error);

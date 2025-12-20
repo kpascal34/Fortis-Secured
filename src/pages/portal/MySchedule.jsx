@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
-import { demoGuards } from '../../data/demoGuards';
+import { useAuth } from '../../context/AuthContext';
 import {
   SHIFT_STATUS,
   STATUS_LABELS,
@@ -24,12 +24,17 @@ import {
 } from 'react-icons/ai';
 
 const MySchedule = () => {
+  const { user } = useAuth();
   const [shifts, setShifts] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('upcoming'); // upcoming, past, all
   const [selectedShift, setSelectedShift] = useState(null);
-  const [currentGuard] = useState(demoGuards[0]); // Simulating logged-in guard
+  const [currentGuard] = useState(() =>
+    user
+      ? { $id: user.$id, firstName: user.name || 'User', status: 'active' }
+      : { $id: 'guard', firstName: 'Guard', status: 'active' }
+  );
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -47,12 +52,8 @@ const MySchedule = () => {
         ]);
         setSites(sitesRes.documents);
       } catch (error) {
-        console.log('Using demo sites');
-        setSites([
-          { $id: '1', siteName: 'Central Shopping Mall', address: '123 High Street, London' },
-          { $id: '2', siteName: 'Office Tower B', address: '456 Business Park, London' },
-          { $id: '3', siteName: 'Residential Complex', address: '789 Park Lane, London' },
-        ]);
+        console.log('Sites collection unavailable. Connect Appwrite to load live data.', error);
+        setSites([]);
       }
 
       // Fetch shifts assigned to current guard
@@ -63,110 +64,11 @@ const MySchedule = () => {
         ]);
         setShifts(shiftsRes.documents);
       } catch (error) {
-        console.log('Using demo shifts');
-        // Demo shifts for the logged-in guard
-        const demoShifts = [
-          {
-            $id: '1',
-            siteId: '1',
-            siteName: 'Central Shopping Mall',
-            date: '2025-12-16',
-            startTime: '09:00',
-            endTime: '17:00',
-            status: SHIFT_STATUS.ASSIGNED,
-            assignedGuardId: currentGuard.$id,
-            notes: 'Main entrance patrol. Monitor CCTV room.',
-            requiresConfirmation: true,
-            $createdAt: new Date('2025-12-10').toISOString(),
-          },
-          {
-            $id: '2',
-            siteId: '2',
-            siteName: 'Office Tower B',
-            date: '2025-12-17',
-            startTime: '18:00',
-            endTime: '02:00',
-            status: SHIFT_STATUS.CONFIRMED,
-            assignedGuardId: currentGuard.$id,
-            notes: 'Night shift. Building lockdown at 22:00.',
-            requiresConfirmation: false,
-            $createdAt: new Date('2025-12-10').toISOString(),
-          },
-          {
-            $id: '3',
-            siteId: '1',
-            siteName: 'Central Shopping Mall',
-            date: '2025-12-18',
-            startTime: '14:00',
-            endTime: '22:00',
-            status: SHIFT_STATUS.ASSIGNED,
-            assignedGuardId: currentGuard.$id,
-            notes: 'Late shift. Peak shopping hours.',
-            requiresConfirmation: true,
-            $createdAt: new Date('2025-12-11').toISOString(),
-          },
-          {
-            $id: '4',
-            siteId: '3',
-            siteName: 'Residential Complex',
-            date: '2025-12-20',
-            startTime: '07:00',
-            endTime: '15:00',
-            status: SHIFT_STATUS.PUBLISHED,
-            assignedGuardId: currentGuard.$id,
-            notes: 'Morning patrol. Gate monitoring.',
-            requiresConfirmation: true,
-            $createdAt: new Date('2025-12-12').toISOString(),
-          },
-          {
-            $id: '5',
-            siteId: '2',
-            siteName: 'Office Tower B',
-            date: '2025-12-10',
-            startTime: '09:00',
-            endTime: '17:00',
-            status: SHIFT_STATUS.COMPLETED,
-            assignedGuardId: currentGuard.$id,
-            notes: 'Day shift completed.',
-            requiresConfirmation: false,
-            $createdAt: new Date('2025-12-05').toISOString(),
-          },
-          {
-            $id: '6',
-            siteId: '1',
-            siteName: 'Central Shopping Mall',
-            date: '2025-12-11',
-            startTime: '10:00',
-            endTime: '18:00',
-            status: SHIFT_STATUS.COMPLETED,
-            assignedGuardId: currentGuard.$id,
-            notes: 'Weekend shift completed.',
-            requiresConfirmation: false,
-            $createdAt: new Date('2025-12-06').toISOString(),
-          },
-        ];
-        setShifts(demoShifts);
+        console.log('Shifts collection unavailable. No demo data loaded.', error);
+        setShifts([]);
       }
 
-      // Demo notifications
-      setNotifications([
-        {
-          id: '1',
-          type: 'shift_assigned',
-          title: 'New Shift Assigned',
-          message: 'You have been assigned to Central Shopping Mall on Dec 18',
-          read: false,
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          id: '2',
-          type: 'shift_reminder',
-          title: 'Shift Reminder',
-          message: 'You have a shift tomorrow at Office Tower B starting at 18:00',
-          read: false,
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        },
-      ]);
+      setNotifications([]);
 
       setLoading(false);
     } catch (error) {

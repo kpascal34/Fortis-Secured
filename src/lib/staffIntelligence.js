@@ -3,7 +3,6 @@
  * Calculates guard performance scores and provides intelligent assignment recommendations
  */
 
-import { demoGuards } from '../data/demoGuards';
 
 // Performance metrics weights
 export const PERFORMANCE_WEIGHTS = {
@@ -367,22 +366,6 @@ export const suggestEmergencyFill = (shift, availableGuards, allShifts) => {
 };
 
 /**
- * Generate demo performance data for guards
- */
-export const generateDemoPerformanceData = () => {
-  return demoGuards.map(guard => {
-    const performance = calculateGuardScore(guard, [], [], []);
-    return {
-      guardId: guard.$id,
-      guardName: `${guard.firstName} ${guard.lastName}`,
-      ...performance,
-      hoursThisWeek: Math.round(Math.random() * 48),
-      shiftsThisWeek: Math.round(Math.random() * 6),
-      lastShift: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-    };
-  });
-};
-
 export default {
   calculateGuardScore,
   getTier,
@@ -390,7 +373,6 @@ export default {
   analyzeHourBalance,
   getPerformanceTrend,
   suggestEmergencyFill,
-  generateDemoPerformanceData,
   PERFORMANCE_WEIGHTS,
   RANKING_TIERS,
 };

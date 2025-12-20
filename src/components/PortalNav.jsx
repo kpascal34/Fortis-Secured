@@ -17,15 +17,19 @@ import {
   AiOutlineBarChart,
   AiOutlineSetting,
   AiOutlineLogout,
-  AiOutlineDown
+  AiOutlineDown,
+  AiOutlineReload,
+  AiOutlineFileDone,
 } from 'react-icons/ai';
 
 const navigation = [
   { name: 'Dashboard', href: '/portal', icon: AiOutlineHome },
   { name: 'Clients / CRM', href: '/portal/clients', icon: AiOutlineTeam },
   { name: 'Scheduling', href: '/portal/scheduling', icon: AiOutlineCalendar },
+  { name: 'Recurring Patterns', href: '/portal/recurring-patterns', icon: AiOutlineReload },
   { name: 'My Schedule', href: '/portal/my-schedule', icon: AiOutlineUser },
   { name: 'Open Shifts', href: '/portal/open-shifts', icon: AiOutlineCalendar },
+  { name: 'Shift Applications', href: '/portal/shift-applications', icon: AiOutlineFileDone },
   { name: 'Sites', href: '/portal/sites', icon: AiOutlineInbox },
   { name: 'Posts', href: '/portal/posts', icon: AiOutlineCheckSquare },
   { name: 'Guards', href: '/portal/guards', icon: AiOutlineUser },

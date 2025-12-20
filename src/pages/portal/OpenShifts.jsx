@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
-import { Query } from 'appwrite';
-import { demoGuards, activeDemoGuards } from '../../data/demoGuards';
+import { Query, ID } from 'appwrite';
+import { useAuth } from '../../context/AuthContext';
 import { parseNumber, formatCurrency } from '../../lib/validation';
 import {
   SHIFT_STATUS,
@@ -11,6 +11,14 @@ import {
   checkComplianceStatus,
   COMPLIANCE_STATUS,
 } from '../../lib/scheduleUtils';
+import {
+  calculateEligibilityScore,
+  createApplication,
+  getGuardApplications,
+  APPLICATION_STATUS,
+  APPLICATION_STATUS_LABELS,
+  APPLICATION_STATUS_COLORS,
+} from '../../lib/shiftApplications';
 import {
   AiOutlineCalendar,
   AiOutlineClockCircle,
@@ -22,20 +30,37 @@ import {
   AiOutlineWarning,
   AiOutlineTrophy,
   AiOutlineThunderbolt,
+  AiOutlineSend,
+  AiOutlineHistory,
 } from 'react-icons/ai';
 
 const OpenShifts = () => {
+  const { user } = useAuth();
   const [openShifts, setOpenShifts] = useState([]);
   const [sites, setSites] = useState([]);
+  const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentGuard] = useState(activeDemoGuards[0]); // Simulating logged-in guard
+  const [currentGuard] = useState(() =>
+    user
+      ? {
+          $id: user.$id,
+          firstName: user.name || user.email || 'Guard',
+          status: 'active',
+        }
+      : {
+          $id: 'guard',
+          firstName: 'Guard',
+          status: 'active',
+        }
+  );
   const [selectedShift, setSelectedShift] = useState(null);
-  const [claiming, setClaiming] = useState(false);
-  const [filter, setFilter] = useState('all'); // all, eligible, today, week
+  const [applying, setApplying] = useState(false);
+  const [filter, setFilter] = useState('all'); // all, eligible, today, week, my-applications
   const [sortBy, setSortBy] = useState('date'); // date, distance, pay
 
   useEffect(() => {
     fetchOpenShifts();
+    fetchApplications();
   }, []);
 
   const fetchOpenShifts = async () => {
@@ -49,14 +74,8 @@ const OpenShifts = () => {
         ]);
         setSites(sitesRes.documents);
       } catch (error) {
-        console.log('Using demo sites');
-        setSites([
-          { $id: '1', siteName: 'Central Shopping Mall', address: '123 High Street, London', postcode: 'SW1A 1AA' },
-          { $id: '2', siteName: 'Office Tower B', address: '456 Business Park, London', postcode: 'EC1A 1BB' },
-          { $id: '3', siteName: 'Residential Complex', address: '789 Park Lane, London', postcode: 'W1K 1CC' },
-          { $id: '4', siteName: 'Retail Park', address: '321 Shopping Avenue, London', postcode: 'NW1 2DD' },
-          { $id: '5', siteName: 'Corporate Headquarters', address: '654 Finance Street, London', postcode: 'E14 5EE' },
-        ]);
+        console.log('Sites collection unavailable. Connect Appwrite to load live data.', error);
+        setSites([]);
       }
 
       // Fetch open/offered shifts
@@ -67,125 +86,8 @@ const OpenShifts = () => {
         ]);
         setOpenShifts(shiftsRes.documents);
       } catch (error) {
-        console.log('Using demo open shifts');
-        // Demo open shifts
-        const demoOpenShifts = [
-          {
-            $id: 'open-1',
-            siteId: '1',
-            siteName: 'Central Shopping Mall',
-            date: '2025-12-16',
-            startTime: '06:00',
-            endTime: '14:00',
-            status: SHIFT_STATUS.OFFERED,
-            payRate: 13.50,
-            urgency: 'high',
-            requiredSkills: ['CCTV Monitoring', 'Customer Service'],
-            preferredExperience: 2,
-            offeredAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-            expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-            claimCount: 3,
-            viewCount: 12,
-            notes: 'Early morning shift. Must be comfortable with public-facing role.',
-            $createdAt: new Date('2025-12-15').toISOString(),
-          },
-          {
-            $id: 'open-2',
-            siteId: '2',
-            siteName: 'Office Tower B',
-            date: '2025-12-17',
-            startTime: '22:00',
-            endTime: '06:00',
-            status: SHIFT_STATUS.OFFERED,
-            payRate: 15.00,
-            urgency: 'urgent',
-            requiredSkills: ['Night Patrol', 'Access Control'],
-            preferredExperience: 3,
-            offeredAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-            expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
-            claimCount: 1,
-            viewCount: 8,
-            notes: 'Night shift. Premium rate. Previous experience at this site preferred.',
-            $createdAt: new Date('2025-12-15').toISOString(),
-          },
-          {
-            $id: 'open-3',
-            siteId: '3',
-            siteName: 'Residential Complex',
-            date: '2025-12-18',
-            startTime: '14:00',
-            endTime: '22:00',
-            status: SHIFT_STATUS.OFFERED,
-            payRate: 12.50,
-            urgency: 'normal',
-            requiredSkills: ['Front Desk', 'Visitor Management'],
-            preferredExperience: 1,
-            offeredAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-            expiresAt: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString(),
-            claimCount: 0,
-            viewCount: 5,
-            notes: 'Afternoon shift. Residential setting.',
-            $createdAt: new Date('2025-12-14').toISOString(),
-          },
-          {
-            $id: 'open-4',
-            siteId: '4',
-            siteName: 'Retail Park',
-            date: '2025-12-19',
-            startTime: '10:00',
-            endTime: '18:00',
-            status: SHIFT_STATUS.OFFERED,
-            payRate: 13.00,
-            urgency: 'normal',
-            requiredSkills: ['Retail Security', 'Loss Prevention'],
-            preferredExperience: 2,
-            offeredAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-            expiresAt: new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString(),
-            claimCount: 2,
-            viewCount: 15,
-            notes: 'Busy retail environment. Weekend rate.',
-            $createdAt: new Date('2025-12-14').toISOString(),
-          },
-          {
-            $id: 'open-5',
-            siteId: '5',
-            siteName: 'Corporate Headquarters',
-            date: '2025-12-20',
-            startTime: '08:00',
-            endTime: '16:00',
-            status: SHIFT_STATUS.OFFERED,
-            payRate: 14.00,
-            urgency: 'high',
-            requiredSkills: ['Corporate Security', 'VIP Protection'],
-            preferredExperience: 5,
-            offeredAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            expiresAt: new Date(Date.now() + 10 * 60 * 60 * 1000).toISOString(),
-            claimCount: 1,
-            viewCount: 6,
-            notes: 'Professional corporate environment. Smart dress code required.',
-            $createdAt: new Date('2025-12-15').toISOString(),
-          },
-          {
-            $id: 'open-6',
-            siteId: '1',
-            siteName: 'Central Shopping Mall',
-            date: '2025-12-21',
-            startTime: '18:00',
-            endTime: '02:00',
-            status: SHIFT_STATUS.OFFERED,
-            payRate: 16.00,
-            urgency: 'urgent',
-            requiredSkills: ['Night Security', 'Emergency Response'],
-            preferredExperience: 3,
-            offeredAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-            expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-            claimCount: 0,
-            viewCount: 3,
-            notes: 'Late night shift. Premium rate. Last minute cover needed.',
-            $createdAt: new Date('2025-12-15').toISOString(),
-          },
-        ];
-        setOpenShifts(demoOpenShifts);
+        console.log('Shifts collection unavailable. No demo data loaded.', error);
+        setOpenShifts([]);
       }
 
       setLoading(false);
@@ -195,122 +97,92 @@ const OpenShifts = () => {
     }
   };
 
-  const calculateEligibility = (shift) => {
-    // Check compliance
-    const complianceStatus = checkComplianceStatus(currentGuard);
-    if (complianceStatus === COMPLIANCE_STATUS.EXPIRED) {
-      return {
-        eligible: false,
-        score: 0,
-        reason: 'SIA License expired',
-        factors: [],
-      };
+  const fetchApplications = async () => {
+    try {
+      const applicationsRes = await databases.listDocuments(
+        config.databaseId,
+        config.applicationsCollectionId,
+        [Query.equal('guardId', currentGuard.$id), Query.limit(100)]
+      );
+      setApplications(applicationsRes.documents);
+    } catch (error) {
+      console.log('Applications collection unavailable:', error);
+      setApplications([]);
     }
-
-    // Validate for conflicts
-    const validation = validateShift(shift, currentGuard, [], []);
-    if (!validation.valid) {
-      return {
-        eligible: false,
-        score: 0,
-        reason: validation.conflicts[0]?.message || 'Scheduling conflict',
-        factors: [],
-      };
-    }
-
-    // Calculate eligibility score (0-100)
-    let score = 50; // Base score
-    const factors = [];
-
-    // Experience match
-    const guardExperience = 3; // Simulated
-    if (shift.preferredExperience) {
-      if (guardExperience >= shift.preferredExperience) {
-        score += 20;
-        factors.push({ label: 'Experience Match', points: 20, positive: true });
-      } else {
-        score -= 10;
-        factors.push({ label: 'Below Required Experience', points: -10, positive: false });
-      }
-    }
-
-    // Skills match (simulated - would check against guard profile)
-    const guardSkills = ['CCTV Monitoring', 'Night Patrol', 'Customer Service', 'Access Control'];
-    if (shift.requiredSkills) {
-      const matchedSkills = shift.requiredSkills.filter(skill => guardSkills.includes(skill));
-      const skillMatchRate = matchedSkills.length / shift.requiredSkills.length;
-      const skillPoints = Math.round(skillMatchRate * 20);
-      score += skillPoints;
-      if (skillMatchRate === 1) {
-        factors.push({ label: 'All Skills Match', points: skillPoints, positive: true });
-      } else if (skillMatchRate > 0) {
-        factors.push({ label: 'Partial Skills Match', points: skillPoints, positive: true });
-      } else {
-        factors.push({ label: 'No Skills Match', points: 0, positive: false });
-      }
-    }
-
-    // Reliability score (simulated)
-    const reliabilityScore = 95; // Percentage
-    if (reliabilityScore > 90) {
-      score += 10;
-      factors.push({ label: 'Excellent Reliability', points: 10, positive: true });
-    }
-
-    // Previous site experience (simulated)
-    const hasWorkedAtSite = Math.random() > 0.5;
-    if (hasWorkedAtSite) {
-      score += 5;
-      factors.push({ label: 'Previous Site Experience', points: 5, positive: true });
-    }
-
-    // Warnings (don't block but reduce score)
-    if (validation.warnings.length > 0) {
-      const warningPenalty = validation.warnings.length * 5;
-      score -= warningPenalty;
-      factors.push({ label: `${validation.warnings.length} Warning(s)`, points: -warningPenalty, positive: false });
-    }
-
-    return {
-      eligible: score >= 30, // Minimum threshold
-      score: Math.min(100, Math.max(0, score)),
-      reason: score >= 30 ? 'Eligible' : 'Below eligibility threshold',
-      factors,
-      warnings: validation.warnings,
-    };
   };
 
-  const handleClaimShift = async (shift) => {
-    setClaiming(true);
+  // Get application status for a shift
+  const getShiftApplicationStatus = (shiftId) => {
+    const app = applications.find(a => a.shiftId === shiftId);
+    return app ? app.status : null;
+  };
+
+  const calculateEligibility = (shift) => {
+    // Create mock guard data with extended profile
+    const mockGuard = {
+      ...currentGuard,
+      siaLicenseExpiry: '2025-12-31',
+      yearsExperience: 3,
+      skills: ['CCTV Monitoring', 'Night Patrol', 'Customer Service', 'Access Control'],
+      completedTraining: ['First Aid', 'Fire Safety', 'Conflict Resolution'],
+    };
+
+    // Mock guard history
+    const mockHistory = {
+      reliabilityScore: 85,
+      sitesWorked: [],
+      siteVisits: {},
+      scheduledShifts: [],
+    };
+
+    // Use the new comprehensive eligibility calculation
+    return calculateEligibilityScore(mockGuard, shift, mockHistory);
+  };
+
+  const handleApplyForShift = async (shift) => {
+    setApplying(true);
     try {
       const eligibility = calculateEligibility(shift);
       
-      if (!eligibility.eligible) {
-        alert(`Cannot claim shift: ${eligibility.reason}`);
-        setClaiming(false);
-        return;
+      // Create application data
+      const applicationData = createApplication({
+        guardId: currentGuard.$id,
+        guardName: `${currentGuard.firstName} ${currentGuard.lastName || ''}`.trim(),
+        shiftId: shift.$id,
+        shiftDetails: {
+          siteName: shift.siteName,
+          date: shift.date,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          hourlyRate: shift.hourlyRate,
+        },
+        eligibilityScore: eligibility,
+        message: '', // Could add a message field in the future
+      });
+
+      // Save application to database
+      try {
+        await databases.createDocument(
+          config.databaseId,
+          config.applicationsCollectionId,
+          ID.unique(),
+          applicationData
+        );
+
+        // Refresh applications list
+        await fetchApplications();
+        
+        alert(`Application submitted for ${shift.siteName}! You'll be notified when it's reviewed.`);
+        setSelectedShift(null);
+      } catch (error) {
+        console.error('Error creating application:', error);
+        alert('Failed to submit application. Please try again.');
       }
-
-      // Simulate claiming shift
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Update shift status
-      const updatedShift = {
-        ...shift,
-        status: SHIFT_STATUS.ACCEPTED,
-        assignedGuardId: currentGuard.$id,
-        claimedAt: new Date().toISOString(),
-        claimedBy: `${currentGuard.firstName} ${currentGuard.lastName}`,
-      };
-
-      setOpenShifts(openShifts.filter(s => s.$id !== shift.$id));
-      alert(`Successfully claimed shift at ${shift.siteName}!`);
-      setSelectedShift(null);
     } catch (error) {
-      console.error('Error claiming shift:', error);
-      alert('Failed to claim shift. Please try again.');
+      console.error('Error applying for shift:', error);
+      alert('Failed to submit application. Please try again.');
     } finally {
-      setClaiming(false);
+      setApplying(false);
     }
   };
 
@@ -328,6 +200,9 @@ const OpenShifts = () => {
       const weekEnd = new Date(today);
       weekEnd.setDate(today.getDate() + 7);
       return shiftDate >= today && shiftDate <= weekEnd;
+    } else if (filter === 'my-applications') {
+      // Show only shifts the guard has applied to
+      return applications.some(app => app.shiftId === shift.$id);
     }
     return true;
   }).sort((a, b) => {
@@ -408,7 +283,7 @@ const OpenShifts = () => {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-white">Open Shifts</h1>
           <p className="mt-2 text-white/70">
-            Claim available shifts - first to accept gets assigned
+            Apply for available shifts - manager will review your application
           </p>
         </div>
 
@@ -425,15 +300,6 @@ const OpenShifts = () => {
             </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
-            <p className="text-sm text-white/70">Expiring Soon</p>
-            <p className="mt-2 text-3xl font-bold text-orange-500">
-              {openShifts.filter(s => {
-                const diff = new Date(s.expiresAt) - new Date();
-                return diff < 3 * 60 * 60 * 1000 && diff > 0;
-              }).length}
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
             <p className="text-sm text-white/70">Avg. Pay Rate</p>
             <p className="mt-2 text-3xl font-bold text-white">
               £{getAveragePayRate()}
@@ -444,7 +310,7 @@ const OpenShifts = () => {
         {/* Filters */}
         <div className="mb-6 flex flex-wrap items-center gap-4">
           <div className="flex gap-2">
-            {['all', 'eligible', 'today', 'week'].map((f) => (
+            {['all', 'eligible', 'today', 'week', 'my-applications'].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -454,7 +320,11 @@ const OpenShifts = () => {
                     : 'bg-white/5 text-white/70 hover:bg-white/10'
                 }`}
               >
-                {f === 'all' ? 'All Shifts' : f === 'eligible' ? 'Eligible' : f === 'today' ? 'Today' : 'This Week'}
+                {f === 'all' ? 'All Shifts' : 
+                 f === 'eligible' ? 'Eligible' : 
+                 f === 'today' ? 'Today' : 
+                 f === 'week' ? 'This Week' :
+                 'My Applications'}
               </button>
             ))}
           </div>
@@ -484,6 +354,7 @@ const OpenShifts = () => {
               const eligibility = calculateEligibility(shift);
               const timeRemaining = getTimeRemaining(shift.expiresAt);
               const isExpiringSoon = new Date(shift.expiresAt) - new Date() < 3 * 60 * 60 * 1000;
+              const applicationStatus = getShiftApplicationStatus(shift.$id);
 
               return (
                 <div
@@ -501,6 +372,11 @@ const OpenShifts = () => {
                         <h3 className="text-lg font-semibold text-white">{shift.siteName}</h3>
                         {eligibility.eligible && (
                           <AiOutlineCheckCircle className="text-green-500" />
+                        )}
+                        {applicationStatus && (
+                          <span className={`rounded-full px-3 py-1 text-xs font-medium bg-${APPLICATION_STATUS_COLORS[applicationStatus]}-500/20 text-${APPLICATION_STATUS_COLORS[applicationStatus]}-500`}>
+                            {APPLICATION_STATUS_LABELS[applicationStatus]}
+                          </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-2">
@@ -599,9 +475,31 @@ const OpenShifts = () => {
 
             {(() => {
               const eligibility = calculateEligibility(selectedShift);
+              const applicationStatus = getShiftApplicationStatus(selectedShift.$id);
               
               return (
                 <>
+                  {/* Application Status */}
+                  {applicationStatus && (
+                    <div className={`mb-6 rounded-lg border p-4 bg-${APPLICATION_STATUS_COLORS[applicationStatus]}-500/10 border-${APPLICATION_STATUS_COLORS[applicationStatus]}-500/50`}>
+                      <div className="flex items-center gap-3">
+                        {applicationStatus === APPLICATION_STATUS.PENDING && <AiOutlineHistory className="text-2xl text-yellow-500" />}
+                        {applicationStatus === APPLICATION_STATUS.APPROVED && <AiOutlineCheckCircle className="text-2xl text-green-500" />}
+                        {applicationStatus === APPLICATION_STATUS.REJECTED && <AiOutlineWarning className="text-2xl text-red-500" />}
+                        <div className="flex-1">
+                          <p className={`font-semibold text-${APPLICATION_STATUS_COLORS[applicationStatus]}-500`}>
+                            {APPLICATION_STATUS_LABELS[applicationStatus]}
+                          </p>
+                          <p className="text-sm text-white/70 mt-1">
+                            {applicationStatus === APPLICATION_STATUS.PENDING && 'Your application is under review'}
+                            {applicationStatus === APPLICATION_STATUS.APPROVED && 'Congratulations! You got the shift'}
+                            {applicationStatus === APPLICATION_STATUS.REJECTED && 'Application was not successful'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Eligibility Status */}
                   <div className={`mb-6 rounded-lg border p-4 ${
                     eligibility.eligible
@@ -616,24 +514,55 @@ const OpenShifts = () => {
                       )}
                       <div className="flex-1">
                         <p className={`font-semibold ${eligibility.eligible ? 'text-green-500' : 'text-red-500'}`}>
-                          {eligibility.reason}
+                          {eligibility.eligible ? 'You are eligible for this shift' : 'Not eligible'}
                         </p>
                         {eligibility.eligible && (
-                          <p className="text-sm text-white/70 mt-1">Match Score: {eligibility.score}%</p>
+                          <p className="text-sm text-white/70 mt-1">Match Score: {eligibility.percentage}%</p>
+                        )}
+                        {!eligibility.eligible && eligibility.reasons.length > 0 && (
+                          <p className="text-sm text-white/70 mt-1">{eligibility.reasons[0]}</p>
                         )}
                       </div>
                     </div>
 
-                    {eligibility.factors && eligibility.factors.length > 0 && (
-                      <div className="mt-3 space-y-1">
-                        {eligibility.factors.map((factor, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-sm">
-                            <span className={factor.positive ? 'text-green-400' : 'text-red-400'}>
-                              {factor.positive ? '+' : ''}{factor.points}
-                            </span>
-                            <span className="text-white/70">{factor.label}</span>
+                    {/* Show eligibility criteria breakdown */}
+                    {eligibility.criteria && Object.keys(eligibility.criteria).length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs text-white/50 font-semibold uppercase">Eligibility Breakdown</p>
+                        {Object.entries(eligibility.criteria).map(([key, criterion]) => (
+                          <div key={key} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                              {criterion.passed ? (
+                                <AiOutlineCheckCircle className="text-green-400" />
+                              ) : (
+                                <AiOutlineWarning className="text-red-400" />
+                              )}
+                              <span className="text-white/70">
+                                {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`font-medium ${criterion.passed ? 'text-green-400' : 'text-red-400'}`}>
+                                {criterion.score}/{criterion.weight}
+                              </span>
+                            </div>
                           </div>
                         ))}
+                        {eligibility.recommendationLevel && (
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-white/70">Recommendation</span>
+                              <span className={`text-sm font-semibold ${
+                                eligibility.recommendationLevel === 'highly_recommended' ? 'text-green-400' :
+                                eligibility.recommendationLevel === 'recommended' ? 'text-blue-400' :
+                                eligibility.recommendationLevel === 'acceptable' ? 'text-yellow-400' :
+                                'text-red-400'
+                              }`}>
+                                {eligibility.recommendationLevel.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -695,24 +624,46 @@ const OpenShifts = () => {
                   </div>
 
                   {/* Action Button */}
-                  {eligibility.eligible && (
+                  {!applicationStatus && eligibility.eligible && (
                     <button
-                      onClick={() => handleClaimShift(selectedShift)}
-                      disabled={claiming}
+                      onClick={() => handleApplyForShift(selectedShift)}
+                      disabled={applying}
                       className="mt-6 w-full flex items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3 text-white hover:bg-accent/80 transition-colors disabled:opacity-50"
                     >
-                      {claiming ? (
+                      {applying ? (
                         <>
                           <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                          Claiming...
+                          Submitting Application...
                         </>
                       ) : (
                         <>
-                          <AiOutlineThunderbolt />
-                          Claim This Shift
+                          <AiOutlineSend />
+                          Apply for This Shift
                         </>
                       )}
                     </button>
+                  )}
+
+                  {applicationStatus === APPLICATION_STATUS.PENDING && (
+                    <div className="mt-6 rounded-lg bg-white/5 border border-white/10 p-4 text-center">
+                      <AiOutlineHistory className="inline-block text-2xl text-yellow-500 mb-2" />
+                      <p className="text-white/70">Your application is being reviewed by the manager</p>
+                    </div>
+                  )}
+
+                  {applicationStatus === APPLICATION_STATUS.APPROVED && (
+                    <div className="mt-6 rounded-lg bg-green-500/10 border border-green-500/50 p-4 text-center">
+                      <AiOutlineCheckCircle className="inline-block text-2xl text-green-500 mb-2" />
+                      <p className="text-green-400 font-semibold">You've been assigned this shift!</p>
+                      <p className="text-white/70 text-sm mt-1">Check your schedule for details</p>
+                    </div>
+                  )}
+
+                  {applicationStatus === APPLICATION_STATUS.REJECTED && (
+                    <div className="mt-6 rounded-lg bg-red-500/10 border border-red-500/50 p-4 text-center">
+                      <p className="text-white/70">This application was not successful</p>
+                      <p className="text-white/50 text-sm mt-1">Keep applying - more shifts are posted daily</p>
+                    </div>
                   )}
                 </>
               );

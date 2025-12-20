@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { demoGuards } from '../../data/demoGuards';
 import {
   AiOutlineTeam,
   AiOutlineFileText,
@@ -19,88 +18,21 @@ import {
 
 const HR = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [guards] = useState(demoGuards);
+  const [guards] = useState([]);
   const [selectedGuard, setSelectedGuard] = useState(null);
 
   const hrStats = [
     { label: 'Total Staff', value: guards.length, icon: AiOutlineTeam, color: 'blue' },
     { label: 'Active', value: guards.filter(g => g.status === 'active').length, icon: AiOutlineCheckCircle, color: 'green' },
-    { label: 'On Leave', value: 2, icon: AiOutlineCalendar, color: 'yellow' },
-    { label: 'Expiring Licenses', value: 1, icon: AiOutlineWarning, color: 'red' },
+    { label: 'On Leave', value: 0, icon: AiOutlineCalendar, color: 'yellow' },
+    { label: 'Expiring Licenses', value: 0, icon: AiOutlineWarning, color: 'red' },
   ];
 
-  const leaveRequests = [
-    {
-      id: 1,
-      guard: 'Michael Brown',
-      type: 'Annual Leave',
-      startDate: '2025-12-20',
-      endDate: '2025-12-27',
-      days: 7,
-      status: 'pending',
-      reason: 'Family vacation',
-    },
-    {
-      id: 2,
-      guard: 'James Wilson',
-      type: 'Sick Leave',
-      startDate: '2025-12-16',
-      endDate: '2025-12-17',
-      days: 2,
-      status: 'approved',
-      reason: 'Medical appointment',
-    },
-    {
-      id: 3,
-      guard: 'Sophie Martinez',
-      type: 'Annual Leave',
-      startDate: '2025-12-28',
-      endDate: '2025-12-31',
-      days: 4,
-      status: 'pending',
-      reason: 'New Year celebration',
-    },
-  ];
+  const leaveRequests = [];
 
-  const trainingSchedule = [
-    {
-      id: 1,
-      course: 'First Aid Certification',
-      date: '2025-12-18',
-      duration: '8 hours',
-      location: 'Training Center',
-      enrolled: 5,
-      capacity: 12,
-      instructor: 'Jane Smith',
-    },
-    {
-      id: 2,
-      course: 'Conflict Resolution',
-      date: '2025-12-22',
-      duration: '4 hours',
-      location: 'Online',
-      enrolled: 8,
-      capacity: 15,
-      instructor: 'Robert Johnson',
-    },
-    {
-      id: 3,
-      course: 'Fire Safety Training',
-      date: '2026-01-05',
-      duration: '6 hours',
-      location: 'Site A',
-      enrolled: 3,
-      capacity: 10,
-      instructor: 'Linda Brown',
-    },
-  ];
+  const trainingSchedule = [];
 
-  const documents = [
-    { name: 'Employment Contract - Michael Brown', type: 'Contract', date: '2024-03-10', size: '245 KB' },
-    { name: 'DBS Certificate - James Wilson', type: 'Compliance', date: '2024-05-12', size: '180 KB' },
-    { name: 'SIA License - David Anderson', type: 'Compliance', date: '2024-07-20', size: '156 KB' },
-    { name: 'Training Certificate - Sophie Martinez', type: 'Training', date: '2024-09-15', size: '198 KB' },
-  ];
+  const documents = [];
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: AiOutlineTeam },

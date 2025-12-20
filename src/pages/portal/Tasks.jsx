@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
-import { demoGuards } from '../../data/demoGuards';
 import { validateRequired, parseDate, formatDate } from '../../lib/validation';
 import {
   AiOutlineCheckCircle,
@@ -72,18 +71,15 @@ const Tasks = () => {
         setSites(sitesRes.documents);
         setShifts(shiftsRes.documents);
       } catch (error) {
-        console.log('Using demo guards:', error);
-        guardsData = demoGuards;
+        console.log('Unable to load guard data. Connect Appwrite to enable live tasks.', error);
+        guardsData = [];
+        setClients([]);
+        setSites([]);
+        setShifts([]);
       }
 
       setGuards(guardsData);
 
-      // For now, we'll use local state for tasks since collection doesn't exist yet
-      // When you create the tasks collection, uncomment the following:
-      // const tasksRes = await databases.listDocuments(config.databaseId, config.tasksCollectionId, [Query.limit(500)]);
-      // setTasks(tasksRes.documents);
-      
-      // Demo data for now
       setTasks([]);
     } catch (error) {
       console.error('Error fetching data:', error);

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
-import { demoGuards } from '../../data/demoGuards';
 import PortalHeader from '../../components/PortalHeader';
 import {
   AiOutlinePlus,
@@ -39,131 +38,8 @@ const Guards = () => {
       ]);
       setGuards(response.documents);
     } catch (error) {
-      console.error('Guards collection not available, using demo guards:', error);
-      // Use demo guards that match the UserManagement demo guards
-      const demoGuards = [
-        {
-          $id: 'demo-guard-1',
-          firstName: 'Michael',
-          lastName: 'Brown',
-          email: 'michael.brown@fortissecured.com',
-          phone: '+44 7700 900010',
-          status: 'active',
-          role: 'supervisor',
-          licenseNumber: 'SIA-001234',
-          licenseExpiry: '2026-12-31',
-          address: '123 Security Street, London',
-          emergencyContact: 'Sarah Brown',
-          emergencyPhone: '+44 7700 900020',
-          $createdAt: new Date('2024-03-10').toISOString(),
-        },
-        {
-          $id: 'demo-guard-2',
-          firstName: 'James',
-          lastName: 'Wilson',
-          email: 'james.wilson@fortissecured.com',
-          phone: '+44 7700 900011',
-          status: 'active',
-          role: 'guard',
-          licenseNumber: 'SIA-001235',
-          licenseExpiry: '2026-08-15',
-          address: '456 Guard Lane, London',
-          emergencyContact: 'Emma Wilson',
-          emergencyPhone: '+44 7700 900021',
-          $createdAt: new Date('2024-05-12').toISOString(),
-        },
-        {
-          $id: 'demo-guard-3',
-          firstName: 'Olivia',
-          lastName: 'Taylor',
-          email: 'olivia.taylor@fortissecured.com',
-          phone: '+44 7700 900012',
-          status: 'inactive',
-          role: 'guard',
-          licenseNumber: 'SIA-001236',
-          licenseExpiry: '2026-11-20',
-          address: '789 Watch Road, London',
-          emergencyContact: 'Jack Taylor',
-          emergencyPhone: '+44 7700 900022',
-          $createdAt: new Date('2024-06-20').toISOString(),
-        },
-        {
-          $id: 'demo-guard-4',
-          firstName: 'David',
-          lastName: 'Anderson',
-          email: 'david.anderson@fortissecured.com',
-          phone: '+44 7700 900013',
-          status: 'active',
-          role: 'team_leader',
-          licenseNumber: 'SIA-001237',
-          licenseExpiry: '2027-03-15',
-          address: '321 Patrol Avenue, London',
-          emergencyContact: 'Lisa Anderson',
-          emergencyPhone: '+44 7700 900023',
-          $createdAt: new Date('2024-04-15').toISOString(),
-        },
-        {
-          $id: 'demo-guard-5',
-          firstName: 'Sophie',
-          lastName: 'Martinez',
-          email: 'sophie.martinez@fortissecured.com',
-          phone: '+44 7700 900014',
-          status: 'active',
-          role: 'guard',
-          licenseNumber: 'SIA-001238',
-          licenseExpiry: '2026-09-30',
-          address: '654 Sentinel Street, London',
-          emergencyContact: 'Carlos Martinez',
-          emergencyPhone: '+44 7700 900024',
-          $createdAt: new Date('2024-07-08').toISOString(),
-        },
-        {
-          $id: 'demo-guard-6',
-          firstName: 'Thomas',
-          lastName: 'Johnson',
-          email: 'thomas.johnson@fortissecured.com',
-          phone: '+44 7700 900015',
-          status: 'active',
-          role: 'guard',
-          licenseNumber: 'SIA-001239',
-          licenseExpiry: '2026-10-12',
-          address: '987 Defence Drive, London',
-          emergencyContact: 'Mary Johnson',
-          emergencyPhone: '+44 7700 900025',
-          $createdAt: new Date('2024-08-22').toISOString(),
-        },
-        {
-          $id: 'demo-guard-7',
-          firstName: 'Emily',
-          lastName: 'Roberts',
-          email: 'emily.roberts@fortissecured.com',
-          phone: '+44 7700 900016',
-          status: 'active',
-          role: 'guard',
-          licenseNumber: 'SIA-001240',
-          licenseExpiry: '2027-01-18',
-          address: '147 Guardian Way, London',
-          emergencyContact: 'Robert Roberts',
-          emergencyPhone: '+44 7700 900026',
-          $createdAt: new Date('2024-09-05').toISOString(),
-        },
-        {
-          $id: 'demo-guard-8',
-          firstName: 'Daniel',
-          lastName: 'Thompson',
-          email: 'daniel.thompson@fortissecured.com',
-          phone: '+44 7700 900017',
-          status: 'active',
-          role: 'guard',
-          licenseNumber: 'SIA-001241',
-          licenseExpiry: '2026-12-05',
-          address: '258 Protection Place, London',
-          emergencyContact: 'Hannah Thompson',
-          emergencyPhone: '+44 7700 900027',
-          $createdAt: new Date('2024-10-11').toISOString(),
-        },
-      ];
-      setGuards(demoGuards);
+      console.error('Guards collection not available. Connect Appwrite to load live data.', error);
+      setGuards([]);
     } finally {
       setLoading(false);
     }

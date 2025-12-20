@@ -5,7 +5,7 @@
  */
 
 /**
- * Register service worker
+ * Register service worker via Vite-PWA runtime
  */
 export const registerServiceWorker = async () => {
   if (!('serviceWorker' in navigator)) {
@@ -14,33 +14,28 @@ export const registerServiceWorker = async () => {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('/service-worker.js', {
-      scope: '/',
+    const { registerSW } = await import('virtual:pwa-register');
+
+    const updateSW = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        console.log('[PWA] New version available');
+        showUpdateNotification();
+      },
+      onOfflineReady() {
+        console.log('[PWA] App ready to work offline');
+      },
+      onRegisterError(error) {
+        console.error('[PWA] SW register error:', error);
+      },
     });
 
-    console.log('[PWA] Service worker registered:', registration.scope);
+    // Optionally trigger checks every hour
+    setInterval(() => updateSW && updateSW.checkForUpdates?.(), 60 * 60 * 1000);
 
-    // Check for updates periodically
-    setInterval(() => {
-      registration.update();
-    }, 60 * 60 * 1000); // Check every hour
-
-    // Handle updates
-    registration.addEventListener('updatefound', () => {
-      const newWorker = registration.installing;
-      
-      newWorker.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          // New version available
-          console.log('[PWA] New version available');
-          showUpdateNotification();
-        }
-      });
-    });
-
-    return registration;
+    return true;
   } catch (error) {
-    console.error('[PWA] Service worker registration failed:', error);
+    console.error('[PWA] Failed to initialize Vite-PWA registration:', error);
     return null;
   }
 };
@@ -471,6 +466,24 @@ export const clearPWACaches = async () => {
 export const initializePWA = async () => {
   console.log('[PWA] Initializing...');
   
+  // Clean up legacy service worker if present
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(
+        regs.map(async (reg) => {
+          const scriptUrl = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL || '';
+          if (scriptUrl.includes('/service-worker.js')) {
+            console.log('[PWA] Unregistering legacy service worker:', scriptUrl);
+            try { await reg.unregister(); } catch (_) {}
+          }
+        })
+      );
+    }
+  } catch (e) {
+    console.warn('[PWA] Legacy SW cleanup skipped:', e);
+  }
+
   // Register service worker
   const registration = await registerServiceWorker();
   

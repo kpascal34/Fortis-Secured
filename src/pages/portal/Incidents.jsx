@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
-import { demoGuards } from '../../data/demoGuards';
 import {
   AiOutlineWarning,
   AiOutlineAlert,
@@ -85,8 +84,11 @@ const Incidents = () => {
         setSites(sitesRes.documents);
         setShifts(shiftsRes.documents);
       } catch (error) {
-        console.log('Using demo guards:', error);
-        guardsData = demoGuards;
+        console.log('Unable to load guard data. Connect Appwrite to enable live incidents.', error);
+        guardsData = [];
+        setClients([]);
+        setSites([]);
+        setShifts([]);
       }
 
       setGuards(guardsData);
@@ -96,7 +98,7 @@ const Incidents = () => {
         const incidentsRes = await databases.listDocuments(config.databaseId, config.incidentsCollectionId, [Query.limit(500)]);
         setIncidents(incidentsRes.documents);
       } catch (error) {
-        console.log('Incidents collection not yet available, using local state');
+        console.log('Incidents collection not yet available. No demo data loaded.');
         setIncidents([]);
       }
     } catch (error) {

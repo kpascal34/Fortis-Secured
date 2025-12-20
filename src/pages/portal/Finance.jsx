@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
-import { demoGuards } from '../../data/demoGuards';
 import { validateRequired, validateRange, parseDate, formatCurrency } from '../../lib/validation';
 import {
   AiOutlineDollar,
@@ -122,7 +121,7 @@ const Finance = () => {
         );
         guardsData = res.documents;
       } catch (err) {
-        guardsData = demoGuards;
+        guardsData = [];
       }
 
       try {
@@ -142,72 +141,9 @@ const Finance = () => {
       setGuards(guardsData);
       setSites(sitesData);
 
-      // Initialize demo invoices if none loaded
-      if (invoices.length === 0) {
-        const demoInvoices = [
-          {
-            $id: '1',
-            invoiceNumber: 'INV-2025-001',
-            clientId: clientsData[0]?.$id || 'DEMO-CLIENT-1',
-            invoiceDate: '2025-12-01',
-            dueDate: '2025-12-31',
-            status: 'sent',
-            items: [
-              { description: 'Security Services - November 2025', quantity: 160, rate: 25, amount: 4000 },
-              { description: 'Emergency Response Services', quantity: 1, rate: 500, amount: 500 },
-            ],
-            subtotal: 4500,
-            taxRate: 20,
-            taxAmount: 900,
-            total: 5400,
-            notes: 'Payment due within 30 days',
-            paymentTerms: '30 days',
-            createdAt: new Date('2025-12-01').toISOString(),
-          },
-          {
-            $id: '2',
-            invoiceNumber: 'INV-2025-002',
-            clientId: clientsData[1]?.$id || 'DEMO-CLIENT-2',
-            invoiceDate: '2025-12-05',
-            dueDate: '2025-12-20',
-            status: 'overdue',
-            items: [
-              { description: 'Security Services - October 2025', quantity: 120, rate: 28, amount: 3360 },
-            ],
-            subtotal: 3360,
-            taxRate: 20,
-            taxAmount: 672,
-            total: 4032,
-            notes: '',
-            paymentTerms: '15 days',
-            createdAt: new Date('2025-12-05').toISOString(),
-          },
-          {
-            $id: '3',
-            invoiceNumber: 'INV-2025-003',
-            clientId: clientsData[0]?.$id || 'DEMO-CLIENT-1',
-            invoiceDate: '2025-12-10',
-            dueDate: '2026-01-10',
-            status: 'paid',
-            items: [
-              { description: 'Security Services - December 2025', quantity: 200, rate: 25, amount: 5000 },
-            ],
-            subtotal: 5000,
-            taxRate: 20,
-            taxAmount: 1000,
-            total: 6000,
-            notes: 'Paid via bank transfer',
-            paymentTerms: '30 days',
-            paidDate: '2025-12-12',
-            createdAt: new Date('2025-12-10').toISOString(),
-          },
-        ];
-
-        setInvoices(demoInvoices);
-      }
     } catch (error) {
       console.error('Error fetching data:', error);
-      setError('Failed to load finance data. Showing demo or empty state.');
+      setError('Failed to load finance data. Connect Appwrite to enable billing.');
     } finally {
       setLoading(false);
     }

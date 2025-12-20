@@ -35,4 +35,9 @@ export const config = {
   shiftAssignmentsCollectionId: import.meta.env.VITE_APPWRITE_SHIFT_ASSIGNMENTS_COLLECTION_ID,
   incidentsCollectionId: import.meta.env.VITE_APPWRITE_INCIDENTS_COLLECTION_ID,
   assetsCollectionId: import.meta.env.VITE_APPWRITE_ASSETS_COLLECTION_ID,
+  applicationsCollectionId: import.meta.env.VITE_APPWRITE_APPLICATIONS_COLLECTION_ID,
 };
+
+export const DATABASE_ID = databaseId;
+export const SHIFTS_COLLECTION_ID = config.shiftsCollectionId;
+export const APPLICATIONS_COLLECTION_ID = config.applicationsCollectionId;

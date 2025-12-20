@@ -15,12 +15,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Fortis Secured" />
-    <link rel="manifest" href="/manifest.json" />
+    <!-- Vite-PWA injects its own manifest at build (manifest.webmanifest) -->
     
-    <!-- Apple Touch Icons -->
-    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192x192.png" />
+    <!-- Apple Touch Icons (optional) -->
+    <!-- PNG icons can be added at /public/icons when available -->
     
     <!-- Open Graph / Social Media -->
     <meta property="og:type" content="website" />
@@ -42,6 +40,12 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" href="/favicon.ico" />
+
+    <!-- CSP fallback for hosts that ignore platform headers (keeps Google Fonts/data URIs allowed) -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com https://fonts.googleapis.com; connect-src 'self' https://cloud.appwrite.io https://fonts.googleapis.com https://fonts.gstatic.com;"
+    />
     
     <!-- SEO: Robots and Sitemap -->
     <link rel="robots" href="/robots.txt" />

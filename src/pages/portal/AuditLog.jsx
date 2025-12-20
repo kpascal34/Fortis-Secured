@@ -10,7 +10,6 @@ import {
   AUDIT_SEVERITY,
   AUDIT_STATUS,
 } from '../../lib/auditLog';
-import { demoAuditLogs } from '../../data/demoAuditLogs';
 import {
   AiOutlineSearch,
   AiOutlineFilter,

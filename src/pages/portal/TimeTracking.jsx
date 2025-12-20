@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
-import { demoGuards } from '../../data/demoGuards';
 import { calculateHours, parseNumber, formatCurrency } from '../../lib/validation';
 import {
   AiOutlineClockCircle,
@@ -57,8 +56,12 @@ const TimeTracking = () => {
         setClients(clientsRes.documents);
         setSites(sitesRes.documents);
       } catch (error) {
-        console.log('Using demo guards:', error);
-        guardsData = demoGuards;
+        console.log('Unable to load time tracking data. Connect Appwrite to enable live records.', error);
+        guardsData = [];
+        setTimeEntries([]);
+        setShifts([]);
+        setClients([]);
+        setSites([]);
       }
       
       setGuards(guardsData);
