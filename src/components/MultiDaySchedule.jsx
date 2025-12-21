@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import {
   timeToPixels,
@@ -11,6 +11,12 @@ import {
   formatShiftDisplay,
   timeStringToMinutes,
   minutesToTimeString,
+  snapToGrid,
+  pixelsToTime,
+  snapTimeToGrid,
+  pixelsToMinutes,
+  addMinutesToTime,
+  validateShiftMove,
 } from '../lib/dragDropSchedule';
 
 /**
@@ -29,9 +35,12 @@ const MultiDaySchedule = ({
   className = '',
   groupByStaff = false,
   staffList = [],
+  allowOverlap = false,
 }) => {
   const [currentStartDate, setCurrentStartDate] = useState(startDate);
   const [selectedShift, setSelectedShift] = useState(null);
+  const [draggingShift, setDraggingShift] = useState(null); // { shift, date, container, offset }
+  const [resizingShift, setResizingShift] = useState(null); // { shift, date, container, startY }
 
   const dayStartMinutes = dayStartHour * 60;
   const dayEndMinutes = dayEndHour * 60;
@@ -67,6 +76,104 @@ const MultiDaySchedule = ({
   const getShiftsForDay = (date) => {
     return shifts.filter(s => s.date === date);
   };
+  const updateShift = useCallback((shiftId, updates) => {
+    const updated = shifts.map(s => (s.$id === shiftId ? { ...s, ...updates } : s));
+    onShiftsChange?.(updated);
+  }, [shifts, onShiftsChange]);
+
+  const handleDragStart = (e, shift, date, type = 'move') => {
+    if (readonly) return;
+    // Only primary button
+    if (e.button !== 0) return;
+
+    const container = e.currentTarget.closest('.day-grid');
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const startY = e.clientY - rect.top;
+
+    if (type === 'move') {
+      const { top } = getShiftPosition(shift, dayStartMinutes);
+      setDraggingShift({ shift, date, container, offset: startY - top });
+    } else if (type === 'resize') {
+      setResizingShift({ shift, date, container, startY });
+    }
+  };
+
+  useEffect(() => {
+    if (!draggingShift && !resizingShift) return;
+
+    const handleMouseMove = (e) => {
+      const active = draggingShift || resizingShift;
+      if (!active) return;
+      const { shift, date, container } = active;
+      const rect = container.getBoundingClientRect();
+      const currentY = e.clientY - rect.top;
+
+      const dayShifts = getShiftsForDay(date);
+
+      if (draggingShift) {
+        const newTop = snapToGrid(currentY - draggingShift.offset);
+        const constrainedTop = Math.max(0, Math.min(newTop, dayHeightPixels - 60));
+        const newStartTime = pixelsToTime(constrainedTop, dayStartMinutes);
+        const duration = getMinutesBetweenTimes(shift.startTime, shift.endTime);
+        const newEndTime = addMinutesToTime(newStartTime, duration);
+
+        const validation = validateShiftMove(
+          shift,
+          snapTimeToGrid(newStartTime),
+          snapTimeToGrid(newEndTime),
+          dayShifts,
+          allowOverlap
+        );
+
+        if (validation.valid) {
+          updateShift(shift.$id, {
+            startTime: snapTimeToGrid(newStartTime),
+            endTime: snapTimeToGrid(newEndTime),
+          });
+        }
+      }
+
+      if (resizingShift) {
+        const { shift, startY } = resizingShift;
+        const { top } = getShiftPosition(shift, dayStartMinutes);
+        const deltaY = currentY - startY;
+        const newHeight = snapToGrid(
+          ((getMinutesBetweenTimes(shift.startTime, shift.endTime) / 30) * SLOT_HEIGHT) + deltaY,
+          SLOT_HEIGHT
+        );
+        const constrainedHeight = Math.max(SLOT_HEIGHT, Math.min(newHeight, dayHeightPixels - top));
+        const newEndTime = addMinutesToTime(shift.startTime, pixelsToMinutes(constrainedHeight));
+
+        const validation = validateShiftMove(
+          shift,
+          shift.startTime,
+          snapTimeToGrid(newEndTime),
+          dayShifts,
+          allowOverlap
+        );
+
+        if (validation.valid) {
+          updateShift(shift.$id, { endTime: snapTimeToGrid(newEndTime) });
+          setResizingShift({ ...resizingShift, shift: { ...shift, endTime: snapTimeToGrid(newEndTime) } });
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      setDraggingShift(null);
+      setResizingShift(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggingShift, resizingShift, dayStartMinutes, dayHeightPixels, allowOverlap]);
 
   // Get shifts grouped by staff for a day
   const getShiftsForDayByStaff = (date) => {
@@ -176,7 +283,7 @@ const MultiDaySchedule = ({
                   </div>
 
                   {/* Day Grid with Shifts */}
-                  <div className="relative" style={{ height: dayHeightPixels }}>
+                  <div className="relative day-grid" style={{ height: dayHeightPixels }}>
                     {/* Grid background */}
                     <div
                       className="absolute inset-0"
@@ -204,11 +311,12 @@ const MultiDaySchedule = ({
                           return (
                             <div
                               key={`${date}-${shift.$id}`}
+                              onMouseDown={(e) => handleDragStart(e, shift, date, 'move')}
                               onClick={() => {
                                 setSelectedShift(shift);
                                 onShiftClick?.(shift);
                               }}
-                              className={`absolute rounded border-2 transition-all cursor-pointer p-1 ${
+                              className={`absolute rounded border-2 transition-all ${readonly ? 'cursor-default' : 'cursor-move'} p-1 ${
                                 selectedShift?.$id === shift.$id
                                   ? 'border-blue-600 shadow-lg z-20'
                                   : 'border-blue-300 hover:border-blue-500 z-10'
@@ -231,6 +339,13 @@ const MultiDaySchedule = ({
                                 <p className="text-xs opacity-75 truncate">
                                   {getMinutesBetweenTimes(shift.startTime, shift.endTime) / 60}h
                                 </p>
+                              )}
+
+                              {!readonly && height > 40 && (
+                                <div
+                                  className="absolute bottom-0 left-0 right-0 h-2 bg-blue-700 cursor-ns-resize opacity-0 hover:opacity-100 transition-opacity"
+                                  onMouseDown={(e) => handleDragStart(e, shift, date, 'resize')}
+                                />
                               )}
                             </div>
                           );
