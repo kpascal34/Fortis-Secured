@@ -102,7 +102,9 @@ const AppContent = () => {
           <Route path="sites" element={<Sites />} />
           <Route path="posts" element={<Posts />} />
           <Route path="guards" element={<Guards />} />
-          <Route path="scheduling" element={<Scheduling />} />
+          {/* Route the main Scheduling path to the drag-drop implementation */}
+          <Route path="scheduling" element={<SchedulingWithDragDrop />} />
+          {/* Keep an alias route for direct links/demo */}
           <Route path="scheduling-drag-drop" element={<SchedulingWithDragDrop />} />
           <Route path="recurring-patterns" element={<RecurringPatterns />} />
           <Route path="my-schedule" element={<MySchedule />} />
