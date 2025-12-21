@@ -362,7 +362,8 @@ export const validateShiftForSave = (shift) => {
   if (!shift.date) errors.push('Date is required');
   if (!shift.startTime) errors.push('Start time is required');
   if (!shift.endTime) errors.push('End time is required');
-  if (!shift.siteId) errors.push('Site is required');
+  // Site is recommended but not strictly required for basic scheduling interactions
+  // if (!shift.siteId) errors.push('Site is required');
 
   // Validate time format
   if (shift.startTime && !/^\d{2}:\d{2}$/.test(shift.startTime)) {

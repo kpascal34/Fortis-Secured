@@ -304,6 +304,14 @@ const DragDropScheduleIntegration = ({
 
       {/* Calendar Component */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        {/* Lightweight runtime info to aid verification */}
+        <div className="px-4 py-2 border-b border-gray-200 text-xs text-gray-600 flex items-center justify-between">
+          <span>
+            Loaded: {shifts.length} shift{shifts.length === 1 ? '' : 's'} {view === 'single' ? `for ${selectedDate}` : 'this week'}
+            {siteId ? ` • Site: ${siteId}` : ' • All sites'}
+          </span>
+          <span>Appwrite: {config.projectId ? 'configured' : 'missing'}{config.isDemoMode ? ' • demo' : ''}</span>
+        </div>
         {view === 'single' ? (
           <>
             {/* Date Picker for Single-Day */}
