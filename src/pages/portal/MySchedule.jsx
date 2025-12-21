@@ -56,18 +56,35 @@ const MySchedule = () => {
         setSites([]);
       }
 
-      // Fetch shifts assigned to current guard
+      // Fetch assignments for current guard, then load referenced shifts
+      let guardAssignments = [];
       try {
-        const shiftsRes = await databases.listDocuments(config.databaseId, config.shiftsCollectionId, [
-          Query.equal('assignedGuardId', currentGuard.$id),
-          Query.limit(200),
-        ]);
-        setShifts(shiftsRes.documents);
+        const assignmentsRes = await databases.listDocuments(
+          config.databaseId,
+          config.shiftAssignmentsCollectionId,
+          [Query.equal('guardId', currentGuard.$id), Query.limit(200)]
+        );
+        guardAssignments = assignmentsRes.documents || [];
       } catch (error) {
-        console.log('Shifts collection unavailable. No demo data loaded.', error);
-        setShifts([]);
+        console.log('Assignments collection unavailable.', error);
+        guardAssignments = [];
       }
 
+      const shiftIds = [...new Set(guardAssignments.map((a) => a.shiftId).filter(Boolean))];
+      let fetchedShifts = [];
+
+      if (shiftIds.length > 0) {
+        const results = await Promise.all(
+          shiftIds.map((id) =>
+            databases
+              .getDocument(config.databaseId, config.shiftsCollectionId, id)
+              .catch(() => null)
+          )
+        );
+        fetchedShifts = results.filter(Boolean).map((s) => ({ ...s, date: s.shiftDate || s.date }));
+      }
+
+      setShifts(fetchedShifts);
       setNotifications([]);
 
       setLoading(false);
@@ -107,7 +124,7 @@ const MySchedule = () => {
   };
 
   const filteredShifts = shifts.filter(shift => {
-    const shiftDate = new Date(shift.date);
+    const shiftDate = new Date(shift.shiftDate || shift.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -117,7 +134,7 @@ const MySchedule = () => {
       return shiftDate < today || shift.status === SHIFT_STATUS.COMPLETED;
     }
     return true;
-  }).sort((a, b) => new Date(b.date) - new Date(a.date));
+  }).sort((a, b) => new Date(b.shiftDate || b.date) - new Date(a.shiftDate || a.date));
 
   const stats = calculateShiftStats(shifts, currentGuard);
   const complianceStatus = checkComplianceStatus(currentGuard);
