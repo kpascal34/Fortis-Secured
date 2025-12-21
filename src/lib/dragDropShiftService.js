@@ -10,9 +10,34 @@ import { Query } from 'appwrite';
 export const SHIFTS_COLLECTION_ID = config.shiftsCollectionId;
 export const DATABASE_ID = config.databaseId;
 
+// Ensure backend is configured; throws with actionable guidance when not
+const ensureConfigured = () => {
+  const missing = [];
+  if (!DATABASE_ID) missing.push('VITE_APPWRITE_DATABASE_ID');
+  if (!SHIFTS_COLLECTION_ID) missing.push('VITE_APPWRITE_SHIFTS_COLLECTION_ID');
+  if (!config.projectId) missing.push('VITE_APPWRITE_PROJECT_ID');
+  if (!config.endpoint) missing.push('VITE_APPWRITE_ENDPOINT');
+  if (config.isDemoMode) {
+    throw new Error(
+      'Scheduling backend disabled: demo mode is ON. Set VITE_ENABLE_DEMO_MODE=false and configure Appwrite env vars in Vercel.'
+    );
+  }
+  if (!databases) {
+    throw new Error(
+      'Scheduling backend unavailable (Appwrite client not initialized). Check Vercel env vars and Appwrite Web Platform origins.'
+    );
+  }
+  if (missing.length) {
+    throw new Error(
+      `Missing required env vars: ${missing.join(', ')}. Configure these in Vercel project settings.`
+    );
+  }
+};
+
 // Fetch shifts for a specific date (uses 'shiftDate' in DB, maps to 'date' for UI)
 export const fetchShiftsForDate = async (date) => {
   try {
+    ensureConfigured();
     const response = await databases.listDocuments(
       DATABASE_ID,
       SHIFTS_COLLECTION_ID,
@@ -27,13 +52,14 @@ export const fetchShiftsForDate = async (date) => {
     }));
   } catch (error) {
     console.error('Error fetching shifts for date:', error);
-    return [];
+    throw error;
   }
 };
 
 // Fetch shifts for a date range (uses 'shiftDate' in DB)
 export const fetchShiftsForDateRange = async (startDate, endDate) => {
   try {
+    ensureConfigured();
     const response = await databases.listDocuments(
       DATABASE_ID,
       SHIFTS_COLLECTION_ID,
@@ -50,13 +76,14 @@ export const fetchShiftsForDateRange = async (startDate, endDate) => {
     }));
   } catch (error) {
     console.error('Error fetching shifts for date range:', error);
-    return [];
+    throw error;
   }
 };
 
 // Fetch shifts for a specific site (uses 'shiftDate' in DB)
 export const fetchSiteShifts = async (siteId, startDate, endDate) => {
   try {
+    ensureConfigured();
     const response = await databases.listDocuments(
       DATABASE_ID,
       SHIFTS_COLLECTION_ID,
@@ -73,13 +100,14 @@ export const fetchSiteShifts = async (siteId, startDate, endDate) => {
     }));
   } catch (error) {
     console.error('Error fetching site shifts:', error);
-    return [];
+    throw error;
   }
 };
 
 // Fetch shifts for a staff member (uses 'shiftDate' in DB)
 export const fetchStaffShifts = async (staffId, startDate, endDate) => {
   try {
+    ensureConfigured();
     const response = await databases.listDocuments(
       DATABASE_ID,
       SHIFTS_COLLECTION_ID,
@@ -96,13 +124,14 @@ export const fetchStaffShifts = async (staffId, startDate, endDate) => {
     }));
   } catch (error) {
     console.error('Error fetching staff shifts:', error);
-    return [];
+    throw error;
   }
 };
 
 // Create a new shift (stores 'shiftDate' in DB, maps UI 'date')
 export const createShift = async (shiftData) => {
   try {
+    ensureConfigured();
     // Use existing Appwrite shift collection
     const docId = `shift_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
@@ -134,6 +163,7 @@ export const createShift = async (shiftData) => {
 // Update an existing shift
 export const updateShift = async (shiftId, updates) => {
   try {
+    ensureConfigured();
     const response = await databases.updateDocument(
       DATABASE_ID,
       SHIFTS_COLLECTION_ID,
@@ -150,6 +180,7 @@ export const updateShift = async (shiftId, updates) => {
 // Delete a shift
 export const deleteShift = async (shiftId) => {
   try {
+    ensureConfigured();
     await databases.deleteDocument(
       DATABASE_ID,
       SHIFTS_COLLECTION_ID,
@@ -164,6 +195,7 @@ export const deleteShift = async (shiftId) => {
 // Bulk update shifts (optimized for drag-drop operations)
 export const bulkUpdateShifts = async (shifts) => {
   try {
+    ensureConfigured();
     const updates = shifts
       .filter(shift => shift.$id && !shift.$id.startsWith('shift_temp'))
       .map(shift =>
@@ -188,6 +220,7 @@ export const bulkUpdateShifts = async (shifts) => {
 // Save shift changes (create or update as needed)
 export const saveShiftChanges = async (originalShifts, updatedShifts, currentDate) => {
   try {
+    ensureConfigured();
     const toCreate = updatedShifts.filter(s => !s.$id);
     const toUpdate = updatedShifts.filter(
       s => s.$id && originalShifts.find(o => o.$id === s.$id)
@@ -245,6 +278,7 @@ export const saveShiftChanges = async (originalShifts, updatedShifts, currentDat
 // Get shift statistics for a date range (uses 'shiftDate')
 export const getShiftStats = async (startDate, endDate, siteId = null) => {
   try {
+    ensureConfigured();
     let query = [
       Query.greaterThanEqual('shiftDate', startDate),
       Query.lessThanEqual('shiftDate', endDate),
@@ -299,7 +333,7 @@ export const getShiftStats = async (startDate, endDate, siteId = null) => {
     return stats;
   } catch (error) {
     console.error('Error getting shift stats:', error);
-    return null;
+    throw error;
   }
 };
 

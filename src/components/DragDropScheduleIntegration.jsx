@@ -64,18 +64,22 @@ const DragDropScheduleIntegration = ({
       setError(null);
 
       // Fetch sites
-      const sitesRes = await databases.listDocuments(
-        config.databaseId,
-        config.sitesCollectionId,
-        [Query.limit(100)]
-      );
-      setSites(sitesRes.documents);
+      try {
+        const sitesRes = await databases.listDocuments(
+          config.databaseId,
+          config.sitesCollectionId,
+          [Query.limit(100)]
+        );
+        setSites(sitesRes.documents);
+      } catch (innerErr) {
+        console.error('Error loading sites:', innerErr);
+      }
 
       // Load initial shifts
       await loadShiftsForDate(selectedDate);
     } catch (err) {
       console.error('Error loading data:', err);
-      setError('Failed to load scheduling data');
+      setError(err?.message || 'Failed to load scheduling data');
     } finally {
       setLoading(false);
     }
@@ -97,7 +101,7 @@ const DragDropScheduleIntegration = ({
       setError(null);
     } catch (err) {
       console.error('Error loading shifts:', err);
-      setError('Failed to load shifts');
+      setError(err?.message || 'Failed to load shifts');
     } finally {
       setLoading(false);
     }
@@ -125,12 +129,16 @@ const DragDropScheduleIntegration = ({
       setShifts(transformed);
 
       // Load stats
-      const statsData = await getShiftStats(startStr, endStr, siteId);
-      setStats(statsData);
+      try {
+        const statsData = await getShiftStats(startStr, endStr, siteId);
+        setStats(statsData);
+      } catch (statsErr) {
+        console.error('Error loading stats:', statsErr);
+      }
       setError(null);
     } catch (err) {
       console.error('Error loading week shifts:', err);
-      setError('Failed to load shifts');
+      setError(err?.message || 'Failed to load shifts');
     } finally {
       setLoading(false);
     }
@@ -276,6 +284,21 @@ const DragDropScheduleIntegration = ({
       {saving && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700">
           <p className="font-semibold">Saving changes...</p>
+        </div>
+      )}
+
+      {/* Diagnostics when misconfigured */}
+      {(config.isDemoMode || !config.projectId || !config.databaseId || !config.shiftsCollectionId) && (
+        <div className="flex items-start gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+          <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Scheduling backend not fully configured</p>
+            <p className="text-sm mt-1">
+              {config.isDemoMode
+                ? 'Demo mode is ON. Set VITE_ENABLE_DEMO_MODE=false in Vercel env.'
+                : 'Missing Appwrite env or client setup. Ensure VITE_APPWRITE_* vars are set and Web Platform origins include this domain.'}
+            </p>
+          </div>
         </div>
       )}
 
