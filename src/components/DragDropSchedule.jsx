@@ -334,8 +334,11 @@ const DragDropSchedule = ({
                 return (
                   <div
                     key={shift.$id}
-                    draggable={!readonly}
-                    onDragStart={(e) => handleDragStart(e, shift, 'move')}
+                    onMouseDown={(e) => {
+                      // Only start drag on primary button
+                      if (readonly || e.button !== 0) return;
+                      handleDragStart(e, shift, 'move');
+                    }}
                     onClick={() => {
                       setSelectedShift(shift);
                       onShiftClick?.(shift);
@@ -377,8 +380,10 @@ const DragDropSchedule = ({
                       {/* Resize handle */}
                       {!readonly && height > 60 && (
                         <div
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, shift, 'resize')}
+                          onMouseDown={(e) => {
+                            if (e.button !== 0) return;
+                            handleDragStart(e, shift, 'resize');
+                          }}
                           className="absolute bottom-0 left-0 right-0 h-2 bg-blue-700 cursor-ns-resize opacity-0 hover:opacity-100 transition-opacity"
                         />
                       )}
