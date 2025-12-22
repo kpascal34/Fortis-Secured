@@ -205,6 +205,51 @@ const Scheduling = () => {
     return true;
   });
 
+  // Derived scheduling metrics for dashboard KPIs
+  const activeAssignmentsByShift = assignments.reduce((acc, assignment) => {
+    if (assignment.status !== 'cancelled') {
+      acc[assignment.shiftId] = (acc[assignment.shiftId] || 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  const totalRequiredHeadcount = filteredShifts.reduce(
+    (sum, shift) => sum + (shift.requiredHeadcount || 1),
+    0
+  );
+  const totalAssignedHeadcount = filteredShifts.reduce(
+    (sum, shift) => sum + (activeAssignmentsByShift[shift.$id] || 0),
+    0
+  );
+
+  const coverageRate = totalRequiredHeadcount
+    ? Math.min(100, Math.round((totalAssignedHeadcount / totalRequiredHeadcount) * 1000) / 10)
+    : 0;
+
+  const unfilledShifts = filteredShifts.filter((shift) => {
+    const required = shift.requiredHeadcount || 1;
+    const assigned = activeAssignmentsByShift[shift.$id] || 0;
+    return assigned < required || shift.status === 'unfilled';
+  });
+
+  const totalScheduledHours = filteredShifts.reduce((sum, shift) => {
+    const [sh, sm] = (shift.startTime || '00:00').split(':').map(Number);
+    const [eh, em] = (shift.endTime || '00:00').split(':').map(Number);
+    const durationHours = Math.max(0, (eh * 60 + em - (sh * 60 + sm)) / 60);
+    const headcount = shift.requiredHeadcount || 1;
+    return sum + durationHours * headcount;
+  }, 0);
+
+  // Treat overtime as hours scheduled beyond 8h per shift per head
+  const overtimeHours = filteredShifts.reduce((sum, shift) => {
+    const [sh, sm] = (shift.startTime || '00:00').split(':').map(Number);
+    const [eh, em] = (shift.endTime || '00:00').split(':').map(Number);
+    const durationHours = Math.max(0, (eh * 60 + em - (sh * 60 + sm)) / 60);
+    const headcount = shift.requiredHeadcount || 1;
+    const overtimePerShift = Math.max(0, durationHours - 8) * headcount;
+    return sum + overtimePerShift;
+  }, 0);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-dark via-night-sky to-night-sky">
@@ -343,7 +388,7 @@ const Scheduling = () => {
         </div>
 
         {/* Stats */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <div className="glass-panel p-6">
             <p className="text-sm text-white/70">Total Shifts</p>
             <p className="mt-2 text-3xl font-bold text-white">{filteredShifts.length}</p>
@@ -361,10 +406,19 @@ const Scheduling = () => {
             </p>
           </div>
           <div className="glass-panel p-6">
-            <p className="text-sm text-white/70">Unfilled</p>
-            <p className="mt-2 text-3xl font-bold text-yellow-400">
-              {filteredShifts.filter((s) => s.status === 'unfilled').length}
-            </p>
+            <p className="text-sm text-white/70">Coverage Rate</p>
+            <p className="mt-2 text-3xl font-bold text-cyan-300">{coverageRate.toFixed(1)}%</p>
+            <p className="mt-2 text-xs text-white/60">{totalAssignedHeadcount}/{totalRequiredHeadcount || 0} headcount filled</p>
+          </div>
+          <div className="glass-panel p-6">
+            <p className="text-sm text-white/70">Unfilled Shifts</p>
+            <p className="mt-2 text-3xl font-bold text-yellow-400">{unfilledShifts.length}</p>
+            <p className="mt-2 text-xs text-white/60">Needs {Math.max(0, totalRequiredHeadcount - totalAssignedHeadcount)} more guard{Math.max(0, totalRequiredHeadcount - totalAssignedHeadcount) === 1 ? '' : 's'}</p>
+          </div>
+          <div className="glass-panel p-6">
+            <p className="text-sm text-white/70">Overtime (scheduled)</p>
+            <p className="mt-2 text-3xl font-bold text-purple-300">{overtimeHours.toFixed(1)}h</p>
+            <p className="mt-2 text-xs text-white/60">Total hours: {totalScheduledHours.toFixed(1)}h</p>
           </div>
         </div>
 

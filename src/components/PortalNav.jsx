@@ -70,35 +70,62 @@ const NavItem = ({ item, isActive }) => {
 
 export const PortalNav = ({ onSignOut }) => {
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
 
   return (
-    <nav className="h-full w-64 overflow-y-auto bg-night-sky p-4">
-      <div className="mb-8">
-        <h2 className="px-3 text-lg font-bold text-white">FORTIS SECURED</h2>
-        <p className="px-3 text-xs text-white/50">Internal Portal</p>
-      </div>
-
-      <div className="space-y-1">
-        {navigation.map((item) => (
-          <NavItem
-            key={item.name}
-            item={item}
-            isActive={location.pathname === item.href}
-          />
-        ))}
-      </div>
-
-      <div className="mt-8 border-t border-white/10 pt-4">
+    <>
+      {/* Mobile menu toggle */}
+      <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-night-sky px-4 lg:hidden">
+        <h2 className="text-sm font-bold text-white">FORTIS</h2>
         <button
-          onClick={onSignOut}
-          className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky"
-          aria-label="Sign out of portal"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="inline-flex items-center rounded-lg p-2 text-white/70 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-accent"
+          aria-expanded={mobileOpen}
+          aria-label="Toggle navigation menu"
         >
-          <AiOutlineLogout className="mr-3 h-5 w-5" aria-hidden="true" />
-          Sign Out
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
         </button>
       </div>
-    </nav>
+
+      {/* Navigation */}
+      <nav className={`${mobileOpen ? 'block' : 'hidden'} lg:block h-full w-full overflow-y-auto bg-night-sky p-4 lg:fixed lg:left-0 lg:top-0 lg:h-screen lg:w-64 lg:border-r lg:border-white/10 lg:p-4`}>
+        <div className="mb-8 hidden lg:block">
+          <h2 className="px-3 text-lg font-bold text-white">FORTIS SECURED</h2>
+          <p className="px-3 text-xs text-white/50">Internal Portal</p>
+        </div>
+
+        <div className="space-y-1" onClick={() => setMobileOpen(false)}>
+          {navigation.map((item) => (
+            <NavItem
+              key={item.name}
+              item={item}
+              isActive={location.pathname === item.href}
+            />
+          ))}
+        </div>
+
+        <div className="mt-8 border-t border-white/10 pt-4">
+          <button
+            onClick={onSignOut}
+            className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky"
+            aria-label="Sign out of portal"
+          >
+            <AiOutlineLogout className="mr-3 h-5 w-5" aria-hidden="true" />
+            Sign Out
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile overlay backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+    </>
   );
 };
 
