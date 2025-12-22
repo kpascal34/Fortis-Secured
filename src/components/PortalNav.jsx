@@ -24,6 +24,7 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/portal', icon: AiOutlineHome },
+  { name: 'My Profile', href: '/portal/profile', icon: AiOutlineUser },
   { name: 'Clients / CRM', href: '/portal/clients', icon: AiOutlineTeam },
   { name: 'Scheduling', href: '/portal/scheduling', icon: AiOutlineCalendar },
   { name: 'Recurring Patterns', href: '/portal/recurring-patterns', icon: AiOutlineReload },

@@ -53,6 +53,7 @@ const RecurringPatterns = lazy(() => import('./pages/portal/RecurringPatterns.js
 const ScheduleDemo = lazy(() => import('./pages/ScheduleDemo.jsx'));
 const SchedulingWithDragDrop = lazy(() => import('./pages/portal/SchedulingWithDragDrop.jsx'));
 const StaffScheduleView = lazy(() => import('./pages/portal/StaffScheduleView.jsx'));
+const Profile = lazy(() => import('./pages/portal/Profile.jsx'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -125,6 +126,7 @@ const AppContent = () => {
           <Route path="analytics" element={<Analytics />} />
           <Route path="audit" element={<AuditLog />} />
           <Route path="client-portal" element={<ClientPortal />} />
+          <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 
