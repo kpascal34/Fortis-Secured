@@ -27,6 +27,14 @@ export const config = {
   projectId,
   databaseId,
   isDemoMode,
+  // RBAC Collections
+  usersCollectionId: import.meta.env.VITE_APPWRITE_USERS_COLLECTION_ID,
+  adminProfilesCollectionId: import.meta.env.VITE_APPWRITE_ADMIN_PROFILES_COLLECTION_ID,
+  managerProfilesCollectionId: import.meta.env.VITE_APPWRITE_MANAGER_PROFILES_COLLECTION_ID,
+  staffProfilesCollectionId: import.meta.env.VITE_APPWRITE_STAFF_PROFILES_COLLECTION_ID,
+  clientProfilesCollectionId: import.meta.env.VITE_APPWRITE_CLIENT_PROFILES_COLLECTION_ID,
+  auditLogsCollectionId: import.meta.env.VITE_APPWRITE_AUDIT_LOGS_COLLECTION_ID,
+  // Existing Collections
   clientsCollectionId: import.meta.env.VITE_APPWRITE_CLIENTS_COLLECTION_ID,
   guardsCollectionId: import.meta.env.VITE_APPWRITE_GUARDS_COLLECTION_ID,
   sitesCollectionId: import.meta.env.VITE_APPWRITE_SITES_COLLECTION_ID,
