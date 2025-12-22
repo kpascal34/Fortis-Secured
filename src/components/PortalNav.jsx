@@ -90,7 +90,7 @@ export const PortalNav = ({ onSignOut }) => {
       </div>
 
       {/* Navigation */}
-      <nav className={`${mobileOpen ? 'fixed inset-0 z-40 top-16 w-full overflow-y-auto' : 'hidden lg:block'} lg:static lg:h-screen lg:w-64 lg:border-r lg:border-white/10 bg-night-sky p-4`}>
+      <nav className={`${mobileOpen ? 'fixed inset-0 z-40 top-16 w-full overflow-y-auto' : 'hidden lg:block lg:flex-shrink-0'} lg:static lg:h-screen lg:w-64 lg:border-r lg:border-white/10 bg-night-sky p-4 overflow-y-auto`}>
         <div className="mb-8 hidden lg:block">
           <h2 className="px-3 text-lg font-bold text-white">FORTIS SECURED</h2>
           <p className="px-3 text-xs text-white/50">Internal Portal</p>
