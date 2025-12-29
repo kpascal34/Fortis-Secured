@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getIconAriaLabel } from '../lib/accessibility.jsx';
+import { isFeatureEnabled } from '../config/features.ts';
 import { 
   AiOutlineHome,
   AiOutlineUser,
@@ -22,33 +23,36 @@ import {
   AiOutlineFileDone,
 } from 'react-icons/ai';
 
-const navigation = [
-  { name: 'Dashboard', href: '/portal', icon: AiOutlineHome },
-  { name: 'My Profile', href: '/portal/profile', icon: AiOutlineUser },
-  { name: 'Clients / CRM', href: '/portal/clients', icon: AiOutlineTeam },
-  { name: 'Scheduling', href: '/portal/scheduling', icon: AiOutlineCalendar },
-  { name: 'Recurring Patterns', href: '/portal/recurring-patterns', icon: AiOutlineReload },
-  { name: 'My Schedule', href: '/portal/my-schedule', icon: AiOutlineUser },
-  { name: 'Open Shifts', href: '/portal/open-shifts', icon: AiOutlineCalendar },
-  { name: 'Shift Applications', href: '/portal/shift-applications', icon: AiOutlineFileDone },
-  { name: 'Sites', href: '/portal/sites', icon: AiOutlineInbox },
-  { name: 'Posts', href: '/portal/posts', icon: AiOutlineCheckSquare },
-  { name: 'Guards', href: '/portal/guards', icon: AiOutlineUser },
-  { name: 'Time Tracking', href: '/portal/time', icon: AiOutlineClockCircle },
-  { name: 'Tasks', href: '/portal/tasks', icon: AiOutlineCheckSquare },
-  { name: 'Incidents', href: '/portal/incidents', icon: AiOutlineWarning },
-  { name: 'Assets', href: '/portal/assets', icon: AiOutlineInbox },
-  { name: 'Messages', href: '/portal/messages', icon: AiOutlineMessage },
-  { name: 'Invoices & Financial', href: '/portal/finance', icon: AiOutlineDollar },
-  { name: 'HR & Compliance', href: '/portal/hr', icon: AiOutlineAudit },
-  { name: 'Payroll', href: '/portal/payroll', icon: AiOutlineDollar },
-  { name: 'Reports', href: '/portal/reports', icon: AiOutlineBarChart },
-  { name: 'Analytics', href: '/portal/analytics', icon: AiOutlineBarChart },
-  { name: 'Audit Log', href: '/portal/audit', icon: AiOutlineAudit },
-  { name: 'AI Assistant', href: '/portal/ai', icon: AiOutlineRobot },
-  { name: 'User Management', href: '/portal/users', icon: AiOutlineTeam },
-  { name: 'Settings', href: '/portal/settings', icon: AiOutlineSetting },
+const allNavigation = [
+  { name: 'Dashboard', href: '/portal', icon: AiOutlineHome, feature: 'DASHBOARD' },
+  { name: 'My Profile', href: '/portal/profile', icon: AiOutlineUser, feature: 'PROFILE' },
+  { name: 'Clients / CRM', href: '/portal/clients', icon: AiOutlineTeam, feature: 'CRM' },
+  { name: 'Scheduling', href: '/portal/scheduling', icon: AiOutlineCalendar, feature: 'SCHEDULING' },
+  { name: 'Recurring Patterns', href: '/portal/recurring-patterns', icon: AiOutlineReload, feature: 'RECURRING_PATTERNS' },
+  { name: 'My Schedule', href: '/portal/my-schedule', icon: AiOutlineUser, feature: 'MY_SCHEDULE' },
+  { name: 'Open Shifts', href: '/portal/open-shifts', icon: AiOutlineCalendar, feature: 'OPEN_SHIFTS' },
+  { name: 'Shift Applications', href: '/portal/shift-applications', icon: AiOutlineFileDone, feature: 'SHIFT_APPLICATIONS' },
+  { name: 'Sites', href: '/portal/sites', icon: AiOutlineInbox, feature: 'SITES' },
+  { name: 'Posts', href: '/portal/posts', icon: AiOutlineCheckSquare, feature: 'POSTS' },
+  { name: 'Guards', href: '/portal/guards', icon: AiOutlineUser, feature: 'GUARDS' },
+  { name: 'Time Tracking', href: '/portal/time', icon: AiOutlineClockCircle, feature: 'TIME_TRACKING' },
+  { name: 'Tasks', href: '/portal/tasks', icon: AiOutlineCheckSquare, feature: 'TASKS' },
+  { name: 'Incidents', href: '/portal/incidents', icon: AiOutlineWarning, feature: 'INCIDENTS' },
+  { name: 'Assets', href: '/portal/assets', icon: AiOutlineInbox, feature: 'ASSETS' },
+  { name: 'Messages', href: '/portal/messages', icon: AiOutlineMessage, feature: 'MESSAGES' },
+  { name: 'Invoices & Financial', href: '/portal/finance', icon: AiOutlineDollar, feature: 'FINANCE' },
+  { name: 'HR & Compliance', href: '/portal/hr', icon: AiOutlineAudit, feature: 'COMPLIANCE' },
+  { name: 'Payroll', href: '/portal/payroll', icon: AiOutlineDollar, feature: 'PAYROLL' },
+  { name: 'Reports', href: '/portal/reports', icon: AiOutlineBarChart, feature: 'REPORTS' },
+  { name: 'Analytics', href: '/portal/analytics', icon: AiOutlineBarChart, feature: 'ANALYTICS' },
+  { name: 'Audit Log', href: '/portal/audit', icon: AiOutlineAudit, feature: 'AUDIT_LOG' },
+  { name: 'AI Assistant', href: '/portal/ai', icon: AiOutlineRobot, feature: 'AI_ASSISTANT' },
+  { name: 'User Management', href: '/portal/users', icon: AiOutlineTeam, feature: 'USER_MANAGEMENT' },
+  { name: 'Settings', href: '/portal/settings', icon: AiOutlineSetting, feature: 'SETTINGS' },
 ];
+
+// Filter navigation by enabled features
+const getEnabledNavigation = () => allNavigation.filter(item => isFeatureEnabled(item.feature));
 
 const NavItem = ({ item, isActive }) => {
   const Icon = item.icon;
@@ -98,7 +102,7 @@ export const PortalNav = ({ onSignOut }) => {
         </div>
 
         <div className="space-y-1" onClick={() => setMobileOpen(false)}>
-          {navigation.map((item) => (
+          {getEnabledNavigation().map((item) => (
             <NavItem
               key={item.name}
               item={item}

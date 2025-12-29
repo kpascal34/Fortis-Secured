@@ -277,3 +277,223 @@ export function validateNumericArray(array = [], numericField = 'value') {
     errors,
   };
 }
+
+// ============ INTERIM PLATFORM VALIDATORS ============
+
+/**
+ * Validate email (RFC 5322 simplified)
+ */
+export function validateEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email) && email.length <= 320;
+}
+
+/**
+ * Sanitize username (a-z/0-9/dots, lowercase)
+ */
+export function sanitizeUsername(input) {
+  if (!input || typeof input !== 'string') {
+    throw new Error('Username input required');
+  }
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9.]/g, '')
+    .slice(0, 100);
+}
+
+/**
+ * Validate password (12+ chars minimum)
+ */
+export function validatePassword(password) {
+  if (!password || typeof password !== 'string') {
+    throw new Error('Password required');
+  }
+  if (password.length < 12) {
+    throw new Error('Password must be at least 12 characters');
+  }
+  return true;
+}
+
+/**
+ * Validate SIA licence format
+ */
+export function validateSIALicence(licenceNumber) {
+  if (!licenceNumber || typeof licenceNumber !== 'string') {
+    throw new Error('SIA licence number required');
+  }
+  if (licenceNumber.length < 10 || licenceNumber.length > 50) {
+    throw new Error('Invalid SIA licence format');
+  }
+  return true;
+}
+
+/**
+ * Validate date of birth (18+ years old)
+ */
+export function validateDateOfBirth(dob) {
+  const date = new Date(dob);
+  if (isNaN(date.getTime())) {
+    throw new Error('Invalid date of birth');
+  }
+  const age = new Date().getFullYear() - date.getFullYear();
+  const m = new Date().getMonth() - date.getMonth();
+  const actualAge = m < 0 || (m === 0 && new Date().getDate() < date.getDate()) ? age - 1 : age;
+  if (actualAge < 18) {
+    throw new Error('Must be at least 18 years old');
+  }
+  return true;
+}
+
+/**
+ * Validate UK National Insurance Number
+ */
+export function validateNINumber(ni) {
+  if (!ni || typeof ni !== 'string') {
+    throw new Error('National Insurance number required');
+  }
+  const re = /^[A-Z]{2}[0-9]{6}[A-Z]$/;
+  if (!re.test(ni.toUpperCase().replace(/\s/g, ''))) {
+    throw new Error('Invalid National Insurance number format');
+  }
+  return true;
+}
+
+/**
+ * Validate UK postcode
+ */
+export function validatePostcode(postcode) {
+  if (!postcode || typeof postcode !== 'string') {
+    throw new Error('Postcode required');
+  }
+  const cleaned = postcode.toUpperCase().replace(/\s/g, '');
+  if (!/^[A-Z0-9]{6,7}$/.test(cleaned)) {
+    throw new Error('Invalid UK postcode format');
+  }
+  return true;
+}
+
+/**
+ * Validate phone number
+ */
+export function validatePhone(phone) {
+  if (!phone || typeof phone !== 'string') {
+    throw new Error('Phone number required');
+  }
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length < 10 || cleaned.length > 15) {
+    throw new Error('Invalid phone number');
+  }
+  return true;
+}
+
+/**
+ * Calculate months between two dates
+ */
+export function getMonthsBetween(from, to) {
+  from = new Date(from);
+  to = new Date(to);
+  const months = (to.getFullYear() - from.getFullYear()) * 12;
+  return months + (to.getMonth() - from.getMonth());
+}
+
+/**
+ * Check if employment gap > 31 days
+ */
+export function hasExcessiveGap(endDate, nextStartDate) {
+  const end = new Date(endDate);
+  const start = new Date(nextStartDate);
+  const days = Math.floor((start - end) / (1000 * 60 * 60 * 24));
+  return days > 31;
+}
+
+/**
+ * Validate address history covers 5 years
+ */
+export function validateAddressHistoryCoverage(addresses) {
+  if (!Array.isArray(addresses) || addresses.length === 0) {
+    throw new Error('At least one address required');
+  }
+  let totalMonths = 0;
+  for (const addr of addresses) {
+    if (!addr.fromDate) throw new Error('Address from date required');
+    const from = new Date(addr.fromDate);
+    const to = addr.toDate ? new Date(addr.toDate) : new Date();
+    totalMonths += getMonthsBetween(from, to);
+  }
+  if (totalMonths < 60) {
+    throw new Error(`Address history covers ${totalMonths} months, need 60+ months`);
+  }
+  return true;
+}
+
+/**
+ * Validate employment gaps < 31 days
+ */
+export function validateEmploymentGaps(jobs) {
+  if (!Array.isArray(jobs) || jobs.length === 0) {
+    throw new Error('At least one job required');
+  }
+  const sorted = [...jobs].sort((a, b) => new Date(b.toDate) - new Date(a.toDate));
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const current = sorted[i];
+    const next = sorted[i + 1];
+    if (hasExcessiveGap(current.toDate, next.fromDate)) {
+      const end = new Date(current.toDate);
+      const start = new Date(next.fromDate);
+      const days = Math.floor((start - end) / (1000 * 60 * 60 * 24));
+      throw new Error(`Gap of ${days} days between jobs (max 31 allowed)`);
+    }
+  }
+  return true;
+}
+
+/**
+ * Validate employment coverage 5+ years
+ */
+export function validateEmploymentCoverage(jobs) {
+  if (!Array.isArray(jobs) || jobs.length === 0) {
+    throw new Error('At least one job required');
+  }
+  let coverage = 0;
+  for (const job of jobs) {
+    const from = new Date(job.fromDate);
+    const to = job.toDate ? new Date(job.toDate) : new Date();
+    coverage += getMonthsBetween(from, to);
+  }
+  if (coverage < 60) {
+    throw new Error(`Employment history covers ${coverage} months, need 60+`);
+  }
+  return true;
+}
+
+/**
+ * Validate file size (max 50MB default)
+ */
+export function validateFileSize(sizeInBytes, maxMB = 50) {
+  const maxBytes = maxMB * 1024 * 1024;
+  if (sizeInBytes > maxBytes) {
+    throw new Error(`File too large (max ${maxMB}MB)`);
+  }
+  return true;
+}
+
+/**
+ * Validate file type (whitelist)
+ */
+export function validateFileType(mimeType, allowed = null) {
+  const defaultAllowed = [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'video/mp4',
+    'video/quicktime',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
+  const allowedTypes = allowed || defaultAllowed;
+  if (!allowedTypes.includes(mimeType)) {
+    throw new Error(`File type not allowed: ${mimeType}`);
+  }
+  return true;
+}

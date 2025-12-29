@@ -1,6 +1,8 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { isFeatureEnabled } from './config/features.ts';
+import { FeatureDisabled } from './components/FeatureDisabled.jsx';
 import { initializeWebVitalsMonitoring, detectPerformanceIssues } from './lib/performance.js';
 import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from './lib/analyticsUtils.js';
 
@@ -65,6 +67,16 @@ const LoadingFallback = () => (
   </div>
 );
 
+/**
+ * FeatureRoute wrapper: renders component if feature enabled, else shows FeatureDisabled
+ */
+const FeatureRoute = ({ feature, name, element }) => {
+  if (!isFeatureEnabled(feature)) {
+    return <FeatureDisabled featureName={name} />;
+  }
+  return element;
+};
+
 const AppContent = () => {
   const location = useLocation();
 
@@ -98,36 +110,40 @@ const AppContent = () => {
         {/* Portal Routes */}
         <Route path="/portal" element={<PortalLayout />}>
           <Route index element={<Dashboard />} />
-          <Route path="clients" element={<Clients />} />
-          <Route path="clients/:id" element={<ClientDetail />} />
-          <Route path="sites" element={<Sites />} />
-          <Route path="posts" element={<Posts />} />
-          <Route path="guards" element={<Guards />} />
-          {/* Route the main Scheduling path to the drag-drop implementation */}
-          <Route path="scheduling" element={<SchedulingWithDragDrop />} />
-          {/* Keep an alias route for direct links/demo */}
-          <Route path="scheduling-drag-drop" element={<SchedulingWithDragDrop />} />
-          <Route path="recurring-patterns" element={<RecurringPatterns />} />
-          <Route path="my-schedule" element={<MySchedule />} />
-          <Route path="my-schedule-view" element={<StaffScheduleView />} />
-          <Route path="open-shifts" element={<OpenShifts />} />
-          <Route path="shift-applications" element={<ShiftApplications />} />
-          <Route path="time" element={<TimeTracking />} />
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="incidents" element={<Incidents />} />
-          <Route path="assets" element={<Assets />} />
-          <Route path="messages" element={<Messages />} />
-          <Route path="finance" element={<Finance />} />
-          <Route path="ai" element={<AIAssistant />} />
-          <Route path="users" element={<UserManagement />} />
-          <Route path="hr" element={<HR />} />
-          <Route path="payroll" element={<Payroll />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="audit" element={<AuditLog />} />
-          <Route path="client-portal" element={<ClientPortal />} />
           <Route path="profile" element={<Profile />} />
-          <Route path="settings" element={<Settings />} />
+          
+          {/* SCHEDULING Module Routes */}
+          <Route path="scheduling" element={<FeatureRoute feature="SCHEDULING" name="Scheduling" element={<SchedulingWithDragDrop />} />} />
+          <Route path="scheduling-drag-drop" element={<FeatureRoute feature="SCHEDULING" name="Scheduling" element={<SchedulingWithDragDrop />} />} />
+          <Route path="recurring-patterns" element={<FeatureRoute feature="RECURRING_PATTERNS" name="Recurring Patterns" element={<RecurringPatterns />} />} />
+          <Route path="my-schedule" element={<FeatureRoute feature="MY_SCHEDULE" name="My Schedule" element={<MySchedule />} />} />
+          <Route path="my-schedule-view" element={<FeatureRoute feature="MY_SCHEDULE" name="My Schedule" element={<StaffScheduleView />} />} />
+          <Route path="open-shifts" element={<FeatureRoute feature="OPEN_SHIFTS" name="Open Shifts" element={<OpenShifts />} />} />
+          <Route path="shift-applications" element={<FeatureRoute feature="SHIFT_APPLICATIONS" name="Shift Applications" element={<ShiftApplications />} />} />
+          
+          {/* COMPLIANCE Module Routes */}
+          <Route path="hr" element={<FeatureRoute feature="COMPLIANCE" name="HR & Compliance" element={<HR />} />} />
+          <Route path="audit" element={<FeatureRoute feature="COMPLIANCE" name="Audit Log" element={<AuditLog />} />} />
+          
+          {/* Disabled Modules */}
+          <Route path="clients" element={<FeatureRoute feature="CRM" name="Clients / CRM" element={<Clients />} />} />
+          <Route path="clients/:id" element={<FeatureRoute feature="CRM" name="Client Details" element={<ClientDetail />} />} />
+          <Route path="sites" element={<FeatureRoute feature="SITES" name="Sites" element={<Sites />} />} />
+          <Route path="posts" element={<FeatureRoute feature="POSTS" name="Posts" element={<Posts />} />} />
+          <Route path="guards" element={<FeatureRoute feature="GUARDS" name="Guards" element={<Guards />} />} />
+          <Route path="time" element={<FeatureRoute feature="TIME_TRACKING" name="Time Tracking" element={<TimeTracking />} />} />
+          <Route path="tasks" element={<FeatureRoute feature="TASKS" name="Tasks" element={<Tasks />} />} />
+          <Route path="incidents" element={<FeatureRoute feature="INCIDENTS" name="Incidents" element={<Incidents />} />} />
+          <Route path="assets" element={<FeatureRoute feature="ASSETS" name="Assets" element={<Assets />} />} />
+          <Route path="messages" element={<FeatureRoute feature="MESSAGES" name="Messages" element={<Messages />} />} />
+          <Route path="finance" element={<FeatureRoute feature="FINANCE" name="Finance" element={<Finance />} />} />
+          <Route path="ai" element={<FeatureRoute feature="AI_ASSISTANT" name="AI Assistant" element={<AIAssistant />} />} />
+          <Route path="users" element={<FeatureRoute feature="USER_MANAGEMENT" name="User Management" element={<UserManagement />} />} />
+          <Route path="payroll" element={<FeatureRoute feature="PAYROLL" name="Payroll" element={<Payroll />} />} />
+          <Route path="reports" element={<FeatureRoute feature="REPORTS" name="Reports" element={<Reports />} />} />
+          <Route path="analytics" element={<FeatureRoute feature="ANALYTICS" name="Analytics" element={<Analytics />} />} />
+          <Route path="client-portal" element={<FeatureRoute feature="CRM" name="Client Portal" element={<ClientPortal />} />} />
+          <Route path="settings" element={<FeatureRoute feature="SETTINGS" name="Settings" element={<Settings />} />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
