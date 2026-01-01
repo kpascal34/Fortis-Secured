@@ -14,7 +14,6 @@ import {
   submitComplianceReview,
 } from '../../services/complianceService.js';
 import { uploadComplianceFileWithMeta } from '../../services/fileUploadService.js';
-import { syncFileToGoogleDrive } from '../../services/googleDriveService.js';
 
 const defaultAddress = { line1: '', postcode: '', months: 0 };
 const defaultJob = { employer: '', jobTitle: '', fromDate: '', toDate: '' };
@@ -112,8 +111,13 @@ const ComplianceWizard = () => {
         appwriteFileId,
       ].join(',');
       setEvidenceFiles(updated);
-      await syncFileToGoogleDrive(user.$id, appwriteFileId, fileName, 'evidence', appwriteFileId);
-      setToast('Evidence uploaded and synced');
+      // Trigger Drive sync via API
+      fetch('/api/drive-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId: user.$id, appwriteFileId, fileName, fileType: 'evidence' })
+      }).catch(console.error);
+      setToast('Evidence uploaded and syncing');
       e.target.value = '';
     } catch (err) {
       setError(err.message || 'Upload failed');
@@ -129,8 +133,13 @@ const ComplianceWizard = () => {
       setBusy(true);
       const { appwriteFileId, fileName } = await uploadComplianceFileWithMeta(file, file.name);
       setCriminalFile(appwriteFileId);
-      await syncFileToGoogleDrive(user.$id, appwriteFileId, fileName, 'criminal', appwriteFileId);
-      setToast('Criminal record uploaded and synced');
+      // Trigger Drive sync via API
+      fetch('/api/drive-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId: user.$id, appwriteFileId, fileName, fileType: 'criminal' })
+      }).catch(console.error);
+      setToast('Criminal record uploaded and syncing');
       e.target.value = '';
     } catch (err) {
       setError(err.message || 'Upload failed');
@@ -146,8 +155,13 @@ const ComplianceWizard = () => {
       setBusy(true);
       const { appwriteFileId, fileName } = await uploadComplianceFileWithMeta(file, file.name);
       setVideoFile(appwriteFileId);
-      await syncFileToGoogleDrive(user.$id, appwriteFileId, fileName, 'video', appwriteFileId);
-      setToast('Video uploaded and synced');
+      // Trigger Drive sync via API
+      fetch('/api/drive-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId: user.$id, appwriteFileId, fileName, fileType: 'video' })
+      }).catch(console.error);
+      setToast('Video uploaded and syncing');
       e.target.value = '';
     } catch (err) {
       setError(err.message || 'Upload failed');

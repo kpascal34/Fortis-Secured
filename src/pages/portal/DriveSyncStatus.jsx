@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
 import { useRole } from '../../hooks/useRBAC';
-import { getFailedSyncs, syncFileToGoogleDrive } from '../../services/googleDriveService.js';
 import { databases, DATABASE_ID as DB_ID } from '../../lib/appwrite.js';
 
 const DriveSyncStatus = () => {
@@ -21,14 +20,19 @@ const DriveSyncStatus = () => {
     setLoading(true);
     setError(null);
     try {
-      const items = await getFailedSyncs();
+      // Fetch failed syncs from compliance_uploads collection
+      const { documents: items } = await databases.listDocuments(DB_ID, 'compliance_uploads', [
+        // Add query to filter failed syncs if needed
+      ]);
+      // Filter for failed syncs client-side
+      const failedItems = items.filter(item => item.drive_sync_status === 'failed');
       // Sort by last attempt desc for relevance
-      items.sort((a, b) => {
+      failedItems.sort((a, b) => {
         const da = a.last_sync_attempt ? new Date(a.last_sync_attempt).getTime() : 0;
         const db = b.last_sync_attempt ? new Date(b.last_sync_attempt).getTime() : 0;
         return db - da;
       });
-      setFailed(items);
+      setFailed(failedItems);
 
       // Fetch staff profiles for display names
       const uniqueIds = Array.from(new Set(items.map(i => i.staff_id).filter(Boolean)));
@@ -87,7 +91,16 @@ const DriveSyncStatus = () => {
     try {
       setRetryingId(row.$id);
       setToast(null);
-      await syncFileToGoogleDrive(row.staff_id, row.file_id || row.appwrite_file_id, row.file_name, row.file_type, row.appwrite_file_id);
+      await fetch('/api/drive-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          staffId: row.staff_id,
+          appwriteFileId: row.file_id || row.appwrite_file_id,
+          fileName: row.file_name,
+          fileType: row.file_type
+        })
+      });
       setToast('Retry triggered successfully');
       await load();
     } catch (e) {
@@ -104,7 +117,16 @@ const DriveSyncStatus = () => {
       const items = filtered; // retry all filtered results
       for (const row of items) {
         try {
-          await syncFileToGoogleDrive(row.staff_id, row.file_id || row.appwrite_file_id, row.file_name, row.file_type, row.appwrite_file_id);
+          await fetch('/api/drive-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              staffId: row.staff_id,
+              appwriteFileId: row.file_id || row.appwrite_file_id,
+              fileName: row.file_name,
+              fileType: row.file_type
+            })
+          });
         } catch (e) {
           // keep going
         }

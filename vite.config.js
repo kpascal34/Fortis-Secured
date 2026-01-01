@@ -28,6 +28,7 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp}'],
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB limit
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -124,21 +125,37 @@ export default defineConfig(({ mode }) => ({
     },
     
     // Chunk size warnings (larger limit for smoother chunking)
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 3000,
     
     // Rollup options for code splitting
     rollupOptions: {
+      external: [
+        // Exclude server-only dependencies from client bundle
+        'googleapis',
+        'node-appwrite'
+      ],
       output: {
         // Manual chunks for better caching
-        manualChunks: {
-          // React vendor chunk
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        manualChunks: (id) => {
+          // Vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'react-vendor';
+            }
+            if (id.includes('appwrite') && !id.includes('node-appwrite')) {
+              return 'appwrite-vendor';
+            }
+            if (id.includes('react-icons') || id.includes('lucide-react') || id.includes('framer-motion')) {
+              return 'ui-vendor';
+            }
+            // Put other large vendor libraries in separate chunks
+            return 'vendor';
+          }
           
-          // UI libraries
-          'ui-vendor': ['framer-motion', 'react-icons', 'lucide-react'],
-          
-          // Appwrite SDK
-          'appwrite-vendor': ['appwrite'],
+          // Don't bundle googleapis or node-appwrite (server-only)
+          if (id.includes('googleapis') || id.includes('node-appwrite')) {
+            return null;
+          }
         },
         
         // Asset file naming
