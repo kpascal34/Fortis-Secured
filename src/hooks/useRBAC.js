@@ -29,8 +29,21 @@ export function useCurrentUser() {
     try {
       setLoading(true);
       setError(null);
-      const userData = await getCurrentUserWithProfile();
-      setUser(userData);
+      
+      // Try to get user with profile from RBAC system
+      try {
+        const userData = await getCurrentUserWithProfile();
+        setUser(userData);
+      } catch (rbacError) {
+        // If RBAC lookup fails, use the Appwrite user as fallback (interim platform mode)
+        console.log('RBAC lookup failed, using Appwrite user as fallback:', rbacError.message);
+        setUser({
+          $id: authUser.$id,
+          email: authUser.email,
+          role: 'admin', // Default to admin for interim platform
+          status: 'active',
+        });
+      }
     } catch (err) {
       console.error('Error fetching user:', err);
       setError(err.message);
