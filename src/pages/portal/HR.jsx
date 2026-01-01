@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AiOutlineTeam,
   AiOutlineFileText,
@@ -17,6 +18,7 @@ import {
 } from 'react-icons/ai';
 
 const HR = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [guards] = useState([]);
   const [selectedGuard, setSelectedGuard] = useState(null);
@@ -61,7 +63,10 @@ const HR = () => {
           <h1 className="text-3xl font-bold text-white">HR & Compliance</h1>
           <p className="mt-2 text-white/70">Manage staff, leave, training, and compliance</p>
         </div>
-        <button className="rounded-lg bg-accent px-6 py-2 text-white hover:bg-accent/80 transition-colors">
+        <button 
+          onClick={() => navigate('/portal/invite-management')}
+          className="rounded-lg bg-accent px-6 py-2 text-white hover:bg-accent/80 transition-colors"
+        >
           + Add Staff Member
         </button>
       </div>
