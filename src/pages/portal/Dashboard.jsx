@@ -49,6 +49,18 @@ const Dashboard = () => {
       setSyncing(true);
       setError('');
       
+      // Check if Appwrite is properly configured
+      if (config.isDemoMode || !config.clientsCollectionId) {
+        // Demo mode - use placeholder data
+        setStats(baseStats);
+        setClients([
+          { name: 'Sample Client 1', location: 'London', status: 'Active', billing: '£50,000/year' },
+          { name: 'Sample Client 2', location: 'Manchester', status: 'Active', billing: '£30,000/year' },
+        ]);
+        setLoading(false);
+        return;
+      }
+      
       const clientsResponse = await databases.listDocuments(
         config.databaseId,
         config.clientsCollectionId,
