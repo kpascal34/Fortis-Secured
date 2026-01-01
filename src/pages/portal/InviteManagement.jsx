@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
-import { useCurrentUser, useRole } from '../../hooks/useRBAC';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { useRole } from '../../hooks/useRBAC';
 import { createStaffInvite } from '../../services/staffInviteService.js';
 
 const InviteManagement = () => {
-  const { user, loading: userLoading } = useCurrentUser();
+  const { user, loading: authLoading } = useAuth();
   const { isAdmin, loading: roleLoading } = useRole();
   const [email, setEmail] = useState('');
   const [expiresInDays, setExpiresInDays] = useState(30);
@@ -45,7 +46,7 @@ const InviteManagement = () => {
   };
 
   // Show loading state while checking auth
-  if (userLoading || roleLoading) {
+  if (authLoading || roleLoading) {
     return (
       <div className="min-h-screen bg-night-sky p-6 text-white flex items-center justify-center">
         <div className="text-center">

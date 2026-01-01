@@ -87,7 +87,7 @@ export function useAccess(resource, permission, context = {}) {
  * @returns {object} Role check functions
  */
 export function useRole() {
-  const { user } = useCurrentUser();
+  const { user, loading } = useCurrentUser();
   
   return {
     isAdmin: user?.role === ROLES.ADMIN,
@@ -95,6 +95,7 @@ export function useRole() {
     isStaff: user?.role === ROLES.STAFF,
     isClient: user?.role === ROLES.CLIENT,
     role: user?.role,
+    loading,
   };
 }
 
