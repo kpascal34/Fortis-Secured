@@ -37,10 +37,10 @@ export async function createStaffInvite(adminId, email, expiresInDays = 30) {
   expiresAt.setDate(expiresAt.getDate() + expiresInDays);
 
   const invite = await databases.createDocument(dbId, invitesCol, ID.unique(), {
-    invite_code: inviteCode,
+    code: inviteCode,
     email: email.toLowerCase(),
-    created_by: adminId,
-    expires_at: expiresAt.toISOString(),
+    createdBy: adminId,
+    expiresAt: expiresAt.toISOString(),
     status: 'active',
   });
 
