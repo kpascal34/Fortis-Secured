@@ -5,8 +5,8 @@ import { useCurrentUser, useRole } from '../../hooks/useRBAC';
 import { createStaffInvite } from '../../services/staffInviteService.js';
 
 const InviteManagement = () => {
-  const { user } = useCurrentUser();
-  const { isAdmin } = useRole();
+  const { user, loading: userLoading } = useCurrentUser();
+  const { isAdmin, loading: roleLoading } = useRole();
   const [email, setEmail] = useState('');
   const [expiresInDays, setExpiresInDays] = useState(30);
   const [result, setResult] = useState(null);
@@ -43,6 +43,29 @@ const InviteManagement = () => {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking auth
+  if (userLoading || roleLoading) {
+    return (
+      <div className="min-h-screen bg-night-sky p-6 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-accent border-t-transparent mx-auto"></div>
+          <p className="text-white/70">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login prompt if no user
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-night-sky p-6 text-white">
+        <GlassPanel className="bg-white/5 border-white/10">
+          <p className="text-yellow-200">Please log in to access this page.</p>
+        </GlassPanel>
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return (
