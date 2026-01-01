@@ -281,15 +281,6 @@ export function validateNumericArray(array = [], numericField = 'value') {
 // ============ INTERIM PLATFORM VALIDATORS ============
 
 /**
- * Validate email (RFC 5322 simplified)
- */
-export function validateEmail(email) {
-  if (!email || typeof email !== 'string') return false;
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email) && email.length <= 320;
-}
-
-/**
  * Sanitize username (a-z/0-9/dots, lowercase)
  */
 export function sanitizeUsername(input) {
