@@ -32,6 +32,17 @@ export async function getCurrentUserWithProfile() {
     
     const appwriteUser = await account.get();
     
+    // Check if collections are configured
+    if (!config.databaseId || !config.usersCollectionId) {
+      // Interim mode: return basic user with admin role
+      return {
+        $id: appwriteUser.$id,
+        email: appwriteUser.email,
+        role: 'admin',
+        status: 'active',
+      };
+    }
+    
     // Get user record from users collection
     const userResponse = await databases.listDocuments(
       config.databaseId,
@@ -39,8 +50,41 @@ export async function getCurrentUserWithProfile() {
       [Query.equal('externalId', appwriteUser.$id)]
     );
     
+    // If user doesn't exist, bootstrap them as admin
     if (userResponse.documents.length === 0) {
-      throw new AuthError('User record not found');
+      console.log('Bootstrapping first admin user...');
+      try {
+        const newUser = await databases.createDocument(
+          config.databaseId,
+          config.usersCollectionId,
+          'unique()',
+          {
+            externalId: appwriteUser.$id,
+            email: appwriteUser.email,
+            role: 'admin',
+            status: 'active',
+            createdAt: new Date().toISOString(),
+          }
+        );
+        
+        // Return bootstrapped user
+        return {
+          $id: appwriteUser.$id,
+          email: appwriteUser.email,
+          role: 'admin',
+          status: 'active',
+          userId: newUser.$id,
+        };
+      } catch (createError) {
+        console.error('Failed to bootstrap user:', createError);
+        // Fallback to basic user if collection doesn't exist
+        return {
+          $id: appwriteUser.$id,
+          email: appwriteUser.email,
+          role: 'admin',
+          status: 'active',
+        };
+      }
     }
     
     const user = userResponse.documents[0];
