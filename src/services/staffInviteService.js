@@ -40,6 +40,7 @@ export async function createStaffInvite(adminId, email, expiresInDays = 30) {
     code: inviteCode,
     email: email.toLowerCase(),
     createdBy: adminId,
+    createdAt: new Date().toISOString(),
     expiresAt: expiresAt.toISOString(),
     status: 'active',
   });
