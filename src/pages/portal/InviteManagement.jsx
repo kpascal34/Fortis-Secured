@@ -95,7 +95,7 @@ const InviteManagement = () => {
           </div>
         )}
 
-        <GlassPanel className="border-white/10 bg-white/5">
+        <GlassPanel className="border-white/10 bg-night-sky/50 backdrop-blur-md">
           <form className="space-y-4" onSubmit={handleCreate}>
             <div>
               <label className="block text-sm text-white/80">Staff email</label>
