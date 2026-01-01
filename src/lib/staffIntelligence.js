@@ -365,7 +365,6 @@ export const suggestEmergencyFill = (shift, availableGuards, allShifts) => {
   };
 };
 
-/**
 export default {
   calculateGuardScore,
   getTier,

@@ -3,6 +3,7 @@
  * Manages BS7858-style multi-step compliance wizard
  */
 
+import { Query } from 'appwrite';
 import { databases } from '../lib/appwrite.js';
 import { logAudit } from './auditService.js';
 

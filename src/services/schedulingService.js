@@ -3,6 +3,7 @@
  * Handles shift postings, applications, and eligibility enforcement
  */
 
+import { ID, Query } from 'appwrite';
 import { databases } from '../lib/appwrite.js';
 import { logAudit } from './auditService.js';
 

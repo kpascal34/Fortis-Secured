@@ -3,11 +3,13 @@
  * Handles invite creation, validation, and staff signup with auto-generated credentials
  */
 
-import { databases, storage } from '../lib/appwrite.js';
+import { ID, Query } from 'appwrite';
+import { account, databases } from '../lib/appwrite.js';
 import { generateEmployeeNumber, sanitizeUsername, validateEmail } from '../lib/validation.js';
 import { logAudit } from './auditService.js';
 
-const dbId = process.env.VITE_APPWRITE_DATABASE_ID;
+// Prefer Vite env in browser; fallback for SSR/bundlers if present
+const dbId = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPWRITE_DATABASE_ID) || process.env.VITE_APPWRITE_DATABASE_ID;
 const invitesCol = 'staff_invites';
 const numbersCol = 'staff_numbers';
 
@@ -55,6 +57,7 @@ export async function createStaffInvite(adminId, email, expiresInDays = 30) {
     inviteId: invite.$id,
     inviteCode,
     signupUrl: `${window.location.origin}/signup?code=${inviteCode}`,
+    email: email.toLowerCase(),
   };
 }
 
@@ -66,6 +69,21 @@ export async function validateInviteCode(code) {
     throw new Error('Invalid invite code format');
   }
 
+  // Prefer secure serverless validation to keep invites private
+  if (typeof window !== 'undefined') {
+    const resp = await fetch('/api/invite-validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      throw new Error(data.error || 'Invite validation failed');
+    }
+    return data.invite;
+  }
+
+  // Fallback (server-side) direct validation
   const invites = await databases.listDocuments(dbId, invitesCol, [
     Query.equal('invite_code', code),
   ]);
@@ -81,7 +99,6 @@ export async function validateInviteCode(code) {
   }
 
   if (new Date(invite.expires_at) < new Date()) {
-    // Mark as expired
     await databases.updateDocument(dbId, invitesCol, invite.$id, { status: 'expired' });
     throw new Error('Invite has expired');
   }
@@ -119,10 +136,14 @@ export async function signupStaffMember(inviteCode, password, firstName, lastNam
   }
 
   // Create Appwrite user account
-  const account = new Account(client);
+  const appwriteAccount = account;
+  if (!appwriteAccount) {
+    throw new Error('Appwrite account client is not configured');
+  }
+
   let user;
   try {
-    user = await account.create(ID.unique(), invite.email, password, `${firstName} ${lastName}`);
+    user = await appwriteAccount.create(ID.unique(), invite.email, password, `${firstName} ${lastName}`);
   } catch (err) {
     if (String(err.message).includes('already exists')) {
       throw new Error('Email already has an account. Contact support.');
@@ -195,12 +216,9 @@ export async function signupStaffMember(inviteCode, password, firstName, lastNam
       lastName,
     };
   } catch (err) {
-    // Rollback user if profile creation fails
-    try {
-      await account.deleteUser(user.$id);
-    } catch (e) {
-      console.error('Could not rollback user:', e);
-    }
+    // Rollback is not possible with client SDK without admin privileges/session
+    // Log and rethrow
+    console.error('Signup failed after account creation:', err);
     throw err;
   }
 }

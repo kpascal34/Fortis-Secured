@@ -115,11 +115,11 @@ validateNumericArray(
 // ============================================================================
 
 // Pattern 1: Safe calculation in render
-const totalPay = payrollData.reduce(
+const totalPayAmount = payrollData.reduce(
   (sum, p) => sum + parseNumber(p.grossPay),
   0
 );
-return <p>{formatCurrency(totalPay)}</p>;
+return <p>{formatCurrency(totalPayAmount)}</p>;
 
 // Pattern 2: Display with fallback
 return (
@@ -161,7 +161,7 @@ const cost = hours > 0 && rate > 0 ? hours * rate : 0;
 // ============================================================================
 
 // ❌ WRONG: Assuming .toFixed() on unknown value
-const pay = payroll.hourlyRate.toFixed(2);  // Crashes if undefined
+const payWrong = payroll.hourlyRate.toFixed(2);  // Crashes if undefined
 
 // ✅ RIGHT: Use parseNumber first
 const pay = formatCurrency(payroll.hourlyRate);  // Safe
@@ -173,7 +173,7 @@ if (new Date(invoice.dueDate) < new Date()) {}  // Could throw
 if (parseDate(invoice.dueDate) < new Date()) {}  // Safe
 
 // ❌ WRONG: Parsing float strings without validation
-const sum = items.reduce((s, i) => s + parseFloat(i.value), 0);  // Could be NaN
+const sumWrong = items.reduce((s, i) => s + parseFloat(i.value), 0);  // Could be NaN
 
 // ✅ RIGHT: Use parseNumber with filter
 const sum = items
@@ -181,7 +181,7 @@ const sum = items
   .reduce((s, n) => s + n, 0);  // Always a number
 
 // ❌ WRONG: Dividing without checking zero
-const avg = total / count;  // Could be Infinity
+const avgWrong = total / count;  // Could be Infinity
 
 // ✅ RIGHT: Guard division
 const avg = count > 0 ? total / count : 0;
@@ -254,7 +254,7 @@ const avg = count > 0 ? total / count : 0;
 
 // ✓ Good practice:
 export const totalPay = useMemo(
-  () => formatCurrency(payroll.reduce(...)),
+  () => formatCurrency(payroll.reduce((sum, p) => sum + parseNumber(p.grossPay), 0)),
   [payroll]
 );
 

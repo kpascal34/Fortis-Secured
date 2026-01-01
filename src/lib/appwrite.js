@@ -1,4 +1,4 @@
-import { Client, Account, Databases } from 'appwrite';
+import { Client, Account, Databases, Storage } from 'appwrite';
 
 // Environment variables with fallbacks
 const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
@@ -21,6 +21,7 @@ if (endpoint && projectId && !isDemoMode) {
 
 export const account = !isDemoMode ? new Account(client) : null;
 export const databases = !isDemoMode ? new Databases(client) : null;
+export const storage = !isDemoMode ? new Storage(client) : null;
 
 export const config = {
   endpoint,

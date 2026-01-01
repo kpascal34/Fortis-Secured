@@ -56,6 +56,12 @@ const ScheduleDemo = lazy(() => import('./pages/ScheduleDemo.jsx'));
 const SchedulingWithDragDrop = lazy(() => import('./pages/portal/SchedulingWithDragDrop.jsx'));
 const StaffScheduleView = lazy(() => import('./pages/portal/StaffScheduleView.jsx'));
 const Profile = lazy(() => import('./pages/portal/Profile.jsx'));
+const StaffSignup = lazy(() => import('./pages/StaffSignup.jsx'));
+const ComplianceWizard = lazy(() => import('./pages/portal/ComplianceWizard.jsx'));
+const SchedulingBoard = lazy(() => import('./pages/portal/SchedulingBoard.jsx'));
+const AdminGrading = lazy(() => import('./pages/portal/AdminGrading.jsx'));
+const InviteManagement = lazy(() => import('./pages/portal/InviteManagement.jsx'));
+const DriveSyncStatus = lazy(() => import('./pages/portal/DriveSyncStatus.jsx'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -93,6 +99,7 @@ const AppContent = () => {
       <Routes>
         {/* Public Site Routes */}
         <Route path="/" element={<PublicSite />} />
+        <Route path="/signup" element={<StaffSignup />} />
         <Route path="/schedule-demo" element={<ScheduleDemo />} />
         <Route path="/services" element={<Services />} />
         <Route path="/services/manned-guarding" element={<MannedGuarding />} />
@@ -115,6 +122,7 @@ const AppContent = () => {
           {/* SCHEDULING Module Routes */}
           <Route path="scheduling" element={<FeatureRoute feature="SCHEDULING" name="Scheduling" element={<SchedulingWithDragDrop />} />} />
           <Route path="scheduling-drag-drop" element={<FeatureRoute feature="SCHEDULING" name="Scheduling" element={<SchedulingWithDragDrop />} />} />
+          <Route path="scheduling-board" element={<FeatureRoute feature="SCHEDULING" name="Scheduling Board" element={<SchedulingBoard />} />} />
           <Route path="recurring-patterns" element={<FeatureRoute feature="RECURRING_PATTERNS" name="Recurring Patterns" element={<RecurringPatterns />} />} />
           <Route path="my-schedule" element={<FeatureRoute feature="MY_SCHEDULE" name="My Schedule" element={<MySchedule />} />} />
           <Route path="my-schedule-view" element={<FeatureRoute feature="MY_SCHEDULE" name="My Schedule" element={<StaffScheduleView />} />} />
@@ -123,6 +131,10 @@ const AppContent = () => {
           
           {/* COMPLIANCE Module Routes */}
           <Route path="hr" element={<FeatureRoute feature="COMPLIANCE" name="HR & Compliance" element={<HR />} />} />
+          <Route path="compliance" element={<FeatureRoute feature="COMPLIANCE" name="Compliance Wizard" element={<ComplianceWizard />} />} />
+          <Route path="admin-grading" element={<FeatureRoute feature="COMPLIANCE" name="Admin Grading" element={<AdminGrading />} />} />
+          <Route path="invite-management" element={<FeatureRoute feature="COMPLIANCE" name="Invite Management" element={<InviteManagement />} />} />
+          <Route path="drive-sync" element={<FeatureRoute feature="COMPLIANCE" name="Drive Sync Status" element={<DriveSyncStatus />} />} />
           <Route path="audit" element={<FeatureRoute feature="COMPLIANCE" name="Audit Log" element={<AuditLog />} />} />
           
           {/* Disabled Modules */}

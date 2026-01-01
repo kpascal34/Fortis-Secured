@@ -3,6 +3,7 @@
  * Admin grading: 1-5 overall + optional categories
  */
 
+import { ID, Query } from 'appwrite';
 import { databases } from '../lib/appwrite.js';
 import { logAudit } from './auditService.js';
 

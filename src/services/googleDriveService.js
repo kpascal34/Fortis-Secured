@@ -5,18 +5,26 @@
  * Requires: GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON, GOOGLE_DRIVE_PARENT_FOLDER_ID
  */
 
+import { ID, Query } from 'appwrite';
 import { google } from 'googleapis';
 import { databases, storage } from '../lib/appwrite.js';
 import { logAudit } from './auditService.js';
 
-const dbId = process.env.VITE_APPWRITE_DATABASE_ID;
+const isBrowser = typeof window !== 'undefined';
+
+// Prefer Vite env vars in the browser; fall back to process.env when server-side
+const dbId = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPWRITE_DATABASE_ID) || process.env.VITE_APPWRITE_DATABASE_ID;
 
 let driveService = null;
 
 function getDriveService() {
   if (driveService) return driveService;
 
-  const serviceAccount = JSON.parse(process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON || '{}');
+  const serviceAccountRaw =
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON) ||
+    process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON ||
+    '{}';
+  const serviceAccount = JSON.parse(serviceAccountRaw);
 
   const auth = new google.auth.GoogleAuth({
     credentials: serviceAccount,
@@ -41,10 +49,24 @@ export async function ensureStaffFolder(staffId, employeeNumber, fullName) {
   }
 
   const drive = getDriveService();
-  const parentFolderId = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID;
+  const parentFolderId =
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_DRIVE_PARENT_FOLDER_ID) ||
+    process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID;
 
   if (!parentFolderId) {
     throw new Error('GOOGLE_DRIVE_PARENT_FOLDER_ID not set');
+  }
+
+  // Fallback lookups for folder naming if not provided
+  if (!employeeNumber || !fullName) {
+    try {
+      const profile = await databases.getDocument(dbId, 'staff_profiles', staffId);
+      employeeNumber = employeeNumber || profile?.employee_number || 'FS-UNKNOWN';
+      fullName = fullName || profile?.fullName || 'Unknown';
+    } catch (_) {
+      employeeNumber = employeeNumber || 'FS-UNKNOWN';
+      fullName = fullName || 'Unknown';
+    }
   }
 
   // Create folder: FS-000123 (Name)
@@ -95,6 +117,36 @@ export async function ensureStaffFolder(staffId, employeeNumber, fullName) {
  * Includes retry logic (max 3 attempts, 5-min backoff)
  */
 export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType, appwriteFileId) {
+  // If running in the browser, call the serverless API to perform sync
+  if (isBrowser) {
+    const payload = { staffId, fileId, fileName, fileType, appwriteFileId };
+    const resp = await fetch('/api/drive-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || 'Drive sync failed');
+    }
+    const data = await resp.json();
+    // Also update local DB record to reflect success if it exists
+    try {
+      const uploads = await databases.listDocuments(dbId, 'compliance_uploads', [
+        Query.equal('appwrite_file_id', appwriteFileId),
+      ]);
+      if (uploads.documents.length > 0) {
+        await databases.updateDocument(dbId, 'compliance_uploads', uploads.documents[0].$id, {
+          google_drive_file_id: data.driveFileId,
+          google_drive_folder_id: data.folderId,
+          sync_status: 'synced',
+          last_sync_attempt: new Date().toISOString(),
+          sync_error: null,
+        });
+      }
+    } catch (_) {}
+    return data;
+  }
   // Check if already synced
   const uploads = await databases.listDocuments(dbId, 'compliance_uploads', [
     Query.equal('appwrite_file_id', appwriteFileId),
@@ -143,8 +195,11 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
     let typeFolderId = await getOrCreateTypeFolder(drive, staffFolder.folder_id, typeFolderName);
 
     // Download file from Appwrite
+    const filesBucket =
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPWRITE_FILES_BUCKET) ||
+      process.env.VITE_APPWRITE_FILES_BUCKET;
     const appwriteFile = await storage.getFileDownload(
-      process.env.VITE_APPWRITE_FILES_BUCKET,
+      filesBucket,
       appwriteFileId
     );
 
