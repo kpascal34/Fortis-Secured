@@ -163,7 +163,7 @@ const InviteManagement = () => {
           </div>
         )}
 
-        <GlassPanel className="border-white/10 bg-night-sky/50 backdrop-blur-md">
+        <GlassPanel className="border-white/10 bg-[#1a1f2e] backdrop-blur-md">
           <form className="space-y-4" onSubmit={handleCreate}>
             <div>
               <label className="block text-sm text-white/80">Staff email</label>
@@ -172,7 +172,7 @@ const InviteManagement = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ring-white/10 focus:ring-accent"
+                className="mt-1 w-full rounded-lg bg-[#0f1419] px-3 py-3 text-white outline-none ring-1 ring-white/20 focus:ring-accent"
               />
             </div>
             <div>
@@ -182,7 +182,7 @@ const InviteManagement = () => {
                 min={1}
                 value={expiresInDays}
                 onChange={(e) => setExpiresInDays(e.target.value)}
-                className="mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ring-white/10 focus:ring-accent"
+                className="mt-1 w-full rounded-lg bg-[#0f1419] px-3 py-3 text-white outline-none ring-1 ring-white/20 focus:ring-accent"
               />
             </div>
             <button
@@ -200,15 +200,15 @@ const InviteManagement = () => {
           <h2 className="text-2xl font-bold mb-4">Existing Invites</h2>
           
           {loadingInvites ? (
-            <GlassPanel className="border-white/10 bg-night-sky/50 backdrop-blur-md">
+            <GlassPanel className="border-white/10 bg-[#1a1f2e] backdrop-blur-md">
               <p className="text-white/70 text-center py-8">Loading invites...</p>
             </GlassPanel>
           ) : invites.length === 0 ? (
-            <GlassPanel className="border-white/10 bg-night-sky/50 backdrop-blur-md">
+            <GlassPanel className="border-white/10 bg-[#1a1f2e] backdrop-blur-md">
               <p className="text-white/70 text-center py-8">No invites created yet.</p>
             </GlassPanel>
           ) : (
-            <GlassPanel className="border-white/10 bg-night-sky/50 backdrop-blur-md">
+            <GlassPanel className="border-white/10 bg-[#1a1f2e] backdrop-blur-md">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
