@@ -54,10 +54,28 @@ export async function createStaffInvite(adminId, email, expiresInDays = 30) {
     diff: JSON.stringify({ email, expiresAt }),
   });
 
+  const signupUrl = `${window.location.origin}/signup?code=${inviteCode}`;
+
+  // Send invite email via API
+  try {
+    await fetch('/api/send-invite-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.toLowerCase(),
+        inviteCode,
+        signupUrl,
+      }),
+    });
+  } catch (emailError) {
+    console.error('Failed to send invite email:', emailError);
+    // Don't fail the whole operation if email fails
+  }
+
   return {
     inviteId: invite.$id,
     inviteCode,
-    signupUrl: `${window.location.origin}/signup?code=${inviteCode}`,
+    signupUrl,
     email: email.toLowerCase(),
   };
 }
