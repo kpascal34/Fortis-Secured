@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC';
 import { createStaffInvite } from '../../services/staffInviteService.js';
+import { databases, config } from '../../lib/appwrite.js';
+import { Query } from 'appwrite';
 
 const InviteManagement = () => {
   const { user, loading: userLoading } = useCurrentUser();
@@ -12,6 +14,71 @@ const InviteManagement = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [invites, setInvites] = useState([]);
+  const [loadingInvites, setLoadingInvites] = useState(true);
+  const [resending, setResending] = useState(null);
+
+  const loadInvites = async () => {
+    try {
+      setLoadingInvites(true);
+      const response = await databases.listDocuments(
+        config.databaseId,
+        import.meta.env.VITE_APPWRITE_STAFF_INVITES_COLLECTION_ID,
+        [Query.orderDesc('createdAt'), Query.limit(50)]
+      );
+      setInvites(response.documents);
+    } catch (err) {
+      console.error('Failed to load invites:', err);
+    } finally {
+      setLoadingInvites(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && isAdmin) {
+      loadInvites();
+    }
+  }, [user, isAdmin]);
+
+  const handleResend = async (invite) => {
+    try {
+      setResending(invite.$id);
+      const signupUrl = `${window.location.origin}/signup?code=${invite.code}`;
+      
+      const response = await fetch('/api/send-invite-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: invite.email,
+          inviteCode: invite.code,
+          signupUrl,
+        }),
+      });
+
+      if (response.ok) {
+        alert('Invite email resent successfully!');
+      } else {
+        throw new Error('Failed to resend email');
+      }
+    } catch (err) {
+      console.error('Failed to resend invite:', err);
+      alert('Failed to resend invite email: ' + err.message);
+    } finally {
+      setResending(null);
+    }
+  };
+
+  const getStatusColor = (status, expiresAt) => {
+    if (status === 'used') return 'text-gray-400';
+    if (status === 'expired' || new Date(expiresAt) < new Date()) return 'text-red-400';
+    return 'text-green-400';
+  };
+
+  const getStatusLabel = (status, expiresAt) => {
+    if (status === 'used') return 'Used';
+    if (status === 'expired' || new Date(expiresAt) < new Date()) return 'Expired';
+    return 'Active';
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -36,6 +103,7 @@ const InviteManagement = () => {
       console.log('Invite created:', res);
       setResult(res);
       setEmail('');
+      loadInvites(); // Reload the list
     } catch (err) {
       console.error('Failed to create invite:', err);
       setError(err.message || 'Failed to create invite');
@@ -126,6 +194,77 @@ const InviteManagement = () => {
             </button>
           </form>
         </GlassPanel>
+
+        {/* Existing Invites List */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold mb-4">Existing Invites</h2>
+          
+          {loadingInvites ? (
+            <GlassPanel className="border-white/10 bg-night-sky/50 backdrop-blur-md">
+              <p className="text-white/70 text-center py-8">Loading invites...</p>
+            </GlassPanel>
+          ) : invites.length === 0 ? (
+            <GlassPanel className="border-white/10 bg-night-sky/50 backdrop-blur-md">
+              <p className="text-white/70 text-center py-8">No invites created yet.</p>
+            </GlassPanel>
+          ) : (
+            <GlassPanel className="border-white/10 bg-night-sky/50 backdrop-blur-md">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="text-left py-3 px-4 text-white/80 font-semibold">Email</th>
+                      <th className="text-left py-3 px-4 text-white/80 font-semibold">Code</th>
+                      <th className="text-left py-3 px-4 text-white/80 font-semibold">Status</th>
+                      <th className="text-left py-3 px-4 text-white/80 font-semibold">Expires</th>
+                      <th className="text-left py-3 px-4 text-white/80 font-semibold">Created</th>
+                      <th className="text-right py-3 px-4 text-white/80 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invites.map((invite) => {
+                      const status = getStatusLabel(invite.status, invite.expiresAt);
+                      const statusColor = getStatusColor(invite.status, invite.expiresAt);
+                      
+                      return (
+                        <tr key={invite.$id} className="border-b border-white/5 hover:bg-white/5">
+                          <td className="py-3 px-4 text-white">{invite.email}</td>
+                          <td className="py-3 px-4">
+                            <code className="text-sm bg-white/10 px-2 py-1 rounded text-white/90">
+                              {invite.code}
+                            </code>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-sm font-semibold ${statusColor}`}>
+                              {status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-white/70 text-sm">
+                            {new Date(invite.expiresAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4 text-white/70 text-sm">
+                            {new Date(invite.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {status === 'Active' && (
+                              <button
+                                onClick={() => handleResend(invite)}
+                                disabled={resending === invite.$id}
+                                className="text-sm bg-accent/20 hover:bg-accent/30 text-accent px-3 py-1 rounded transition-colors disabled:opacity-50"
+                              >
+                                {resending === invite.$id ? 'Sending...' : 'Resend'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </GlassPanel>
+          )}
+        </div>
       </div>
     </div>
   );
