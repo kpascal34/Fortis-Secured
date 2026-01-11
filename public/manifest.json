@@ -1,0 +1,75 @@
+{
+  "name": "Fortis Secured - Workforce Management",
+  "short_name": "Fortis Secured",
+  "description": "Enterprise workforce management platform for security guard scheduling with intelligent assignments and compliance",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0B1220",
+  "background_color": "#0B1220",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-1.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile-1.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your dashboard",
+      "url": "/portal",
+      "icons": [
+        { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+      ]
+    },
+    {
+      "name": "Guards",
+      "short_name": "Guards",
+      "description": "Manage guards",
+      "url": "/portal/guards",
+      "icons": [
+        { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+      ]
+    },
+    {
+      "name": "Scheduling",
+      "short_name": "Schedule",
+      "description": "View schedules",
+      "url": "/portal/scheduling",
+      "icons": [
+        { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "share_target": {
+    "action": "/portal/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

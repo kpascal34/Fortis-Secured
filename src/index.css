@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-night-sky;
+}
+
+a {
+  @apply transition-colors duration-150;
+}
+
+.section-container {
+  @apply max-w-7xl mx-auto px-6 sm:px-8;
+}
+
+.glass-panel {
+  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-glass;
+}
