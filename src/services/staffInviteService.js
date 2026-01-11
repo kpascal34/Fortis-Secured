@@ -4,14 +4,14 @@
  */
 
 import { ID, Query } from 'appwrite';
-import { account, databases } from '../lib/appwrite.js';
-import { generateEmployeeNumber, sanitizeUsername, validateEmail } from '../lib/validation.js';
+import { account, databases, config } from '../lib/appwrite.js';
+import { sanitizeUsername, validateEmail } from '../lib/validation.js';
 import { logAudit } from './auditService.js';
 
-// Prefer Vite env in browser; fallback for SSR/bundlers if present
-const dbId = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPWRITE_DATABASE_ID) || process.env.VITE_APPWRITE_DATABASE_ID;
-const invitesCol = 'staff_invites';
-const numbersCol = 'staff_numbers';
+// Use centralized config with sensible fallbacks
+const dbId = config.databaseId;
+const invitesCol = config.staffInvitesCollectionId || 'staff_invites';
+const numbersCol = config.staffNumbersCollectionId || 'staff_numbers';
 
 /**
  * Create staff invite (admin only)
@@ -186,7 +186,7 @@ export async function signupStaffMember(inviteCode, password, firstName, lastNam
     }
 
     // Create staff profile
-    const staffProfile = await databases.createDocument(dbId, 'staff_profiles', user.$id, {
+    const staffProfile = await databases.createDocument(dbId, config.staffProfilesCollectionId || 'staff_profiles', user.$id, {
       userId: user.$id,
       fullName: `${firstName} ${lastName}`,
       firstName,
@@ -279,7 +279,7 @@ async function allocateEmployeeNumber(staffId) {
 }
 
 async function usernameExists(username) {
-  const docs = await databases.listDocuments(dbId, 'staff_profiles', [
+  const docs = await databases.listDocuments(dbId, config.staffProfilesCollectionId || 'staff_profiles', [
     Query.equal('username', username),
   ]);
   return docs.documents.length > 0;

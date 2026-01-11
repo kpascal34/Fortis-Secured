@@ -23,13 +23,66 @@ const HR = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [guards, setGuards] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [trainingSchedule, setTrainingSchedule] = useState([]);
+  const [licenses, setLicenses] = useState([]);
   const [selectedGuard, setSelectedGuard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchStaffData();
+    fetchAllData();
   }, []);
+
+  const fetchAllData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (config.isDemoMode) {
+        setGuards([]);
+        setLeaveRequests([]);
+        setTrainingSchedule([]);
+        setLicenses([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch all data in parallel
+      const [staffResponse, leaveResponse, trainingResponse, licensesResponse] = await Promise.all([
+        databases.listDocuments(
+          config.databaseId,
+          config.staffProfilesCollectionId,
+          [Query.limit(100), Query.orderDesc('$createdAt')]
+        ).catch(() => ({ documents: [] })),
+        databases.listDocuments(
+          config.databaseId,
+          config.staffLeaveCollectionId || 'staff_leave',
+          [Query.limit(50), Query.orderDesc('requestedAt')]
+        ).catch(() => ({ documents: [] })),
+        databases.listDocuments(
+          config.databaseId,
+          config.staffTrainingCollectionId || 'staff_training',
+          [Query.limit(50), Query.orderDesc('startDate')]
+        ).catch(() => ({ documents: [] })),
+        databases.listDocuments(
+          config.databaseId,
+          config.staffLicensesCollectionId || 'staff_licenses',
+          [Query.limit(100)]
+        ).catch(() => ({ documents: [] })),
+      ]);
+
+      setGuards(staffResponse.documents || []);
+      setLeaveRequests(leaveResponse.documents || []);
+      setTrainingSchedule(trainingResponse.documents || []);
+      setLicenses(licensesResponse.documents || []);
+    } catch (err) {
+      console.error('Error fetching HR data:', err);
+      setError('Failed to load HR data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchStaffData = async () => {
     try {
@@ -58,23 +111,24 @@ const HR = () => {
   };
 
   // Calculate expiring licenses (within 30 days)
-  const expiringLicenses = guards.filter(g => {
-    if (!g.siaExpiryDate) return false;
-    const expiryDate = new Date(g.siaExpiryDate);
+  const expiringLicensesList = licenses.filter(l => {
+    if (!l.expiryDate) return false;
+    const expiryDate = new Date(l.expiryDate);
     const daysUntilExpiry = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
     return daysUntilExpiry <= 30 && daysUntilExpiry >= 0;
-  }).length;
+  });
+
+  const expiringLicensesCount = expiringLicensesList.length;
+
+  // Get pending leave count
+  const pendingLeave = leaveRequests.filter(l => l.status === 'pending').length;
 
   const hrStats = [
     { label: 'Total Staff', value: guards.length, icon: AiOutlineTeam, color: 'blue' },
     { label: 'Active', value: guards.filter(g => g.status === 'active').length, icon: AiOutlineCheckCircle, color: 'green' },
-    { label: 'On Leave', value: 0, icon: AiOutlineCalendar, color: 'yellow' },
-    { label: 'Expiring Licenses', value: expiringLicenses, icon: AiOutlineWarning, color: 'red' },
+    { label: 'On Leave', value: pendingLeave, icon: AiOutlineCalendar, color: 'yellow' },
+    { label: 'Expiring Licenses', value: expiringLicensesCount, icon: AiOutlineWarning, color: 'red' },
   ];
-
-  const leaveRequests = [];
-
-  const trainingSchedule = [];
 
   const documents = [];
 
@@ -157,28 +211,38 @@ const HR = () => {
             <div>
               <h2 className="text-xl font-semibold text-white mb-4">Pending Leave Requests</h2>
               <div className="space-y-3">
-                {leaveRequests.filter(r => r.status === 'pending').map((request) => (
-                  <div key={request.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold text-white">{request.guard}</p>
-                        <p className="text-sm text-white/60 mt-1">{request.type}</p>
-                        <p className="text-sm text-white/50 mt-2">
-                          {request.startDate} - {request.endDate} ({request.days} days)
-                        </p>
-                        <p className="text-sm text-white/70 mt-1">Reason: {request.reason}</p>
+                {leaveRequests.filter(r => r.status === 'pending').length > 0 ? (
+                  leaveRequests.filter(r => r.status === 'pending').map((request) => {
+                    const staff = guards.find(s => s.$id === request.staff_id);
+                    const startDate = new Date(request.startDate).toLocaleDateString('en-GB');
+                    const endDate = new Date(request.endDate).toLocaleDateString('en-GB');
+                    const days = Math.ceil((new Date(request.endDate) - new Date(request.startDate)) / (1000 * 60 * 60 * 24));
+                    return (
+                      <div key={request.$id} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-semibold text-white">{staff?.firstName} {staff?.lastName}</p>
+                            <p className="text-sm text-white/60 mt-1">{request.type}</p>
+                            <p className="text-sm text-white/50 mt-2">
+                              {startDate} - {endDate} ({days} days)
+                            </p>
+                            <p className="text-sm text-white/70 mt-1">Reason: {request.reason || 'No reason provided'}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button className="rounded-lg bg-green-500/20 border border-green-500/50 px-4 py-2 text-sm text-green-500 hover:bg-green-500/30 transition-colors">
+                              Approve
+                            </button>
+                            <button className="rounded-lg bg-red-500/20 border border-red-500/50 px-4 py-2 text-sm text-red-500 hover:bg-red-500/30 transition-colors">
+                              Reject
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button className="rounded-lg bg-green-500/20 border border-green-500/50 px-4 py-2 text-sm text-green-500 hover:bg-green-500/30 transition-colors">
-                          Approve
-                        </button>
-                        <button className="rounded-lg bg-red-500/20 border border-red-500/50 px-4 py-2 text-sm text-red-500 hover:bg-red-500/30 transition-colors">
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })
+                ) : (
+                  <p className="text-white/50 text-sm">No pending leave requests</p>
+                )}
               </div>
             </div>
 
@@ -186,27 +250,70 @@ const HR = () => {
             <div>
               <h2 className="text-xl font-semibold text-white mb-4">Upcoming Training</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {trainingSchedule.slice(0, 2).map((training) => (
-                  <div key={training.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                    <h3 className="font-semibold text-white">{training.course}</h3>
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-white/70">
-                        <AiOutlineCalendar />
-                        <span>{training.date}</span>
+                {trainingSchedule.length > 0 ? (
+                  trainingSchedule.slice(0, 2).map((training) => {
+                    const startDate = new Date(training.startDate).toLocaleDateString('en-GB');
+                    const endDate = new Date(training.endDate).toLocaleDateString('en-GB');
+                    return (
+                      <div key={training.$id} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                        <h3 className="font-semibold text-white">{training.course}</h3>
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-white/70">
+                            <AiOutlineCalendar />
+                            <span>{startDate} - {endDate}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-white/70">
+                            <AiOutlineClockCircle />
+                            <span>{training.provider || 'TBD'}</span>
+                          </div>
+                          <div className="flex items-center justify-between mt-3">
+                            <span className="text-sm text-white/60">
+                              Status: {training.status}
+                            </span>
+                            <button className="text-sm text-accent hover:text-accent/80">View Details</button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-white/70">
-                        <AiOutlineClockCircle />
-                        <span>{training.duration}</span>
-                      </div>
-                      <div className="flex items-center justify-between mt-3">
-                        <span className="text-sm text-white/60">
-                          {training.enrolled}/{training.capacity} enrolled
-                        </span>
-                        <button className="text-sm text-accent hover:text-accent/80">View Details</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })
+                ) : (
+                  <p className="text-white/50 text-sm">No upcoming training</p>
+                )}
+              </div>
+            </div>
+
+            {/* License Compliance */}
+            <div>
+              <h2 className="text-xl font-semibold text-white mb-4">License Compliance</h2>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="text-sm text-white/70">Licenses expiring within 30 days</span>
+                  <span className="inline-block rounded bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-400">
+                    {expiringLicensesCount}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {expiringLicensesList.length > 0 ? (
+                    expiringLicensesList.slice(0, 5).map((license) => {
+                      const expiryDate = new Date(license.expiryDate).toLocaleDateString('en-GB');
+                      const daysLeft = Math.ceil((new Date(license.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+                      const staffName = guards.find(s => s.$id === license.staff_id)?.firstName || 'Unknown';
+                      return (
+                        <div key={license.$id} className="rounded border border-red-500/20 bg-red-500/10 p-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-white">{license.license_type} - {staffName}</p>
+                              <p className="text-sm text-white/60">Expires {expiryDate}</p>
+                            </div>
+                            <span className="text-sm font-semibold text-red-400">{daysLeft} days</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-white/50 text-sm">No licenses expiring soon</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -286,35 +393,42 @@ const HR = () => {
               </button>
             </div>
             <div className="space-y-3">
-              {leaveRequests.map((request) => (
-                <div key={request.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <p className="font-semibold text-white">{request.guard}</p>
-                        <span className={`rounded-full bg-${getStatusColor(request.status)}-500/20 px-3 py-1 text-xs text-${getStatusColor(request.status)}-500`}>
-                          {request.status}
-                        </span>
+              {leaveRequests.filter(r => r.status === 'pending').length > 0 ? (
+                leaveRequests.filter(r => r.status === 'pending').map((request) => {
+                  const staffName = guards.find(s => s.$id === request.staff_id)?.firstName || 'Unknown';
+                  const startDate = new Date(request.startDate).toLocaleDateString('en-GB');
+                  const endDate = new Date(request.endDate).toLocaleDateString('en-GB');
+                  return (
+                    <div key={request.$id} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <p className="font-semibold text-white">{staffName}</p>
+                            <span className="rounded-full bg-yellow-500/20 px-3 py-1 text-xs text-yellow-500">
+                              {request.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-white/60 mt-2">{request.leaveType || 'Annual Leave'}</p>
+                          <p className="text-sm text-white/50 mt-1">
+                            {startDate} to {endDate}
+                          </p>
+                          <p className="text-sm text-white/70 mt-2">{request.reason}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button className="rounded-lg bg-green-500/20 px-4 py-2 text-sm text-green-500 hover:bg-green-500/30 transition-colors">
+                            Approve
+                          </button>
+                          <button className="rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-500 hover:bg-red-500/30 transition-colors">
+                            Reject
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-sm text-white/60 mt-2">{request.type}</p>
-                      <p className="text-sm text-white/50 mt-1">
-                        {request.startDate} to {request.endDate} ({request.days} days)
-                      </p>
-                      <p className="text-sm text-white/70 mt-2">{request.reason}</p>
                     </div>
-                    {request.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <button className="rounded-lg bg-green-500/20 px-4 py-2 text-sm text-green-500 hover:bg-green-500/30 transition-colors">
-                          Approve
-                        </button>
-                        <button className="rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-500 hover:bg-red-500/30 transition-colors">
-                          Reject
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  );
+                })
+              ) : (
+                <p className="text-white/50 text-sm">No pending leave requests</p>
+              )}
             </div>
           </div>
         )}
@@ -329,37 +443,37 @@ const HR = () => {
               </button>
             </div>
             <div className="space-y-3">
-              {trainingSchedule.map((training) => (
-                <div key={training.id} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-white">{training.course}</h3>
-                      <div className="grid grid-cols-2 gap-4 mt-3">
-                        <div className="flex items-center gap-2 text-sm text-white/70">
-                          <AiOutlineCalendar />
-                          <span>{training.date}</span>
+              {trainingSchedule.length > 0 ? (
+                trainingSchedule.map((training) => {
+                  const startDate = new Date(training.startDate).toLocaleDateString('en-GB');
+                  const endDate = new Date(training.endDate).toLocaleDateString('en-GB');
+                  return (
+                    <div key={training.$id} className="rounded-lg border border-white/10 bg-white/5 p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-white">{training.course}</h3>
+                          <div className="grid grid-cols-2 gap-4 mt-3">
+                            <div className="flex items-center gap-2 text-sm text-white/70">
+                              <AiOutlineCalendar />
+                              <span>{startDate} - {endDate}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-white/70">
+                              <AiOutlineClockCircle />
+                              <span>{training.provider || 'TBD'}</span>
+                            </div>
+                          </div>
+                          <p className="text-sm text-white/60 mt-2">Status: {training.status}</p>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-white/70">
-                          <AiOutlineClockCircle />
-                          <span>{training.duration}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-white/70">
-                          <AiOutlineUser />
-                          <span>{training.instructor}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-white/70">
-                          <AiOutlineTeam />
-                          <span>{training.enrolled}/{training.capacity} enrolled</span>
-                        </div>
+                        <button className="rounded-lg bg-accent/20 border border-accent/50 px-4 py-2 text-sm text-accent hover:bg-accent/30 transition-colors">
+                          View Details
+                        </button>
                       </div>
-                      <p className="text-sm text-white/60 mt-2">Location: {training.location}</p>
                     </div>
-                    <button className="rounded-lg bg-accent/20 border border-accent/50 px-4 py-2 text-sm text-accent hover:bg-accent/30 transition-colors">
-                      Manage
-                    </button>
-                  </div>
-                </div>
-              ))}
+                  );
+                })
+              ) : (
+                <p className="text-white/50 text-sm">No training scheduled</p>
+              )}
             </div>
           </div>
         )}

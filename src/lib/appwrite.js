@@ -46,6 +46,12 @@ export const config = {
   incidentsCollectionId: import.meta.env.VITE_APPWRITE_INCIDENTS_COLLECTION_ID,
   assetsCollectionId: import.meta.env.VITE_APPWRITE_ASSETS_COLLECTION_ID,
   applicationsCollectionId: import.meta.env.VITE_APPWRITE_APPLICATIONS_COLLECTION_ID,
+  // Staff management collections
+  staffInvitesCollectionId: import.meta.env.VITE_APPWRITE_STAFF_INVITES_COLLECTION_ID,
+  staffNumbersCollectionId: import.meta.env.VITE_APPWRITE_STAFF_NUMBERS_COLLECTION_ID,
+  staffLeaveCollectionId: import.meta.env.VITE_APPWRITE_STAFF_LEAVE_COLLECTION_ID,
+  staffTrainingCollectionId: import.meta.env.VITE_APPWRITE_STAFF_TRAINING_COLLECTION_ID,
+  staffLicensesCollectionId: import.meta.env.VITE_APPWRITE_STAFF_LICENSES_COLLECTION_ID,
 };
 
 export const DATABASE_ID = databaseId;
