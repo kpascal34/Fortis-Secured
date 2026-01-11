@@ -61,12 +61,15 @@ const Dashboard = () => {
         return;
       }
       
-      const clientsResponse = await databases.listDocuments(
-        config.databaseId,
-        config.clientsCollectionId,
-        [Query.limit(5), Query.orderDesc('$createdAt')]
-      );
+      // Fetch all metrics in parallel
+      const [clientsResponse, shiftsResponse, staffResponse, incidentsResponse] = await Promise.all([
+        databases.listDocuments(config.databaseId, config.clientsCollectionId, [Query.limit(5), Query.orderDesc('$createdAt')]),
+        databases.listDocuments(config.databaseId, config.shiftsCollectionId, [Query.limit(100)]).catch(() => ({ documents: [], total: 0 })),
+        databases.listDocuments(config.databaseId, config.staffProfilesCollectionId, [Query.limit(100)]).catch(() => ({ documents: [], total: 0 })),
+        databases.listDocuments(config.databaseId, config.incidentsCollectionId, [Query.limit(3), Query.orderDesc('$createdAt')]).catch(() => ({ documents: [] })),
+      ]);
 
+      // Process clients
       const clientsData = clientsResponse.documents.map((client) => ({
         name: client.companyName || 'Client',
         location: client.city || client.address || 'Location not provided',
@@ -75,15 +78,39 @@ const Dashboard = () => {
           ? `£${parseFloat(client.contractValue).toLocaleString()}/year`
           : null,
       }));
-
       setClients(clientsData);
 
+      // Calculate metrics
       const totalClients = clientsResponse.total;
       const activeClients = clientsResponse.documents.filter((c) => c.status === 'active').length;
+      
+      // Active shifts: published and today or future
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const activeShifts = shiftsResponse.documents.filter(shift => {
+        const shiftDate = new Date(shift.date || shift.startTime);
+        return shift.published && shiftDate >= today;
+      }).length;
+
+      // Total guards/staff
+      const totalGuards = staffResponse.total;
+      const activeGuards = staffResponse.documents.filter(s => s.status === 'active' || s.status === 'pending_compliance').length;
+
+      // Process incidents
+      const incidentsData = incidentsResponse.documents.map(inc => ({
+        title: inc.title || 'Incident',
+        location: inc.site_id || 'Unknown location',
+        status: inc.status?.charAt(0).toUpperCase() + inc.status?.slice(1) || 'Open',
+        timestamp: inc.reported_at ? new Date(inc.reported_at).toLocaleString('en-GB') : 'Recently',
+        summary: inc.description || 'No details provided',
+      }));
+      setIncidents(incidentsData);
 
       setStats([
         { label: 'Total Clients', value: totalClients, helper: activeClients ? `${activeClients} active` : '' },
-        ...baseStats.slice(1),
+        { label: 'Active Shifts', value: activeShifts, helper: 'Today onwards' },
+        { label: 'Pending Tasks', value: 0, helper: 'Coming soon' },
+        { label: 'Total Guards', value: totalGuards, helper: activeGuards ? `${activeGuards} active` : '' },
       ]);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);

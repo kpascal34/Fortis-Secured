@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { databases, config } from '../../lib/appwrite';
+import { Query } from 'appwrite';
 import {
   AiOutlineTeam,
   AiOutlineFileText,
@@ -20,14 +22,54 @@ import {
 const HR = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
-  const [guards] = useState([]);
+  const [guards, setGuards] = useState([]);
   const [selectedGuard, setSelectedGuard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchStaffData();
+  }, []);
+
+  const fetchStaffData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (config.isDemoMode || !config.staffProfilesCollectionId) {
+        setGuards([]);
+        setLoading(false);
+        return;
+      }
+
+      const response = await databases.listDocuments(
+        config.databaseId,
+        config.staffProfilesCollectionId,
+        [Query.limit(100), Query.orderDesc('$createdAt')]
+      );
+
+      setGuards(response.documents);
+    } catch (err) {
+      console.error('Error fetching staff:', err);
+      setError('Failed to load staff data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate expiring licenses (within 30 days)
+  const expiringLicenses = guards.filter(g => {
+    if (!g.siaExpiryDate) return false;
+    const expiryDate = new Date(g.siaExpiryDate);
+    const daysUntilExpiry = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+    return daysUntilExpiry <= 30 && daysUntilExpiry >= 0;
+  }).length;
 
   const hrStats = [
     { label: 'Total Staff', value: guards.length, icon: AiOutlineTeam, color: 'blue' },
     { label: 'Active', value: guards.filter(g => g.status === 'active').length, icon: AiOutlineCheckCircle, color: 'green' },
     { label: 'On Leave', value: 0, icon: AiOutlineCalendar, color: 'yellow' },
-    { label: 'Expiring Licenses', value: 0, icon: AiOutlineWarning, color: 'red' },
+    { label: 'Expiring Licenses', value: expiringLicenses, icon: AiOutlineWarning, color: 'red' },
   ];
 
   const leaveRequests = [];
