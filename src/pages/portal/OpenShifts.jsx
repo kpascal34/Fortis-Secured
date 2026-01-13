@@ -78,10 +78,12 @@ const OpenShifts = () => {
         setSites([]);
       }
 
-      // Fetch open/offered shifts
+      // Fetch open/offered shifts (published = true and no staff assigned)
       try {
         const shiftsRes = await databases.listDocuments(config.databaseId, config.shiftsCollectionId, [
-          Query.equal('status', [SHIFT_STATUS.OFFERED, SHIFT_STATUS.UNASSIGNED]),
+          Query.equal('published', true),
+          Query.isNull('staffId'),
+          Query.orderAsc('date'),
           Query.limit(100),
         ]);
         setOpenShifts(shiftsRes.documents);

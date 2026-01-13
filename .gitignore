@@ -46,3 +46,4 @@ coverage/
 .nuxt
 .vercel
 .netlify
+.env*.local

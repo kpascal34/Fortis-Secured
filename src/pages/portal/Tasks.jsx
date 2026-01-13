@@ -59,28 +59,32 @@ const Tasks = () => {
 
       let guardsData = [];
       try {
-        const [guardsRes, clientsRes, sitesRes, shiftsRes] = await Promise.all([
+        const tasksEnabled = Boolean(config.tasksCollectionId);
+        const [guardsRes, clientsRes, sitesRes, shiftsRes, tasksRes] = await Promise.all([
           databases.listDocuments(config.databaseId, config.guardsCollectionId, [Query.limit(500)]),
           databases.listDocuments(config.databaseId, config.clientsCollectionId, [Query.limit(500)]),
           databases.listDocuments(config.databaseId, config.sitesCollectionId, [Query.limit(500)]),
           databases.listDocuments(config.databaseId, config.shiftsCollectionId, [Query.limit(500)]),
+          tasksEnabled
+            ? databases.listDocuments(config.databaseId, config.tasksCollectionId, [Query.limit(200), Query.orderDesc('updatedAt')])
+            : Promise.resolve({ documents: [] }),
         ]);
 
         guardsData = guardsRes.documents;
         setClients(clientsRes.documents);
         setSites(sitesRes.documents);
         setShifts(shiftsRes.documents);
+        setTasks(tasksRes.documents || []);
       } catch (error) {
         console.log('Unable to load guard data. Connect Appwrite to enable live tasks.', error);
         guardsData = [];
         setClients([]);
         setSites([]);
         setShifts([]);
+        setTasks([]);
       }
 
       setGuards(guardsData);
-
-      setTasks([]);
     } catch (error) {
       console.error('Error fetching data:', error);
       alert('Failed to load tasks data');

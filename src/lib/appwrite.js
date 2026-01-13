@@ -46,6 +46,7 @@ export const config = {
   incidentsCollectionId: import.meta.env.VITE_APPWRITE_INCIDENTS_COLLECTION_ID,
   assetsCollectionId: import.meta.env.VITE_APPWRITE_ASSETS_COLLECTION_ID,
   applicationsCollectionId: import.meta.env.VITE_APPWRITE_APPLICATIONS_COLLECTION_ID,
+  tasksCollectionId: import.meta.env.VITE_APPWRITE_TASKS_COLLECTION_ID,
   // Staff management collections
   staffInvitesCollectionId: import.meta.env.VITE_APPWRITE_STAFF_INVITES_COLLECTION_ID,
   staffNumbersCollectionId: import.meta.env.VITE_APPWRITE_STAFF_NUMBERS_COLLECTION_ID,

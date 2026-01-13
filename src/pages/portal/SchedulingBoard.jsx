@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC';
-import { getShifts, applyForShift, createShift } from '../../services/schedulingService.js';
+import { databases, config } from '../../lib/appwrite';
+import { Query, ID } from 'appwrite';
 
 const SchedulingBoard = () => {
   const { user, profile } = useCurrentUser();
@@ -27,11 +28,34 @@ const SchedulingBoard = () => {
     if (!user) return;
     try {
       setLoading(true);
-      const list = await getShifts(user.$id, roleString(), profile?.clientId || null);
-      setShifts(list);
+      
+      // Build queries based on role
+      const queries = [Query.limit(100)];
+      
+      if (isClient && profile?.clientId) {
+        // Clients only see their own shifts
+        queries.push(Query.equal('clientId', profile.clientId));
+      } else if (isStaff) {
+        // Staff only see published open shifts
+        queries.push(Query.equal('published', true));
+        queries.push(Query.isNull('staffId'));
+      }
+      
+      // Default sort by date
+      queries.push(Query.orderAsc('date'));
+      
+      const shiftsRes = await databases.listDocuments(
+        config.databaseId,
+        config.shiftsCollectionId,
+        queries
+      );
+      
+      setShifts(shiftsRes.documents);
       setError(null);
     } catch (err) {
+      console.error('Failed to load shifts:', err);
       setError(err.message || 'Failed to load shifts');
+      setShifts([]);
     } finally {
       setLoading(false);
     }
@@ -52,9 +76,24 @@ const SchedulingBoard = () => {
   const handleApply = async (shiftId) => {
     try {
       setError(null);
-      await applyForShift(user.$id, shiftId);
+      
+      // Create application document
+      await databases.createDocument(
+        config.databaseId,
+        config.applicationsCollectionId,
+        ID.unique(),
+        {
+          shiftId,
+          guardId: user.$id,
+          guardName: profile?.firstName ? `${profile.firstName} ${profile.lastName || ''}`.trim() : user.email,
+          status: 'pending',
+          appliedAt: new Date().toISOString(),
+        }
+      );
+      
       await loadShifts();
     } catch (err) {
+      console.error('Failed to apply:', err);
       setError(err.message || 'Could not apply for shift');
     }
   };
@@ -64,14 +103,39 @@ const SchedulingBoard = () => {
     try {
       setCreating(true);
       setError(null);
-      await createShift(user.$id, form.clientId || profile?.clientId || null, {
-        ...form,
-        minimumGradeRequired: form.minimumGradeRequired ? Number(form.minimumGradeRequired) : null,
-        positionsOpen: Number(form.positionsOpen || 1),
-      });
+      
+      // Validate required fields
+      if (!form.siteId || !form.positionTitle || !form.date || !form.startTime || !form.endTime) {
+        throw new Error('Please fill in all required fields');
+      }
+      
+      // Create shift document directly
+      await databases.createDocument(
+        config.databaseId,
+        config.shiftsCollectionId,
+        ID.unique(),
+        {
+          clientId: form.clientId || profile?.clientId || null,
+          siteId: form.siteId,
+          positionTitle: form.positionTitle,
+          date: form.date,
+          startTime: form.startTime,
+          endTime: form.endTime,
+          minimumGradeRequired: form.minimumGradeRequired ? Number(form.minimumGradeRequired) : null,
+          positionsOpen: Number(form.positionsOpen || 1),
+          specialRequirements: form.specialRequirements || '',
+          published: false,
+          staffId: null,
+          status: 'draft',
+          createdBy: user.$id,
+          createdAt: new Date().toISOString(),
+        }
+      );
+      
       setForm({ clientId: '', siteId: '', positionTitle: '', date: '', startTime: '', endTime: '', positionsOpen: 1, minimumGradeRequired: '', specialRequirements: '' });
       await loadShifts();
     } catch (err) {
+      console.error('Failed to create shift:', err);
       setError(err.message || 'Failed to create shift');
     } finally {
       setCreating(false);

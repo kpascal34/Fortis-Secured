@@ -24,7 +24,7 @@ const Dashboard = () => {
     () => [
       { label: 'Total Clients', value: 0, helper: '' },
       { label: 'Active Shifts', value: 0, helper: '' },
-      { label: 'Pending Tasks', value: 0, helper: '' },
+      { label: 'Open Incidents', value: 0, helper: '' },
       { label: 'Total Guards', value: 0, helper: '' },
     ],
     []
@@ -62,11 +62,15 @@ const Dashboard = () => {
       }
       
       // Fetch all metrics in parallel
-      const [clientsResponse, shiftsResponse, staffResponse, incidentsResponse] = await Promise.all([
+      const tasksEnabled = Boolean(config.tasksCollectionId);
+      const [clientsResponse, shiftsResponse, staffResponse, incidentsResponse, tasksResponse] = await Promise.all([
         databases.listDocuments(config.databaseId, config.clientsCollectionId, [Query.limit(5), Query.orderDesc('$createdAt')]),
         databases.listDocuments(config.databaseId, config.shiftsCollectionId, [Query.limit(100)]).catch(() => ({ documents: [], total: 0 })),
         databases.listDocuments(config.databaseId, config.staffProfilesCollectionId, [Query.limit(100)]).catch(() => ({ documents: [], total: 0 })),
         databases.listDocuments(config.databaseId, config.incidentsCollectionId, [Query.limit(3), Query.orderDesc('$createdAt')]).catch(() => ({ documents: [] })),
+        tasksEnabled
+          ? databases.listDocuments(config.databaseId, config.tasksCollectionId, [Query.limit(5), Query.orderDesc('updatedAt')]).catch(() => ({ documents: [] }))
+          : Promise.resolve({ documents: [] }),
       ]);
 
       // Process clients
@@ -106,10 +110,24 @@ const Dashboard = () => {
       }));
       setIncidents(incidentsData);
 
+      // Process tasks (if enabled)
+      const tasksData = tasksResponse.documents.map((task) => ({
+        title: task.title || 'Task',
+        status: task.status?.charAt(0).toUpperCase() + task.status?.slice(1) || 'Pending',
+        meta: task.description || (task.assignedTo ? `Assigned to ${task.assignedTo}` : 'Unassigned'),
+        due: task.dueDate ? `Due ${new Date(task.dueDate).toLocaleDateString('en-GB')}` : '',
+      }));
+      setTasks(tasksData);
+
+      const openIncidentsCount = incidentsResponse.documents.filter(i => (i.status || 'open').toLowerCase() !== 'resolved').length;
+      const pendingTasksCount = tasksData.filter(t => t.status.toLowerCase() === 'pending' || t.status.toLowerCase() === 'in-progress').length;
+
       setStats([
         { label: 'Total Clients', value: totalClients, helper: activeClients ? `${activeClients} active` : '' },
         { label: 'Active Shifts', value: activeShifts, helper: 'Today onwards' },
-        { label: 'Pending Tasks', value: 0, helper: 'Coming soon' },
+        tasksEnabled
+          ? { label: 'Pending Tasks', value: pendingTasksCount, helper: tasksData.length ? `${tasksData.length} recent` : '' }
+          : { label: 'Open Incidents', value: openIncidentsCount, helper: incidentsData.length ? `${incidentsData.length} recent` : '' },
         { label: 'Total Guards', value: totalGuards, helper: activeGuards ? `${activeGuards} active` : '' },
       ]);
     } catch (err) {
