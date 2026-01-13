@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Setup script for compliance_wizard_steps collection
- * Run: node scripts/create_compliance_wizard_collection.mjs
+ * Setup script for staff_numbers collection
+ * Run: node scripts/create_staff_numbers_collection.mjs
  */
 
 import { Client, Databases, ID } from 'node-appwrite';
@@ -16,22 +16,22 @@ const client = new Client()
 
 const databases = new Databases(client);
 const databaseId = process.env.VITE_APPWRITE_DATABASE_ID;
-const collectionId = process.env.VITE_APPWRITE_COMPLIANCE_WIZARD_COLLECTION_ID || 'compliance_wizard_steps';
+const collectionId = process.env.VITE_APPWRITE_STAFF_NUMBERS_COLLECTION_ID || 'staff_numbers';
 
-async function createComplianceWizardCollection() {
+async function createStaffNumbersCollection() {
   try {
-    console.log('Creating compliance_wizard_steps collection...');
+    console.log('Creating staff_numbers collection...');
 
     // Create collection
     await databases.createCollection(
       databaseId,
       collectionId,
-      'Compliance Wizard Steps',
+      'Staff Numbers',
       [
         'read("users")', // Any authenticated user can read
-        'create("users")', // Any authenticated user can create
-        'update("users")', // Any authenticated user can update
-        'delete("users")', // Any authenticated user can delete
+        'create("users")', // Any authenticated user can create (control via app logic)
+        'update("users")',
+        'delete("users")',
       ]
     );
 
@@ -48,34 +48,40 @@ async function createComplianceWizardCollection() {
       true // required
     );
 
-    await databases.createIntegerAttribute(
+    await databases.createStringAttribute(
       databaseId,
       collectionId,
-      'stepNumber',
-      true, // required
-      1,
-      7
+      'employeeNumber',
+      50,
+      true // required
     );
 
     await databases.createStringAttribute(
       databaseId,
       collectionId,
-      'stepData',
-      65535, // Max length for JSON data
-      true // required
+      'prefix',
+      10,
+      false
+    );
+
+    await databases.createIntegerAttribute(
+      databaseId,
+      collectionId,
+      'sequence',
+      false
     );
 
     await databases.createDatetimeAttribute(
       databaseId,
       collectionId,
-      'createdAt',
+      'issuedAt',
       true
     );
 
     await databases.createDatetimeAttribute(
       databaseId,
       collectionId,
-      'updatedAt',
+      'createdAt',
       true
     );
 
@@ -92,49 +98,42 @@ async function createComplianceWizardCollection() {
       await databases.createIndex(
         databaseId,
         collectionId,
-        'staffId_idx',
-        'key',
+        'staffId_unique',
+        'unique',
         ['staffId'],
         ['asc']
       );
-      console.log('✓ staffId index created');
+      console.log('✓ Unique staffId index created');
     } catch (error) {
-      console.log('Note: staffId index may already exist or attribute not ready:', error.message);
+      console.log('Note: staffId index may already exist:', error.message);
     }
 
     try {
       await databases.createIndex(
         databaseId,
         collectionId,
-        'stepNumber_idx',
-        'key',
-        ['stepNumber'],
+        'employeeNumber_unique',
+        'unique',
+        ['employeeNumber'],
         ['asc']
       );
-      console.log('✓ stepNumber index created');
+      console.log('✓ Unique employeeNumber index created');
     } catch (error) {
-      console.log('Note: stepNumber index may already exist or attribute not ready:', error.message);
-    }
-
-    try {
-      await databases.createIndex(
-        databaseId,
-        collectionId,
-        'staffId_stepNumber_idx',
-        'unique',
-        ['staffId', 'stepNumber'],
-        ['asc', 'asc']
-      );
-      console.log('✓ Combined unique index created');
-    } catch (error) {
-      console.log('Note: Combined index may already exist or attributes not ready:', error.message);
+      console.log('Note: employeeNumber index may already exist:', error.message);
     }
 
     console.log('\n✅ Setup complete!');
     console.log('\nCollection ID:', collectionId);
+    console.log('\nCollection Structure:');
+    console.log('- staffId (string, required): Staff member ID');
+    console.log('- employeeNumber (string, required): Generated employee number (unique)');
+    console.log('- prefix (string, optional): Department/type prefix');
+    console.log('- sequence (integer, optional): Sequential counter');
+    console.log('- issuedAt (datetime, required): When number was issued');
+    console.log('- createdAt (datetime, required): Record creation timestamp');
     console.log('\nNext steps:');
     console.log('1. Add to Vercel environment variables:');
-    console.log(`   VITE_APPWRITE_COMPLIANCE_WIZARD_COLLECTION_ID=${collectionId}`);
+    console.log(`   VITE_APPWRITE_STAFF_NUMBERS_COLLECTION_ID=${collectionId}`);
     console.log('2. Restart your dev server or redeploy');
 
   } catch (error) {
@@ -146,4 +145,4 @@ async function createComplianceWizardCollection() {
   }
 }
 
-createComplianceWizardCollection();
+createStaffNumbersCollection();

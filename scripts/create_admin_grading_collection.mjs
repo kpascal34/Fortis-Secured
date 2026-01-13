@@ -28,12 +28,10 @@ async function createAdminGradingCollection() {
       collectionId,
       'Admin Grading',
       [
-        // Permissions for admins to manage, staff to read own
-        'read("label:admin")',
-        'read("label:staff")',
-        'create("label:admin")',
-        'update("label:admin")',
-        'delete("label:admin")',
+        'read("users")', // Any authenticated user can read
+        'create("users")', // Any authenticated user can create (control via app logic)
+        'update("users")', // Any authenticated user can update (control via app logic)
+        'delete("users")', // Any authenticated user can delete (control via app logic)
       ]
     );
 
