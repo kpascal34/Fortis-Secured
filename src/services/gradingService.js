@@ -4,18 +4,24 @@
  */
 
 import { ID, Query } from 'appwrite';
-import { databases } from '../lib/appwrite.js';
+import { databases, config } from '../lib/appwrite.js';
 import { logAudit } from './auditService.js';
 
-const dbId = process.env.VITE_APPWRITE_DATABASE_ID;
-const gradesCol = 'staff_grades';
+const dbId = config.databaseId;
+const gradesCol = config.staffGradesCollectionId || 'staff_grades';
+const complianceCol = config.staffComplianceCollectionId || 'staff_compliance';
+const staffProfilesCol = config.staffProfilesCollectionId || 'staff_profiles';
 
 /**
  * Get all staff pending grading
  */
 export async function getStaffPendingGrading() {
+  if (!complianceCol || !gradesCol || !staffProfilesCol) {
+    throw new Error('Grading collections not configured');
+  }
+  
   // Get all approved compliance staff
-  const compDocs = await databases.listDocuments(dbId, 'staff_compliance', [
+  const compDocs = await databases.listDocuments(dbId, complianceCol, [
     Query.equal('status', 'approved'),
   ]);
 
@@ -34,7 +40,7 @@ export async function getStaffPendingGrading() {
   if (pendingIds.length === 0) return [];
 
   // Get staff details
-  const staffDocs = await databases.listDocuments(dbId, 'staff_profiles', [
+  const staffDocs = await databases.listDocuments(dbId, staffProfilesCol, [
     Query.limit(1000),
   ]);
 

@@ -53,6 +53,9 @@ export const config = {
   staffLeaveCollectionId: import.meta.env.VITE_APPWRITE_STAFF_LEAVE_COLLECTION_ID,
   staffTrainingCollectionId: import.meta.env.VITE_APPWRITE_STAFF_TRAINING_COLLECTION_ID,
   staffLicensesCollectionId: import.meta.env.VITE_APPWRITE_STAFF_LICENSES_COLLECTION_ID,
+  complianceWizardCollectionId: import.meta.env.VITE_APPWRITE_COMPLIANCE_WIZARD_COLLECTION_ID,
+  staffGradesCollectionId: import.meta.env.VITE_APPWRITE_STAFF_GRADES_COLLECTION_ID,
+  staffComplianceCollectionId: import.meta.env.VITE_APPWRITE_STAFF_COMPLIANCE_COLLECTION_ID,
 };
 
 export const DATABASE_ID = databaseId;

@@ -3,6 +3,7 @@ import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC';
 import { getStaffPendingGrading, getAllStaffGrades, submitStaffGrade } from '../../services/gradingService.js';
+import { config } from '../../lib/appwrite';
 
 const AdminGrading = () => {
   const { user } = useCurrentUser();
@@ -15,6 +16,11 @@ const AdminGrading = () => {
   const [form, setForm] = useState({});
 
   const load = async () => {
+    if (!config.staffGradesCollectionId || !config.staffComplianceCollectionId) {
+      setError('Grading collections not configured. Please contact administrator.');
+      return;
+    }
+    
     try {
       setLoading(true);
       const [p, g] = await Promise.all([getStaffPendingGrading(), getAllStaffGrades()]);
@@ -58,6 +64,21 @@ const AdminGrading = () => {
       <div className="min-h-screen bg-night-sky p-6 text-white">
         <GlassPanel className="bg-white/5 border-white/10">
           <p className="text-red-200">Admins only.</p>
+        </GlassPanel>
+      </div>
+    );
+  }
+
+  if (!config.staffGradesCollectionId || !config.staffComplianceCollectionId) {
+    return (
+      <div className="min-h-screen bg-night-sky p-6 text-white">
+        <GlassPanel className="bg-white/5 border-white/10">
+          <p className="text-red-200">Staff grading collections are not configured. Please contact your administrator.</p>
+          <p className="mt-2 text-sm text-white/60">Missing environment variables:</p>
+          <ul className="mt-1 ml-4 list-disc text-xs text-white/60">
+            {!config.staffGradesCollectionId && <li>VITE_APPWRITE_STAFF_GRADES_COLLECTION_ID</li>}
+            {!config.staffComplianceCollectionId && <li>VITE_APPWRITE_STAFF_COMPLIANCE_COLLECTION_ID</li>}
+          </ul>
         </GlassPanel>
       </div>
     );

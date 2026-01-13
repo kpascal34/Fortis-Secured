@@ -14,6 +14,8 @@ import {
   submitComplianceReview,
 } from '../../services/complianceService.js';
 import { uploadComplianceFileWithMeta } from '../../services/fileUploadService.js';
+import { databases, config } from '../../lib/appwrite';
+import { ID } from 'appwrite';
 
 const defaultAddress = { line1: '', postcode: '', months: 0 };
 const defaultJob = { employer: '', jobTitle: '', fromDate: '', toDate: '' };
@@ -59,9 +61,51 @@ const ComplianceWizard = () => {
     loadProgress();
   }, [user, userLoading]);
 
+  const saveStepToCollection = async (stepNumber, stepData) => {
+    if (!config.complianceWizardCollectionId) {
+      throw new Error('Compliance wizard collection not configured. Please contact administrator.');
+    }
+    
+    const docId = `${user.$id}_step_${stepNumber}`;
+    
+    try {
+      // Try to update existing document
+      await databases.updateDocument(
+        config.databaseId,
+        config.complianceWizardCollectionId,
+        docId,
+        {
+          staffId: user.$id,
+          stepNumber,
+          stepData: JSON.stringify(stepData),
+          updatedAt: new Date().toISOString(),
+        }
+      );
+    } catch (error) {
+      // If document doesn't exist, create it
+      if (error.code === 404) {
+        await databases.createDocument(
+          config.databaseId,
+          config.complianceWizardCollectionId,
+          docId,
+          {
+            staffId: user.$id,
+            stepNumber,
+            stepData: JSON.stringify(stepData),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        );
+      } else {
+        throw error;
+      }
+    }
+  };
+
   const onSaveStep1 = async () => {
     try {
       setBusy(true);
+      await saveStepToCollection(1, step1);
       await submitStep1Identity(user.$id, step1);
       setToast('Step 1 saved');
       setStep(2);
@@ -75,6 +119,7 @@ const ComplianceWizard = () => {
   const onSaveStep2 = async () => {
     try {
       setBusy(true);
+      await saveStepToCollection(2, step2);
       await submitStep2Employment(user.$id, step2);
       setToast('Step 2 saved');
       setStep(3);
@@ -89,6 +134,7 @@ const ComplianceWizard = () => {
     try {
       setBusy(true);
       const ids = evidenceFiles.split(',').map(s => s.trim()).filter(Boolean);
+      await saveStepToCollection(3, { evidenceFileIds: ids });
       await submitStep3Evidence(user.$id, ids);
       setToast('Step 3 saved');
       setStep(4);
@@ -173,6 +219,7 @@ const ComplianceWizard = () => {
   const onSaveStep4 = async () => {
     try {
       setBusy(true);
+      await saveStepToCollection(4, refs);
       await submitStep4References(user.$id, refs);
       setToast('Step 4 saved');
       setStep(5);
@@ -186,6 +233,7 @@ const ComplianceWizard = () => {
   const onSaveStep5 = async () => {
     try {
       setBusy(true);
+      await saveStepToCollection(5, { criminalRecordFileId: criminalFile });
       await submitStep5Criminal(user.$id, criminalFile);
       setToast('Step 5 saved');
       setStep(6);
@@ -199,6 +247,7 @@ const ComplianceWizard = () => {
   const onSaveStep6 = async () => {
     try {
       setBusy(true);
+      await saveStepToCollection(6, sia);
       await submitStep6SIALicence(user.$id, sia.licenceNumber, sia.expiryDate);
       setToast('Step 6 saved');
       setStep(7);
@@ -212,6 +261,7 @@ const ComplianceWizard = () => {
   const onSaveStep7 = async () => {
     try {
       setBusy(true);
+      await saveStepToCollection(7, { videoFileId: videoFile });
       await submitStep7Video(user.$id, videoFile);
       setToast('Step 7 saved');
     } catch (err) {
@@ -238,6 +288,17 @@ const ComplianceWizard = () => {
       <div className="min-h-screen bg-night-sky p-6 text-white">
         <GlassPanel className="bg-white/5 border-white/10">
           <p className="text-red-200">Only staff or admins can access the compliance wizard.</p>
+        </GlassPanel>
+      </div>
+    );
+  }
+
+  if (!config.complianceWizardCollectionId) {
+    return (
+      <div className="min-h-screen bg-night-sky p-6 text-white">
+        <GlassPanel className="bg-white/5 border-white/10">
+          <p className="text-red-200">Compliance wizard collection is not configured. Please contact your administrator.</p>
+          <p className="mt-2 text-sm text-white/60">Missing: VITE_APPWRITE_COMPLIANCE_WIZARD_COLLECTION_ID</p>
         </GlassPanel>
       </div>
     );

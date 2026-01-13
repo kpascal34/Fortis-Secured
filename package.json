@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "build:prod": "npm run clean && vite build",
-    "setup:create-tasks": "node scripts/create_tasks_collection.mjs"
+    "setup:create-tasks": "node scripts/create_tasks_collection.mjs",
+    "setup:create-compliance-wizard": "node scripts/create_compliance_wizard_collection.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.958.0",

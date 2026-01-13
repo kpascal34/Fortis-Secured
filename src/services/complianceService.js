@@ -4,11 +4,11 @@
  */
 
 import { Query } from 'appwrite';
-import { databases } from '../lib/appwrite.js';
+import { databases, config } from '../lib/appwrite.js';
 import { logAudit } from './auditService.js';
 
-const dbId = process.env.VITE_APPWRITE_DATABASE_ID;
-const compCol = 'staff_compliance';
+const dbId = config.databaseId;
+const compCol = config.staffComplianceCollectionId || 'staff_compliance';
 
 /**
  * Get compliance progress for staff
