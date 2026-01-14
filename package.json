@@ -13,7 +13,8 @@
     "setup:create-compliance-wizard": "node scripts/create_compliance_wizard_collection.mjs",
     "setup:create-admin-grading": "node scripts/create_admin_grading_collection.mjs",
     "setup:create-staff-numbers": "node scripts/create_staff_numbers_collection.mjs",
-    "setup:create-staff-compliance": "node scripts/create_staff_compliance_collection.mjs"
+    "setup:create-staff-compliance": "node scripts/create_staff_compliance_collection.mjs",
+    "seed:sample-data": "node scripts/populate_sample_data.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.958.0",
@@ -21,6 +22,7 @@
     "appwrite": "^13.0.0",
     "autoprefixer": "^10.4.18",
     "clsx": "^2.1.0",
+    "dotenv": "^16.4.5",
     "framer-motion": "^12.23.24",
     "googleapis": "^132.0.0",
     "lucide-react": "^0.553.0",
