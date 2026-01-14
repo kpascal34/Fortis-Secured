@@ -387,6 +387,83 @@ const Scheduling = () => {
           </div>
         </div>
 
+        {/* Open Shifts Section */}
+        {(() => {
+          const openShifts = shifts.filter((shift) => 
+            (shift.status === 'scheduled' || shift.status === 'unfilled') && 
+            new Date(shift.date) >= new Date(new Date().setHours(0, 0, 0, 0))
+          );
+          
+          if (openShifts.length > 0) {
+            return (
+              <div className="mb-6 glass-panel p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <AiOutlineBell className="h-5 w-5 text-accent" />
+                    Open Shifts ({openShifts.length})
+                  </h3>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {openShifts.slice(0, 6).map((shift) => {
+                    const assigned = activeAssignmentsByShift[shift.$id] || 0;
+                    const required = shift.requiredHeadcount || 1;
+                    const remaining = Math.max(0, required - assigned);
+                    
+                    return (
+                      <div
+                        key={shift.$id}
+                        className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-accent/50 transition-all"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-white text-sm">
+                              {getClientName(shift.clientId)}
+                            </h4>
+                            <p className="text-xs text-white/60 mt-1">
+                              {getSiteName(shift.siteId)}
+                            </p>
+                          </div>
+                          {remaining > 0 && (
+                            <span className="rounded-full bg-yellow-500/20 px-2 py-1 text-xs font-medium text-yellow-300">
+                              {remaining} needed
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-2 mb-3">
+                          <div className="flex items-center gap-2 text-xs text-white/70">
+                            <AiOutlineCalendar className="h-3 w-3 text-accent" />
+                            {new Date(shift.date).toLocaleDateString('en-GB')}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-white/70">
+                            <AiOutlineClockCircle className="h-3 w-3 text-accent" />
+                            {shift.startTime} - {shift.endTime}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-white/70">
+                            <AiOutlineUser className="h-3 w-3 text-accent" />
+                            {assigned}/{required} assigned
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleAssignGuards(shift)}
+                          className="w-full rounded-lg bg-accent px-3 py-2 text-xs font-medium text-night-sky transition-all hover:bg-accent/90"
+                        >
+                          {remaining > 0 ? 'Assign Guards' : 'View Assignment'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {openShifts.length > 6 && (
+                  <p className="mt-4 text-center text-sm text-white/60">
+                    +{openShifts.length - 6} more open shift{openShifts.length - 6 > 1 ? 's' : ''} available
+                  </p>
+                )}
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {/* Stats */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <div className="glass-panel p-6">
