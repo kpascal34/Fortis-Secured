@@ -98,7 +98,7 @@ export const validateGuardAssignment = (guard, shift, assignments = []) => {
   }
 
   // Check if guard has conflicting shifts (same date/time)
-  const shiftDate = shift.shiftDate;
+  const shiftDate = shift.date;
   const shiftStart = `${shiftDate}T${shift.startTime}`;
   const shiftEnd = `${shiftDate}T${shift.endTime}`;
   
@@ -108,7 +108,7 @@ export const validateGuardAssignment = (guard, shift, assignments = []) => {
     const existingShift = a.shift;
     if (!existingShift) return false;
     
-    const existingDate = existingShift.shiftDate;
+    const existingDate = existingShift.date;
     if (existingDate !== shiftDate) return false;
     
     const existingStart = `${existingDate}T${existingShift.startTime}`;

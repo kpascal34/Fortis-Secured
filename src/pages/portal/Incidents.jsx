@@ -1020,7 +1020,7 @@ const Incidents = () => {
                       .slice(0, 50)
                       .map(shift => (
                         <option key={shift.$id} value={shift.$id}>
-                          {shift.shiftDate} {shift.startTime}
+                          {shift.date} {shift.startTime}
                         </option>
                       ))}
                   </select>

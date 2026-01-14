@@ -815,7 +815,7 @@ const Tasks = () => {
                       .filter(shift => !formData.siteId || shift.siteId === formData.siteId)
                       .map(shift => (
                         <option key={shift.$id} value={shift.$id}>
-                          {shift.shiftDate} {shift.startTime}-{shift.endTime}
+                          {shift.date} {shift.startTime}-{shift.endTime}
                         </option>
                       ))}
                   </select>

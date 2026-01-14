@@ -143,10 +143,10 @@ const TimeTracking = () => {
 
   const getViolations = (entry, shift) => {
     const issues = [];
-    if (!shift || !shift.shiftDate) return issues;
+    if (!shift || !shift.date) return issues;
 
-    const scheduledStart = shift.startTime ? new Date(`${shift.shiftDate}T${shift.startTime}`) : null;
-    const scheduledEnd = shift.endTime ? new Date(`${shift.shiftDate}T${shift.endTime}`) : null;
+    const scheduledStart = shift.startTime ? new Date(`${shift.date}T${shift.startTime}`) : null;
+    const scheduledEnd = shift.endTime ? new Date(`${shift.date}T${shift.endTime}`) : null;
     const checkIn = entry.checkInTime ? new Date(entry.checkInTime) : null;
     const checkOut = entry.checkOutTime ? new Date(entry.checkOutTime) : null;
     const scheduledHours = calculateScheduledHours(shift.startTime, shift.endTime);
@@ -204,19 +204,19 @@ const TimeTracking = () => {
       const today = now.toISOString().split('T')[0];
       filtered = filtered.filter(entry => {
         const shift = getShiftDetails(entry.shiftId);
-        return shift.shiftDate === today;
+        return shift.date === today;
       });
     } else if (dateRange === 'week') {
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       filtered = filtered.filter(entry => {
         const shift = getShiftDetails(entry.shiftId);
-        return new Date(shift.shiftDate) >= weekAgo;
+        return new Date(shift.date) >= weekAgo;
       });
     } else if (dateRange === 'month') {
       const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       filtered = filtered.filter(entry => {
         const shift = getShiftDetails(entry.shiftId);
-        return new Date(shift.shiftDate) >= monthAgo;
+        return new Date(shift.date) >= monthAgo;
       });
     }
 
@@ -265,7 +265,7 @@ const TimeTracking = () => {
     filtered.sort((a, b) => {
       const shiftA = getShiftDetails(a.shiftId);
       const shiftB = getShiftDetails(b.shiftId);
-      return new Date(shiftB.shiftDate) - new Date(shiftA.shiftDate);
+      return new Date(shiftB.date) - new Date(shiftA.date);
     });
 
     return filtered;
@@ -343,7 +343,7 @@ const TimeTracking = () => {
       const issues = getViolations(entry, shift).join('; ');
 
       return {
-        Date: shift.shiftDate,
+        Date: shift.date,
         Guard: getGuardName(entry.guardId),
         Client: getClientName(shift.clientId),
         Site: getSiteName(shift.siteId),
@@ -592,7 +592,7 @@ const TimeTracking = () => {
                 const shift = getShiftDetails(entry.shiftId);
                 return (
                   <option key={entry.$id} value={entry.$id}>
-                    {getGuardName(entry.guardId)} · {shift.shiftDate} · {shift.startTime}-{shift.endTime}
+                    {getGuardName(entry.guardId)} · {shift.date} · {shift.startTime}-{shift.endTime}
                   </option>
                 );
               })}
@@ -841,7 +841,7 @@ const TimeTracking = () => {
                   return (
                     <tr key={entry.$id} className="border-b border-white/10 hover:bg-white/5">
                       <td className="px-2 sm:px-4 py-2 sm:py-4 text-white">
-                        {shift.shiftDate ? new Date(shift.shiftDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
+                        {shift.date ? new Date(shift.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
                       </td>
                       <td className="px-2 sm:px-4 py-2 sm:py-4">
                         <div className="flex items-center gap-1">
@@ -953,7 +953,7 @@ const TimeTracking = () => {
             <div className="border-b border-white/10 bg-white/5 p-6">
               <h2 className="text-2xl font-bold text-white">Edit Time Entry</h2>
               <p className="mt-2 text-sm text-white/70">
-                {getGuardName(editingEntry.guardId)} - {new Date(getShiftDetails(editingEntry.shiftId).shiftDate).toLocaleDateString()}
+                {getGuardName(editingEntry.guardId)} - {new Date(getShiftDetails(editingEntry.shiftId).date).toLocaleDateString()}
               </p>
             </div>
 

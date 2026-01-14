@@ -9,7 +9,7 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
     clientId: '',
     siteId: '',
     postId: '',
-    shiftDate: '',
+    date: '',
     startTime: '',
     endTime: '',
     shiftType: 'Static Guarding',
@@ -54,7 +54,7 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
         clientId: shift.clientId || '',
         siteId: shift.siteId || '',
         postId: shift.postId || '',
-        shiftDate: shift.shiftDate || '',
+        date: shift.date || '',
         startTime: shift.startTime || '',
         endTime: shift.endTime || '',
         shiftType: shift.shiftType || 'Static Guarding',
@@ -77,7 +77,7 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
     } else if (shift?.isDuplicate) {
       setFormData({
         ...shift,
-        shiftDate: '',
+        date: '',
         status: 'scheduled',
       });
       if (shift.siteId) {
@@ -134,14 +134,14 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
       errors.siteId = 'Site is required';
     }
 
-    if (!validateRequired(formData.shiftDate)) {
-      errors.shiftDate = 'Shift date is required';
+    if (!validateRequired(formData.date)) {
+      errors.date = 'Shift date is required';
     } else {
-      const shiftDate = parseDate(formData.shiftDate);
+      const shiftDate = parseDate(formData.date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (shiftDate < today) {
-        errors.shiftDate = 'Shift date must be today or in the future';
+        errors.date = 'Shift date must be today or in the future';
       }
     }
 
@@ -178,7 +178,7 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
         errors.recurringEndDate = 'Recurring end date is required';
       } else {
         const endDate = parseDate(formData.recurringEndDate);
-        const shiftDate = parseDate(formData.shiftDate);
+        const shiftDate = parseDate(formData.date);
         if (endDate < shiftDate) {
           errors.recurringEndDate = 'Recurring end date must be after shift date';
         }
@@ -417,20 +417,20 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
                 <input
                   required
                   type="date"
-                  name="shiftDate"
-                  value={formData.shiftDate}
+                  name="date"
+                  value={formData.date}
                   onChange={handleChange}
-                  aria-invalid={formErrors.shiftDate ? 'true' : 'false'}
-                  aria-describedby={formErrors.shiftDate ? 'shiftDate-error' : undefined}
+                  aria-invalid={formErrors.date ? 'true' : 'false'}
+                  aria-describedby={formErrors.date ? 'date-error' : undefined}
                   className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors ${
-                    formErrors.shiftDate
+                    formErrors.date
                       ? 'border-red-500 focus:border-red-400'
                       : 'border-white/10 focus:border-accent'
                   }`}
                 />
-                {formErrors.shiftDate && (
-                  <p id="shiftDate-error" className="mt-1 text-sm text-red-400">
-                    {formErrors.shiftDate}
+                {formErrors.date && (
+                  <p id="date-error" className="mt-1 text-sm text-red-400">
+                    {formErrors.date}
                   </p>
                 )}
               </div>

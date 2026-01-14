@@ -194,7 +194,7 @@ const Scheduling = () => {
   const filteredShifts = shifts.filter((shift) => {
     if (filterClient !== 'all' && shift.clientId !== filterClient) return false;
     if (filterStatus !== 'all' && shift.status !== filterStatus) return false;
-    if (filterDate && shift.shiftDate !== filterDate) return false;
+    if (filterDate && shift.date !== filterDate) return false;
     if (showUnfilledOnly && shift.status !== 'unfilled') return false;
     if (searchTerm) {
       const clientName = getClientName(shift.clientId).toLowerCase();
@@ -457,7 +457,7 @@ const Scheduling = () => {
                         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                           <div className="flex items-center gap-2 text-sm text-white/70">
                             <AiOutlineCalendar className="h-4 w-4 text-accent" />
-                            {new Date(shift.shiftDate).toLocaleDateString('en-GB')}
+                            {new Date(shift.date).toLocaleDateString('en-GB')}
                           </div>
                           <div className="flex items-center gap-2 text-sm text-white/70">
                             <AiOutlineClockCircle className="h-4 w-4 text-accent" />
@@ -528,7 +528,7 @@ const Scheduling = () => {
             onShiftClick={handleEditShift}
             onAssignShift={handleAssignGuards}
             onAddShift={(date, time) => {
-              setEditingShift({ shiftDate: date, startTime: time || '' });
+              setEditingShift({ date: date, startTime: time || '' });
               setIsModalOpen(true);
             }}
             getClientName={getClientName}

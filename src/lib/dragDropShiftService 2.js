@@ -34,7 +34,7 @@ const ensureConfigured = () => {
   }
 };
 
-// Fetch shifts for a specific date (uses 'shiftDate' in DB, maps to 'date' for UI)
+// Fetch shifts for a specific date (uses 'date' field in DB)
 export const fetchShiftsForDate = async (date) => {
   try {
     ensureConfigured();
@@ -42,13 +42,13 @@ export const fetchShiftsForDate = async (date) => {
       DATABASE_ID,
       SHIFTS_COLLECTION_ID,
       [
-        Query.equal('shiftDate', date),
+        Query.equal('date', date),
         Query.orderAsc('startTime'),
       ]
     );
     return response.documents.map(doc => ({
       ...doc,
-      date: doc.shiftDate || doc.date || date,
+      date: doc.date || date,
     }));
   } catch (error) {
     console.error('Error fetching shifts for date:', error);
@@ -56,7 +56,7 @@ export const fetchShiftsForDate = async (date) => {
   }
 };
 
-// Fetch shifts for a date range (uses 'shiftDate' in DB)
+// Fetch shifts for a date range (uses 'date' field in DB)
 export const fetchShiftsForDateRange = async (startDate, endDate) => {
   try {
     ensureConfigured();
@@ -64,15 +64,15 @@ export const fetchShiftsForDateRange = async (startDate, endDate) => {
       DATABASE_ID,
       SHIFTS_COLLECTION_ID,
       [
-        Query.greaterThanEqual('shiftDate', startDate),
-        Query.lessThanEqual('shiftDate', endDate),
-        Query.orderAsc('shiftDate'),
+        Query.greaterThanEqual('date', startDate),
+        Query.lessThanEqual('date', endDate),
+        Query.orderAsc('date'),
         Query.limit(500),
       ]
     );
     return response.documents.map(doc => ({
       ...doc,
-      date: doc.shiftDate || doc.date,
+      date: doc.date,
     }));
   } catch (error) {
     console.error('Error fetching shifts for date range:', error);
@@ -80,7 +80,7 @@ export const fetchShiftsForDateRange = async (startDate, endDate) => {
   }
 };
 
-// Fetch shifts for a specific site (uses 'shiftDate' in DB)
+// Fetch shifts for a specific site (uses 'date' field in DB)
 export const fetchSiteShifts = async (siteId, startDate, endDate) => {
   try {
     ensureConfigured();
@@ -89,14 +89,14 @@ export const fetchSiteShifts = async (siteId, startDate, endDate) => {
       SHIFTS_COLLECTION_ID,
       [
         Query.equal('siteId', siteId),
-        Query.greaterThanEqual('shiftDate', startDate),
-        Query.lessThanEqual('shiftDate', endDate),
-        Query.orderAsc('shiftDate'),
+        Query.greaterThanEqual('date', startDate),
+        Query.lessThanEqual('date', endDate),
+        Query.orderAsc('date'),
       ]
     );
     return response.documents.map(doc => ({
       ...doc,
-      date: doc.shiftDate || doc.date,
+      date: doc.date,
     }));
   } catch (error) {
     console.error('Error fetching site shifts:', error);
@@ -113,14 +113,14 @@ export const fetchStaffShifts = async (staffId, startDate, endDate) => {
       SHIFTS_COLLECTION_ID,
       [
         Query.equal('staffId', staffId),
-        Query.greaterThanEqual('shiftDate', startDate),
-        Query.lessThanEqual('shiftDate', endDate),
-        Query.orderAsc('shiftDate'),
+        Query.greaterThanEqual('date', startDate),
+        Query.lessThanEqual('date', endDate),
+        Query.orderAsc('date'),
       ]
     );
     return response.documents.map(doc => ({
       ...doc,
-      date: doc.shiftDate || doc.date,
+      date: doc.date,
     }));
   } catch (error) {
     console.error('Error fetching staff shifts:', error);
@@ -140,7 +140,7 @@ export const createShift = async (shiftData) => {
       SHIFTS_COLLECTION_ID,
       docId,
       {
-        shiftDate: shiftData.date || shiftData.shiftDate,
+        date: shiftData.date,
         startTime: shiftData.startTime,
         endTime: shiftData.endTime,
         title: shiftData.title || 'Shift',
@@ -311,7 +311,7 @@ export const getShiftStats = async (startDate, endDate, siteId = null) => {
       stats.byStatus[shift.status]++;
 
       // Count by date
-      const d = shift.shiftDate || shift.date;
+      const d = shift.date;
       if (!stats.byDate[d]) {
         stats.byDate[d] = 0;
       }
@@ -341,7 +341,7 @@ export const getShiftStats = async (startDate, endDate, siteId = null) => {
 export const transformShiftsForDragDrop = (appwriteShifts) => {
   return appwriteShifts.map(shift => ({
     $id: shift.$id,
-    date: shift.shiftDate || shift.date || new Date().toISOString().split('T')[0],
+    date: shift.date || new Date().toISOString().split('T')[0],
     startTime: shift.startTime,
     endTime: shift.endTime,
     title: shift.title || 'Shift',

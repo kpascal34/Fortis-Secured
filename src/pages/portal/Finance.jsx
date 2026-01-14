@@ -311,7 +311,7 @@ const Finance = () => {
         const hours = calculateHours(assignment.checkInTime, assignment.checkOutTime);
         const guardName = getGuardName(assignment.guardId);
         const siteName = getSiteName(shift.siteId);
-        const shiftDate = new Date(shift.shiftDate).toLocaleDateString();
+        const shiftDate = new Date(shift.date).toLocaleDateString();
         
         if (hours > 0) {
           newItems.push({
@@ -356,13 +356,13 @@ const Finance = () => {
       if (shift.clientId !== formData.clientId) return false;
 
       // Filter by date if set
-      if (shiftDateFilter && shift.shiftDate !== shiftDateFilter) return false;
+      if (shiftDateFilter && shift.date !== shiftDateFilter) return false;
 
       // Filter by search term
       if (shiftSearchTerm) {
         const searchLower = shiftSearchTerm.toLowerCase();
         const siteName = getSiteName(shift.siteId).toLowerCase();
-        const shiftDate = new Date(shift.shiftDate).toLocaleDateString().toLowerCase();
+        const shiftDate = new Date(shift.date).toLocaleDateString().toLowerCase();
         
         if (!siteName.includes(searchLower) && !shiftDate.includes(searchLower)) {
           return false;
@@ -377,7 +377,7 @@ const Finance = () => {
       );
 
       return assignments.length > 0;
-    }).sort((a, b) => new Date(b.shiftDate) - new Date(a.shiftDate));
+    }).sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
   const getShiftHoursAndCost = (shiftId) => {
@@ -1390,7 +1390,7 @@ const Finance = () => {
                               <div>
                                 <p className="font-semibold text-white">{getSiteName(shift.siteId)}</p>
                                 <p className="text-sm text-white/70">
-                                  {new Date(shift.shiftDate).toLocaleDateString()} • {shift.startTime} - {shift.endTime}
+                                  {new Date(shift.date).toLocaleDateString()} • {shift.startTime} - {shift.endTime}
                                 </p>
                               </div>
                             </div>

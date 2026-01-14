@@ -256,7 +256,7 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
             <div>
               <h2 className="text-2xl font-bold text-white">Assign Guards to Shift</h2>
               <p className="mt-1 text-sm text-white/60">
-                {shift.shiftDate} • {shift.startTime} - {shift.endTime} • {shift.shiftType}
+                {shift.date} • {shift.startTime} - {shift.endTime} • {shift.shiftType}
               </p>
               <div className="mt-2 flex items-center gap-4">
                 <span className="text-sm text-white/80">

@@ -81,7 +81,7 @@ const MySchedule = () => {
               .catch(() => null)
           )
         );
-        fetchedShifts = results.filter(Boolean).map((s) => ({ ...s, date: s.shiftDate || s.date }));
+        fetchedShifts = results.filter(Boolean).map((s) => ({ ...s, date: s.date }));
       }
 
       setShifts(fetchedShifts);
@@ -124,7 +124,7 @@ const MySchedule = () => {
   };
 
   const filteredShifts = shifts.filter(shift => {
-    const shiftDate = new Date(shift.shiftDate || shift.date);
+    const shiftDate = new Date(shift.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -134,7 +134,7 @@ const MySchedule = () => {
       return shiftDate < today || shift.status === SHIFT_STATUS.COMPLETED;
     }
     return true;
-  }).sort((a, b) => new Date(b.shiftDate || b.date) - new Date(a.shiftDate || a.date));
+  }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const stats = calculateShiftStats(shifts, currentGuard);
   const complianceStatus = checkComplianceStatus(currentGuard);

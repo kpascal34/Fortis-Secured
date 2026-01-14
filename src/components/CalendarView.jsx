@@ -91,7 +91,7 @@ const WeekView = ({ shifts, assignments, guards, currentDate, onDateChange, onSh
 
   const getShiftsForDate = (date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return shifts.filter(shift => shift.shiftDate === dateStr).sort((a, b) => {
+    return shifts.filter(shift => shift.date === dateStr).sort((a, b) => {
       return a.startTime.localeCompare(b.startTime);
     });
   };
@@ -197,7 +197,7 @@ const WeekView = ({ shifts, assignments, guards, currentDate, onDateChange, onSh
 const DayView = ({ shifts, assignments, guards, currentDate, onDateChange, onShiftClick, onAssignShift, onAddShift, getClientName, getSiteName, getShiftAssignments, getGuardName, getShiftStatus, goToToday, dayNamesFull, monthNames }) => {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const dateStr = currentDate.toISOString().split('T')[0];
-  const dayShifts = shifts.filter(s => s.shiftDate === dateStr);
+  const dayShifts = shifts.filter(s => s.date === dateStr);
 
   const prevDay = () => {
     const newDate = new Date(currentDate);
@@ -368,7 +368,7 @@ const MonthView = ({ shifts, currentDate, onDateChange, onShiftClick, onAddShift
 
   const getShiftsForDate = (day) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return shifts.filter(shift => shift.shiftDate === dateStr);
+    return shifts.filter(shift => shift.date === dateStr);
   };
 
   const isToday = (day) => {
