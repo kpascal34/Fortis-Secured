@@ -7,7 +7,7 @@ import { config } from '../../lib/appwrite';
 
 const AdminGrading = () => {
   const { user } = useCurrentUser();
-  const { isAdmin } = useRole();
+  const { isAdmin, loading: roleLoading } = useRole();
   const [pending, setPending] = useState([]);
   const [grades, setGrades] = useState([]);
   const [error, setError] = useState(null);
@@ -65,6 +65,16 @@ const AdminGrading = () => {
       setSavingId(null);
     }
   };
+
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen bg-night-sky p-6 text-white">
+        <GlassPanel className="bg-white/5 border-white/10">
+          <p className="text-white/70">Checking access…</p>
+        </GlassPanel>
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return (

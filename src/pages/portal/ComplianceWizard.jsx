@@ -23,7 +23,7 @@ const defaultRef = { name: '', email: '', phone: '', type: 'employer', position:
 
 const ComplianceWizard = () => {
   const { user, loading: userLoading } = useCurrentUser();
-  const { isStaff, isAdmin } = useRole();
+  const { isStaff, isAdmin, loading: roleLoading } = useRole();
   const [progress, setProgress] = useState(null);
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -282,6 +282,16 @@ const ComplianceWizard = () => {
       setBusy(false);
     }
   };
+
+  if (userLoading || roleLoading) {
+    return (
+      <div className="min-h-screen bg-night-sky p-6 text-white">
+        <GlassPanel className="bg-white/5 border-white/10">
+          <p className="text-white/70">Checking access…</p>
+        </GlassPanel>
+      </div>
+    );
+  }
 
   if (!isStaff && !isAdmin) {
     return (

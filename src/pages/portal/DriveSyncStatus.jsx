@@ -5,7 +5,7 @@ import { useRole } from '../../hooks/useRBAC';
 import { databases, DATABASE_ID as DB_ID } from '../../lib/appwrite.js';
 
 const DriveSyncStatus = () => {
-  const { isAdmin, isManager } = useRole();
+  const { isAdmin, isManager, loading: roleLoading } = useRole();
   const [failed, setFailed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -76,6 +76,16 @@ const DriveSyncStatus = () => {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageClamped = Math.min(page, totalPages - 1);
   const pageItems = filtered.slice(pageClamped * pageSize, pageClamped * pageSize + pageSize);
+
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen bg-night-sky p-6 text-white">
+        <GlassPanel className="bg-white/5 border-white/10">
+          <p className="text-white/70">Checking access…</p>
+        </GlassPanel>
+      </div>
+    );
+  }
 
   if (!isAdmin && !isManager) {
     return (

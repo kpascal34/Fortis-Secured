@@ -30,7 +30,12 @@ export function useCurrentUser() {
       setLoading(true);
       setError(null);
       const userData = await getCurrentUserWithProfile();
-      setUser(userData);
+      // Normalize role casing to avoid guard mismatches (e.g., 'ADMIN' vs 'admin')
+      const normalizedRole = userData?.role?.toLowerCase?.();
+      const userWithNormalizedRole = normalizedRole
+        ? { ...userData, role: normalizedRole }
+        : userData;
+      setUser(userWithNormalizedRole);
     } catch (err) {
       console.error('Error fetching user:', err);
       setError(err.message);
@@ -88,13 +93,14 @@ export function useAccess(resource, permission, context = {}) {
  */
 export function useRole() {
   const { user, loading } = useCurrentUser();
+  const normalizedRole = user?.role?.toLowerCase?.();
   
   return {
-    isAdmin: user?.role === ROLES.ADMIN,
-    isManager: user?.role === ROLES.MANAGER,
-    isStaff: user?.role === ROLES.STAFF,
-    isClient: user?.role === ROLES.CLIENT,
-    role: user?.role,
+    isAdmin: normalizedRole === ROLES.ADMIN,
+    isManager: normalizedRole === ROLES.MANAGER,
+    isStaff: normalizedRole === ROLES.STAFF,
+    isClient: normalizedRole === ROLES.CLIENT,
+    role: normalizedRole || user?.role,
     loading,
   };
 }

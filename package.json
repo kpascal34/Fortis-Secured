@@ -14,6 +14,7 @@
     "setup:create-admin-grading": "node scripts/create_admin_grading_collection.mjs",
     "setup:create-staff-numbers": "node scripts/create_staff_numbers_collection.mjs",
     "setup:create-staff-compliance": "node scripts/create_staff_compliance_collection.mjs",
+    "setup:create-staff-hr": "node scripts/create_staff_collections.mjs",
     "seed:sample-data": "node scripts/populate_sample_data.mjs"
   },
   "dependencies": {
