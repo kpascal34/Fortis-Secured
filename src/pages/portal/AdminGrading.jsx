@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
+import GradingModal from '../../components/GradingModal.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC';
-import { getStaffPendingGrading, getAllStaffGrades, submitStaffGrade } from '../../services/gradingService.js';
+import { getStaffPendingGrading, getAllStaffGrades, submitStaffGrade, getGradeColor, getGradeLabel } from '../../services/gradingService.js';
 import { config } from '../../lib/appwrite';
 
 const AdminGrading = () => {
@@ -13,7 +14,9 @@ const AdminGrading = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState(null);
-  const [form, setForm] = useState({});
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [selectedGradeRecord, setSelectedGradeRecord] = useState(null);
 
   const load = async () => {
     if (!config.adminGradingCollectionId) {
@@ -42,28 +45,42 @@ const AdminGrading = () => {
   const handleSubmit = async (staffId) => {
     try {
       setSavingId(staffId);
-      const categoriesObj = parseCategories(form[staffId]?.categoriesText || '');
-      const grade = Number(form[staffId]?.grade || 0);
+      const gradeData = selectedGradeRecord;
       
-      if (grade < 1 || grade > 5) {
-        setError('Grade must be between 1 and 5');
+      if (!gradeData || !gradeData.overallGrade || gradeData.overallGrade < 1 || gradeData.overallGrade > 5) {
+        setError('Invalid grade data');
         return;
       }
       
       await submitStaffGrade(
         user.$id,
         staffId,
-        grade,
-        categoriesObj,
-        form[staffId]?.notes || null
+        gradeData.overallGrade,
+        gradeData.criteria,
+        gradeData.comment,
+        user.name || 'Admin'
       );
-      setForm({ ...form, [staffId]: {} });
+      
+      setModalOpen(false);
+      setSelectedStaff(null);
+      setSelectedGradeRecord(null);
       await load();
     } catch (err) {
       setError(err.message || 'Failed to submit grade');
     } finally {
       setSavingId(null);
     }
+  };
+
+  const openGradingModal = (staff) => {
+    setSelectedStaff(staff);
+    setSelectedGradeRecord(null);
+    setModalOpen(true);
+  };
+
+  const handleGradeModalSubmit = async (gradeData) => {
+    setSelectedGradeRecord(gradeData);
+    await handleSubmit(selectedStaff.userId || selectedStaff.$id);
   };
 
   if (roleLoading) {
@@ -114,7 +131,7 @@ const AdminGrading = () => {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold">Pending Grading</h3>
-              <p className="text-sm text-white/60">Staff awaiting grade (null grade field)</p>
+              <p className="text-sm text-white/60">Staff members awaiting performance assessment</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-accent/20 px-3 py-1 text-sm font-semibold text-accent">
@@ -125,51 +142,40 @@ const AdminGrading = () => {
           </div>
           <div className="space-y-3">
             {pending.map((staff) => (
-              <div key={staff.userId} className="rounded-lg border border-white/10 bg-white/5 p-4">
+              <div key={staff.userId || staff.$id} className="rounded-lg border border-white/10 bg-white/5 p-4">
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm text-white/60">{staff.employee_number || staff.userId}</p>
                       <p className="text-lg font-semibold">{staff.firstName} {staff.lastName}</p>
                       {staff.email && <p className="text-xs text-white/50">{staff.email}</p>}
                     </div>
-                    <div className="rounded-lg bg-yellow-500/10 px-3 py-1 text-xs font-semibold text-yellow-400">
-                      Awaiting Grade
+                    <div className="flex flex-col items-end gap-2">
+                      {staff.daysWithoutGrading && (
+                        <span className="text-xs font-semibold text-white/60">
+                          {staff.daysWithoutGrading} days without grading
+                        </span>
+                      )}
+                      <div className="flex gap-2">
+                        {staff.isNewHire && (
+                          <span className="rounded-full bg-blue-500/20 px-2 py-1 text-xs font-semibold text-blue-400">
+                            New Hire
+                          </span>
+                        )}
+                        <span className="rounded-lg bg-yellow-500/10 px-3 py-1 text-xs font-semibold text-yellow-400">
+                          Awaiting Grade
+                        </span>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="grid gap-2 md:grid-cols-4">
-                    <input
-                      type="number"
-                      min={1}
-                      max={5}
-                      placeholder="Grade (1-5)"
-                      value={form[staff.userId]?.grade || ''}
-                      onChange={(e) => setForm({ ...form, [staff.userId]: { ...form[staff.userId], grade: e.target.value } })}
-                      className="rounded-lg bg-white/5 px-3 py-2 text-white outline-none ring-1 ring-white/10 focus:ring-accent"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Categories (optional JSON)"
-                      value={form[staff.userId]?.categoriesText || ''}
-                      onChange={(e) => setForm({ ...form, [staff.userId]: { ...form[staff.userId], categoriesText: e.target.value } })}
-                      className="rounded-lg bg-white/5 px-3 py-2 text-white outline-none ring-1 ring-white/10 focus:ring-accent"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Notes (optional)"
-                      value={form[staff.userId]?.notes || ''}
-                      onChange={(e) => setForm({ ...form, [staff.userId]: { ...form[staff.userId], notes: e.target.value } })}
-                      className="rounded-lg bg-white/5 px-3 py-2 text-white outline-none ring-1 ring-white/10 focus:ring-accent"
-                    />
-                    <button
-                      onClick={() => handleSubmit(staff.userId)}
-                      disabled={savingId === staff.userId}
-                      className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-night-sky disabled:opacity-50"
-                    >
-                      {savingId === staff.userId ? 'Saving…' : 'Submit'}
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => openGradingModal(staff)}
+                    disabled={savingId === (staff.userId || staff.$id)}
+                    className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-night-sky transition-all hover:bg-accent/90 disabled:opacity-50"
+                  >
+                    {savingId === (staff.userId || staff.$id) ? 'Submitting…' : 'Grade This Staff'}
+                  </button>
                 </div>
               </div>
             ))}
@@ -186,7 +192,7 @@ const AdminGrading = () => {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold">Grading History</h3>
-              <p className="text-sm text-white/60">Past grades and ratings</p>
+              <p className="text-sm text-white/60">Past performance assessments and ratings</p>
             </div>
             <span className="rounded-full bg-green-500/20 px-3 py-1 text-sm font-semibold text-green-400">
               {grades.length}
@@ -195,8 +201,8 @@ const AdminGrading = () => {
           <div className="space-y-3">
             {grades.map((g) => (
               <div key={g.$id} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex-1">
                       <p className="text-sm text-white/60">{g.staffDetails?.employee_number || g.staffId}</p>
                       <p className="text-lg font-semibold">
@@ -204,43 +210,84 @@ const AdminGrading = () => {
                       </p>
                       {g.staffDetails?.email && <p className="text-xs text-white/50">{g.staffDetails?.email}</p>}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-accent/20 px-4 py-2 text-center">
-                        <p className="text-xs text-white/60">Grade</p>
-                        <p className="text-2xl font-bold text-accent">{g.grade}</p>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`rounded-lg px-4 py-2 text-center ${
+                          g.grade === 5 ? 'bg-green-500/20' :
+                          g.grade === 4 ? 'bg-blue-500/20' :
+                          g.grade === 3 ? 'bg-yellow-500/20' :
+                          g.grade === 2 ? 'bg-orange-500/20' :
+                          'bg-red-500/20'
+                        }`}>
+                          <p className="text-xs text-white/60">Grade</p>
+                          <p className={`text-2xl font-bold ${
+                            g.grade === 5 ? 'text-green-400' :
+                            g.grade === 4 ? 'text-blue-400' :
+                            g.grade === 3 ? 'text-yellow-400' :
+                            g.grade === 2 ? 'text-orange-400' :
+                            'text-red-400'
+                          }`}>{g.grade}</p>
+                          <p className={`text-xs font-semibold ${
+                            g.grade === 5 ? 'text-green-300' :
+                            g.grade === 4 ? 'text-blue-300' :
+                            g.grade === 3 ? 'text-yellow-300' :
+                            g.grade === 2 ? 'text-orange-300' :
+                            'text-red-300'
+                          }`}>
+                            {getGradeLabel(g.grade)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-white/60">Graded by</p>
-                        <p className="text-sm text-white/80">{g.gradedBy ? 'Admin' : 'System'}</p>
+                      <div className="text-right text-xs">
+                        {g.gradedAt && (
+                          <p className="text-white/60">📅 {new Date(g.gradedAt).toLocaleDateString()}</p>
+                        )}
+                        {g.gradedByName && (
+                          <p className="text-white/60">Graded by: {g.gradedByName}</p>
+                        )}
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-wrap gap-3 text-xs text-white/60">
-                    {g.gradedAt && (
-                      <span>📅 {new Date(g.gradedAt).toLocaleDateString()}</span>
-                    )}
-                    {g.updatedAt && (
-                      <span>🔄 Updated: {new Date(g.updatedAt).toLocaleDateString()}</span>
-                    )}
-                  </div>
 
-                  {g.categories && (
+                  {g.criteria && (
                     <div className="rounded-lg bg-black/30 p-3">
-                      <p className="mb-1 text-xs font-semibold text-white/80">Categories:</p>
-                      <pre className="text-xs text-white/70 overflow-x-auto">
-                        {typeof g.categories === 'string' 
-                          ? JSON.stringify(JSON.parse(g.categories), null, 2)
-                          : JSON.stringify(g.categories, null, 2)
-                        }
-                      </pre>
+                      <p className="mb-2 text-xs font-semibold text-white/80">Criteria Breakdown:</p>
+                      <div className="grid gap-2 text-xs">
+                        {typeof g.criteria === 'string' ? (
+                          Object.entries(JSON.parse(g.criteria)).map(([k, v]) => (
+                            <div key={k} className="flex items-center justify-between">
+                              <span className="capitalize text-white/70">{k.replace(/_/g, ' ')}</span>
+                              <span className={`font-semibold ${
+                                v === 5 ? 'text-green-400' :
+                                v === 4 ? 'text-blue-400' :
+                                v === 3 ? 'text-yellow-400' :
+                                v === 2 ? 'text-orange-400' :
+                                'text-red-400'
+                              }`}>{v}/5</span>
+                            </div>
+                          ))
+                        ) : (
+                          Object.entries(g.criteria).map(([k, v]) => (
+                            <div key={k} className="flex items-center justify-between">
+                              <span className="capitalize text-white/70">{k.replace(/_/g, ' ')}</span>
+                              <span className={`font-semibold ${
+                                v === 5 ? 'text-green-400' :
+                                v === 4 ? 'text-blue-400' :
+                                v === 3 ? 'text-yellow-400' :
+                                v === 2 ? 'text-orange-400' :
+                                'text-red-400'
+                              }`}>{v}/5</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   )}
 
-                  {g.notes && (
+                  {g.comment && (
                     <div className="rounded-lg bg-blue-500/10 p-3 text-sm text-blue-200">
-                      <p className="font-semibold">Notes:</p>
-                      <p>{g.notes}</p>
+                      <p className="font-semibold">Comments:</p>
+                      <p className="text-white/80">{g.comment}</p>
                     </div>
                   )}
                 </div>
@@ -253,6 +300,20 @@ const AdminGrading = () => {
             )}
           </div>
         </GlassPanel>
+
+        {/* Grading Modal */}
+        <GradingModal
+          isOpen={modalOpen}
+          staff={selectedStaff}
+          onClose={() => {
+            setModalOpen(false);
+            setSelectedStaff(null);
+            setSelectedGradeRecord(null);
+          }}
+          onSubmit={handleGradeModalSubmit}
+          isLoading={savingId === (selectedStaff?.userId || selectedStaff?.$id)}
+          existingGrade={selectedGradeRecord}
+        />
       </div>
     </div>
   );
