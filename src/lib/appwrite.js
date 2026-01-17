@@ -57,6 +57,7 @@ export const config = {
   staffGradesCollectionId: import.meta.env.VITE_APPWRITE_STAFF_GRADES_COLLECTION_ID,
   staffComplianceCollectionId: import.meta.env.VITE_APPWRITE_STAFF_COMPLIANCE_COLLECTION_ID,
   adminGradingCollectionId: import.meta.env.VITE_APPWRITE_ADMIN_GRADING_COLLECTION_ID,
+  complianceUploadsCollectionId: import.meta.env.VITE_APPWRITE_COMPLIANCE_UPLOADS_COLLECTION_ID || 'compliance_uploads',
 };
 
 export const DATABASE_ID = databaseId;
