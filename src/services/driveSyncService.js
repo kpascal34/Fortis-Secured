@@ -17,7 +17,11 @@ const complianceUploadsCol = config.complianceUploadsCollectionId || 'compliance
  */
 export async function getSyncStatusRecords(filters = {}) {
   if (!dbId || !complianceUploadsCol) {
-    throw new Error('Compliance uploads collection not configured');
+    throw new Error('Compliance uploads collection not configured. Set VITE_APPWRITE_COMPLIANCE_UPLOADS_COLLECTION_ID.');
+  }
+
+  if (config.isDemoMode) {
+    return []; // Return empty array in demo mode
   }
 
   try {
@@ -50,6 +54,15 @@ export async function getSyncStatusRecords(filters = {}) {
     return response.documents || [];
   } catch (error) {
     console.error('Error fetching sync status records:', error);
+    
+    // Provide helpful error messages
+    if (error.message && error.message.includes('drive_sync_status')) {
+      throw new Error('Missing attribute: drive_sync_status. Add this enum attribute (pending, failed, success) to your compliance_uploads collection.');
+    }
+    if (error.message && error.message.includes('Invalid collection')) {
+      throw new Error('Collection not found. Create the compliance_uploads collection in Appwrite.');
+    }
+    
     throw error;
   }
 }
@@ -84,7 +97,23 @@ export async function getSuccessfulSyncs() {
  */
 export async function getSyncSummary() {
   if (!dbId || !complianceUploadsCol) {
-    throw new Error('Compliance uploads collection not configured');
+    return {
+      total: 0,
+      failed: 0,
+      pending: 0,
+      successful: 0,
+      failureRate: 0,
+    };
+  }
+
+  if (config.isDemoMode) {
+    return {
+      total: 0,
+      failed: 0,
+      pending: 0,
+      successful: 0,
+      failureRate: 0,
+    };
   }
 
   try {

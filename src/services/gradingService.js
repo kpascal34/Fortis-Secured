@@ -7,6 +7,7 @@
 import { ID, Query } from 'appwrite';
 import { databases, config } from '../lib/appwrite.js';
 import { logAudit } from './auditService.js';
+import { notifyGradingFeedback } from './notificationService.js';
 
 const dbId = config.databaseId;
 const adminGradingCol = config.adminGradingCollectionId || 'admin_grading';
@@ -214,6 +215,12 @@ export async function submitStaffGrade(adminId, staffId, grade, criteria = null,
         criteria: Object.keys(criteria || {}),
       }),
     });
+
+    try {
+      await notifyGradingFeedback(staffId, grade, comment);
+    } catch (notifyErr) {
+      console.error('Failed to send grading feedback notification:', notifyErr);
+    }
 
     return result;
   } catch (error) {

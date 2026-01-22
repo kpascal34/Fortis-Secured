@@ -30,7 +30,13 @@ const DriveSyncStatus = () => {
 
   const load = async () => {
     if (!config.complianceUploadsCollectionId) {
-      setError('Compliance uploads collection not configured');
+      setError('Drive Sync Status requires configuration. Add VITE_APPWRITE_COMPLIANCE_UPLOADS_COLLECTION_ID to your environment variables.');
+      setLoading(false);
+      return;
+    }
+    
+    if (config.isDemoMode) {
+      setError('Drive Sync Status is not available in demo mode. Configure Appwrite to enable this feature.');
       setLoading(false);
       return;
     }
@@ -75,7 +81,16 @@ const DriveSyncStatus = () => {
       setProfiles(map);
     } catch (e) {
       console.error('Error loading sync status:', e);
-      setError(e.message || 'Failed to load sync status');
+      const errorMsg = e.message || 'Failed to load sync status';
+      
+      // Provide helpful hints based on error type
+      if (errorMsg.includes('not found') || errorMsg.includes('Invalid collection')) {
+        setError(`Collection not found. Create the compliance_uploads collection in Appwrite with these attributes: staff_id (string), file_name (string), file_type (string), drive_sync_status (enum: pending, failed, success), appwrite_file_id (string), google_drive_file_id (string), sync_error (string), last_sync_attempt (datetime).`);
+      } else if (errorMsg.includes('drive_sync_status')) {
+        setError(`Missing attribute: Add 'drive_sync_status' (enum with values: pending, failed, success) to the compliance_uploads collection in Appwrite.`);
+      } else {
+        setError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -320,15 +335,54 @@ const DriveSyncStatus = () => {
 
           {loading ? (
             <div className="py-10 text-center text-white/70">Loading sync status...</div>
+          ) : error ? (
+            <div className="py-10 text-center">
+              <div className="mx-auto max-w-2xl rounded-lg border border-amber-500/30 bg-amber-500/10 p-6">
+                <p className="text-lg font-semibold text-amber-200 mb-2">⚠️ Configuration Required</p>
+                <p className="text-sm text-amber-100/80 whitespace-pre-line">{error}</p>
+                {!config.complianceUploadsCollectionId && (
+                  <div className="mt-4 text-left text-xs text-amber-100/70">
+                    <p className="font-semibold mb-2">Quick Setup:</p>
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Create a collection named <code className="bg-black/20 px-1 rounded">compliance_uploads</code> in Appwrite</li>
+                      <li>Add attributes: <code className="bg-black/20 px-1 rounded">staff_id</code>, <code className="bg-black/20 px-1 rounded">file_name</code>, <code className="bg-black/20 px-1 rounded">file_type</code>, <code className="bg-black/20 px-1 rounded">drive_sync_status</code> (enum), <code className="bg-black/20 px-1 rounded">last_sync_attempt</code> (datetime)</li>
+                      <li>Set <code className="bg-black/20 px-1 rounded">VITE_APPWRITE_COMPLIANCE_UPLOADS_COLLECTION_ID</code> in your env</li>
+                      <li>Redeploy and refresh this page</li>
+                    </ol>
+                  </div>
+                )}
+              </div>
+            </div>
           ) : filtered.length === 0 ? (
             <div className={`py-10 text-center ${
               activeTab === 'failed' ? 'text-green-200' :
               activeTab === 'pending' ? 'text-blue-200' :
               'text-white/70'
             }`}>
-              {activeTab === 'failed' && '✨ No failed syncs - everything is syncing smoothly!'}
-              {activeTab === 'pending' && '✓ No pending syncs at the moment'}
-              {activeTab === 'successful' && 'No successful syncs to display'}
+              {activeTab === 'failed' && (
+                <div>
+                  <p className="text-2xl mb-2">✨</p>
+                  <p className="font-semibold">No failed syncs - everything is syncing smoothly!</p>
+                  {summary && summary.total === 0 && (
+                    <p className="text-xs text-white/50 mt-2">No sync records found. Upload compliance documents to start tracking sync status.</p>
+                  )}
+                </div>
+              )}
+              {activeTab === 'pending' && (
+                <div>
+                  <p className="text-2xl mb-2">✓</p>
+                  <p>No pending syncs at the moment</p>
+                </div>
+              )}
+              {activeTab === 'successful' && (
+                <div>
+                  <p className="text-2xl mb-2">📋</p>
+                  <p>No successful syncs to display</p>
+                  {summary && summary.total === 0 && (
+                    <p className="text-xs text-white/50 mt-2">Upload and sync compliance documents to see them here.</p>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">

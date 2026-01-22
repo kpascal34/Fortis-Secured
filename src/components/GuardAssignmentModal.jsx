@@ -14,6 +14,9 @@ import {
   AiOutlineSafetyCertificate,
   AiOutlineDelete,
 } from 'react-icons/ai';
+import { notifyShiftAssigned } from '../services/notificationService.js';
+
+const LICENSE_EXPIRY_THRESHOLD_DAYS = Number(import.meta.env.VITE_LICENSE_EXPIRY_THRESHOLD_DAYS || 30);
 
 const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) => {
   const [guards, setGuards] = useState([]);
@@ -84,6 +87,14 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
     return siaValid && dbsValid && rtwValid;
   };
 
+  const isLicenceExpiredOrNear = (guard) => {
+    const today = new Date();
+    const expiry = guard.siaExpiryDate ? new Date(guard.siaExpiryDate) : null;
+    if (!expiry) return true;
+    const daysUntilExpiry = Math.floor((expiry - today) / (1000 * 60 * 60 * 24));
+    return daysUntilExpiry < 0 || daysUntilExpiry <= LICENSE_EXPIRY_THRESHOLD_DAYS;
+  };
+
   const getComplianceWarnings = (guard) => {
     const warnings = [];
     const today = new Date();
@@ -134,6 +145,17 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
         ID.unique(),
         assignmentData
       );
+
+      // Notify guard
+      await notifyShiftAssigned(guardId, {
+        id: shift.$id,
+        date: shift.date,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        position: shift.shiftType || shift.position_title,
+        siteId: shift.siteId,
+        siteName: shift.siteName,
+      });
 
       // Refresh assignments
       await fetchData();
@@ -236,6 +258,11 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
       if (!fullName.includes(search) && !guard.email?.toLowerCase().includes(search)) {
         return false;
       }
+    }
+
+    // Licence expiry threshold filter
+    if (isLicenceExpiredOrNear(guard)) {
+      return false;
     }
 
     // Status filter

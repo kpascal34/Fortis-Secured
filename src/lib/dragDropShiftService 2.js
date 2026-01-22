@@ -275,13 +275,13 @@ export const saveShiftChanges = async (originalShifts, updatedShifts, currentDat
   }
 };
 
-// Get shift statistics for a date range (uses 'shiftDate')
+// Get shift statistics for a date range (uses 'date')
 export const getShiftStats = async (startDate, endDate, siteId = null) => {
   try {
     ensureConfigured();
     let query = [
-      Query.greaterThanEqual('shiftDate', startDate),
-      Query.lessThanEqual('shiftDate', endDate),
+      Query.greaterThanEqual('date', startDate),
+      Query.lessThanEqual('date', endDate),
     ];
 
     if (siteId) {

@@ -3,10 +3,12 @@ import { useProfile, useRole, ROLES } from '../../hooks/useRBAC';
 import PageHeader from '../../components/PageHeader';
 import { maskSensitive } from '../../lib/rbacValidation';
 import { account } from '../../lib/appwrite';
+import { useDepartments } from '../../hooks/useDepartments.js';
 
 const Profile = () => {
   const { profile, loading, error, updating, updateProfile } = useProfile();
   const { role, isAdmin, isManager, isStaff, isClient } = useRole();
+  const { departments, loading: deptsLoading } = useDepartments();
   const [formData, setFormData] = useState({});
   const [message, setMessage] = useState(null);
   const [accountInfo, setAccountInfo] = useState(null);
@@ -208,15 +210,19 @@ const Profile = () => {
                 <label htmlFor="department" className="block text-sm font-medium text-white/90 mb-2">
                   Department
                 </label>
-                <input
-                  type="text"
+                <select
                   id="department"
                   name="department"
                   value={formData.department || ''}
                   onChange={handleChange}
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-                  placeholder="e.g., Operations, Management"
-                />
+                  disabled={deptsLoading}
+                  className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                >
+                  <option value="">Select department</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
               </div>
             )}
 

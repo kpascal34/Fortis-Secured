@@ -4,12 +4,14 @@
  */
 
 import { ID, Query } from 'appwrite';
-import { databases } from '../lib/appwrite.js';
+import { databases, config } from '../lib/appwrite.js';
 import { logAudit } from './auditService.js';
 
-const dbId = process.env.VITE_APPWRITE_DATABASE_ID;
+const dbId = config.databaseId || process.env.VITE_APPWRITE_DATABASE_ID;
 const shiftsCol = 'shifts';
 const applicationsCol = 'shift_applications';
+const staffProfilesCol = config.staffProfilesCollectionId || 'staff_profiles';
+const LICENSE_EXPIRY_THRESHOLD_DAYS = Number(process.env.VITE_LICENSE_EXPIRY_THRESHOLD_DAYS || 30);
 
 /**
  * Create shift (admin/manager only)
@@ -153,6 +155,10 @@ export async function applyForShift(staffId, shiftId) {
   // Check eligibility
   const eligibility = await checkEligibility(staffId, shift);
 
+  if (!eligibility.license_eligible) {
+    throw new Error(`Licence invalid or expiring within ${LICENSE_EXPIRY_THRESHOLD_DAYS} days`);
+  }
+
   const application = await databases.createDocument(dbId, applicationsCol, ID.unique(), {
     shift_id: shiftId,
     staff_id: staffId,
@@ -184,6 +190,7 @@ async function checkEligibility(staffId, shift) {
   const reasons = [];
   let compliant = false;
   let gradeEligible = false;
+  let licenseEligible = false;
 
   // Check compliance status
   const compDocs = await databases.listDocuments(dbId, 'staff_compliance', [
@@ -221,9 +228,35 @@ async function checkEligibility(staffId, shift) {
     gradeEligible = true; // No requirement
   }
 
+  // Licence expiry check
+  try {
+    const profile = await databases.getDocument(dbId, staffProfilesCol, staffId);
+    const expiry = profile.licenseExpiry || profile.siaExpiryDate;
+    if (expiry) {
+      const expiryDate = new Date(expiry);
+      const daysUntilExpiry = Math.floor((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+      if (daysUntilExpiry < 0) {
+        reasons.push('Licence expired');
+        licenseEligible = false;
+      } else if (daysUntilExpiry <= LICENSE_EXPIRY_THRESHOLD_DAYS) {
+        reasons.push(`Licence expiring within ${LICENSE_EXPIRY_THRESHOLD_DAYS} days`);
+        licenseEligible = false;
+      } else {
+        licenseEligible = true;
+      }
+    } else {
+      reasons.push('No licence expiry on file');
+      licenseEligible = false;
+    }
+  } catch (error) {
+    console.warn('Could not fetch staff profile for licence check', error);
+    reasons.push('Licence check unavailable');
+  }
+
   return {
     compliant,
     grade_eligible: gradeEligible,
+    license_eligible: licenseEligible,
     reasons,
   };
 }

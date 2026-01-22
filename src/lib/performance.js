@@ -9,6 +9,7 @@
  */
 export function initializeWebVitalsMonitoring() {
   if (typeof window === 'undefined') return;
+  const isDev = import.meta.env?.MODE === 'development';
 
   // Track Largest Contentful Paint (LCP)
   if ('PerformanceObserver' in window) {
@@ -22,7 +23,7 @@ export function initializeWebVitalsMonitoring() {
           reportMetric('LCP', lcpTime, lcpTime < 2500 ? 'good' : lcpTime < 4000 ? 'needs-improvement' : 'poor');
           
           // Log to console in development
-          if (process.env.NODE_ENV === 'development') {
+          if (isDev) {
             console.log(`[LCP] ${lcpTime.toFixed(0)}ms - ${lastEntry.element?.tagName || 'unknown'}`);
           }
         }
@@ -54,18 +55,18 @@ export function initializeWebVitalsMonitoring() {
               longestEntry.duration < 200 ? 'good' : longestEntry.duration < 500 ? 'needs-improvement' : 'poor'
             );
             
-            if (process.env.NODE_ENV === 'development') {
+            if (isDev) {
               console.log(`[INP] ${longestEntry.duration.toFixed(0)}ms`);
             }
           }
         });
         
         inpObserver.observe({ entryTypes: ['interaction'] });
-      } else if (process.env.NODE_ENV === 'development') {
+      } else if (isDev) {
         console.log('INP monitoring not supported by this browser');
       }
     } catch (e) {
-      if (process.env.NODE_ENV === 'development') {
+      if (isDev) {
         console.log('INP monitoring not supported:', e);
       }
     }
@@ -79,7 +80,7 @@ export function initializeWebVitalsMonitoring() {
             clsValue += entry.value;
             reportMetric('CLS', clsValue, clsValue < 0.1 ? 'good' : clsValue < 0.25 ? 'needs-improvement' : 'poor');
             
-            if (process.env.NODE_ENV === 'development') {
+            if (isDev) {
               console.log(`[CLS] ${clsValue.toFixed(3)}`);
             }
           }
@@ -98,7 +99,7 @@ export function initializeWebVitalsMonitoring() {
         entries.forEach((entry) => {
           reportMetric('FID', entry.processingDuration, entry.processingDuration < 100 ? 'good' : 'poor');
           
-          if (process.env.NODE_ENV === 'development') {
+          if (isDev) {
             console.log(`[FID] ${entry.processingDuration.toFixed(0)}ms`);
           }
         });
@@ -118,6 +119,7 @@ export function initializeWebVitalsMonitoring() {
  * Report a performance metric
  */
 function reportMetric(metricName, value, status = 'unknown') {
+  const analyticsEndpoint = import.meta.env?.VITE_ANALYTICS_ENDPOINT;
   // Send to analytics service (Google Analytics, Segment, etc.)
   if (window.gtag) {
     window.gtag('event', 'page_view', {
@@ -128,8 +130,8 @@ function reportMetric(metricName, value, status = 'unknown') {
   }
 
   // Log to custom analytics endpoint if available
-  if (process.env.VITE_ANALYTICS_ENDPOINT) {
-    fetch(process.env.VITE_ANALYTICS_ENDPOINT, {
+  if (analyticsEndpoint) {
+    fetch(analyticsEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -149,6 +151,7 @@ function reportMetric(metricName, value, status = 'unknown') {
  */
 export function trackNavigationTiming() {
   if (typeof window === 'undefined' || !window.performance) return;
+  const isDev = import.meta.env?.MODE === 'development';
 
   window.addEventListener('load', () => {
     const perfData = window.performance.timing;
@@ -156,7 +159,7 @@ export function trackNavigationTiming() {
     const connectTime = perfData.responseEnd - perfData.requestStart;
     const renderTime = perfData.domComplete - perfData.domLoading;
 
-    if (process.env.NODE_ENV === 'development') {
+    if (isDev) {
       console.log('[Navigation Timing]', {
         'Page Load (ms)': pageLoadTime,
         'Server Response (ms)': connectTime,
@@ -176,8 +179,9 @@ export function measurePerformance(label, fn) {
   const start = performance.now();
   const result = fn();
   const duration = performance.now() - start;
+  const isDev = import.meta.env?.MODE === 'development';
 
-  if (process.env.NODE_ENV === 'development') {
+  if (isDev) {
     console.log(`[Performance] ${label}: ${duration.toFixed(2)}ms`);
   }
 
@@ -230,7 +234,8 @@ export function getResourceTimingSummary() {
  * Detect performance issues and log recommendations
  */
 export function detectPerformanceIssues() {
-  if (typeof window === 'undefined' || process.env.NODE_ENV !== 'development') return;
+  const isDev = import.meta.env?.MODE === 'development';
+  if (typeof window === 'undefined' || !isDev) return;
 
   const summary = getResourceTimingSummary();
   if (!summary) return;

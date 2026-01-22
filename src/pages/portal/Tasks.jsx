@@ -370,24 +370,24 @@ const Tasks = () => {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
-          <AiOutlineClockCircle className="mx-auto mb-4 h-12 w-12 animate-spin text-accent" />
-          <p className="text-white/70">Loading tasks...</p>
+          <AiOutlineClockCircle className="mx-auto mb-4 h-12 w-12 animate-spin text-brand" />
+          <p className="text-text-2">Loading tasks...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="fs-page space-y-6 p-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Tasks</h1>
-          <p className="mt-2 text-white/70">Manage and track security tasks and assignments</p>
+          <h1 className="fs-title">Tasks</h1>
+          <p className="fs-subtitle">Manage and track security tasks and assignments</p>
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent/90 transition-all"
+          className="fs-btn-primary px-4 py-2"
         >
           <AiOutlinePlus className="h-5 w-5" />
           New Task
@@ -396,69 +396,69 @@ const Tasks = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-5">
-        <div className="glass-panel p-6">
+        <div className="fs-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/50">Total Tasks</p>
-              <p className="mt-2 text-3xl font-bold text-white">{stats.total}</p>
+              <p className="text-sm text-text-3">Total Tasks</p>
+              <p className="mt-2 text-3xl font-bold text-text">{stats.total}</p>
             </div>
-            <AiOutlineCheckCircle className="h-8 w-8 text-accent" />
+            <AiOutlineCheckCircle className="h-8 w-8 text-brand" />
           </div>
         </div>
 
-        <div className="glass-panel p-6">
+        <div className="fs-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/50">Pending</p>
-              <p className="mt-2 text-3xl font-bold text-yellow-400">{stats.pending}</p>
+              <p className="text-sm text-text-3">Pending</p>
+              <p className="mt-2 text-3xl font-bold text-warning">{stats.pending}</p>
             </div>
-            <AiOutlineClockCircle className="h-8 w-8 text-yellow-400" />
+            <AiOutlineClockCircle className="h-8 w-8 text-warning" />
           </div>
         </div>
 
-        <div className="glass-panel p-6">
+        <div className="fs-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/50">In Progress</p>
-              <p className="mt-2 text-3xl font-bold text-blue-400">{stats.inProgress}</p>
+              <p className="text-sm text-text-3">In Progress</p>
+              <p className="mt-2 text-3xl font-bold text-warning">{stats.inProgress}</p>
             </div>
-            <AiOutlineClockCircle className="h-8 w-8 text-blue-400" />
+            <AiOutlineClockCircle className="h-8 w-8 text-warning" />
           </div>
         </div>
 
-        <div className="glass-panel p-6">
+        <div className="fs-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/50">Completed</p>
-              <p className="mt-2 text-3xl font-bold text-green-400">{stats.completed}</p>
+              <p className="text-sm text-text-3">Completed</p>
+              <p className="mt-2 text-3xl font-bold text-success">{stats.completed}</p>
             </div>
-            <AiOutlineCheckCircle className="h-8 w-8 text-green-400" />
+            <AiOutlineCheckCircle className="h-8 w-8 text-success" />
           </div>
         </div>
 
-        <div className="glass-panel p-6">
+        <div className="fs-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/50">Overdue</p>
-              <p className="mt-2 text-3xl font-bold text-red-400">{stats.overdue}</p>
+              <p className="text-sm text-text-3">Overdue</p>
+              <p className="mt-2 text-3xl font-bold text-error">{stats.overdue}</p>
             </div>
-            <AiOutlineWarning className="h-8 w-8 text-red-400" />
+            <AiOutlineWarning className="h-8 w-8 text-error" />
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="glass-panel p-6">
+      <div className="fs-card">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           {/* Search */}
           <div className="relative">
-            <AiOutlineSearch className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/50" />
+            <AiOutlineSearch className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-text-3" />
             <input
               type="text"
               placeholder="Search tasks..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              className="input-glass w-full pl-10"
             />
           </div>
 
@@ -466,7 +466,7 @@ const Tasks = () => {
           <select
             value={view}
             onChange={(e) => setView(e.target.value)}
-            className="rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+            className="rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
           >
             <option value="all">All Tasks</option>
             <option value="pending">Pending</option>
@@ -478,7 +478,7 @@ const Tasks = () => {
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
-            className="rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+            className="rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
           >
             <option value="">All Priorities</option>
             <option value="high">High Priority</option>
@@ -490,7 +490,7 @@ const Tasks = () => {
           <select
             value={filterAssignee}
             onChange={(e) => setFilterAssignee(e.target.value)}
-            className="rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+            className="rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
           >
             <option value="">All Assignees</option>
             {guards.map(guard => (
@@ -505,13 +505,13 @@ const Tasks = () => {
       {/* Tasks List */}
       <div className="grid grid-cols-1 gap-4">
         {filteredTasks.length === 0 ? (
-          <div className="glass-panel p-12 text-center">
-            <AiOutlineCheckCircle className="mx-auto mb-4 h-16 w-16 text-white/20" />
-            <p className="text-lg text-white/50">No tasks found</p>
-            <p className="mt-2 text-sm text-white/30">Create your first task to get started</p>
+          <div className="fs-card p-12 text-center">
+            <AiOutlineCheckCircle className="mx-auto mb-4 h-16 w-16 text-text-3/20" />
+            <p className="text-lg text-text-3">No tasks found</p>
+            <p className="mt-2 text-sm text-text-3">Create your first task to get started</p>
             <button
               onClick={() => handleOpenModal()}
-              className="mt-6 inline-flex items-center gap-2 rounded-lg border border-accent bg-accent/10 px-4 py-2 text-sm font-medium text-accent hover:bg-accent/20 transition-all"
+              className="mt-6 fs-btn-ghost"
             >
               <AiOutlinePlus className="h-4 w-4" />
               New Task
@@ -585,7 +585,7 @@ const Tasks = () => {
                   {/* Edit Button */}
                   <button
                     onClick={() => handleOpenModal(task)}
-                    className="rounded-lg border border-white/10 bg-white/5 p-2 text-white hover:bg-white/10 transition-all"
+                    className="fs-btn-ghost p-2"
                   >
                     <AiOutlineEdit className="h-4 w-4" />
                   </button>
@@ -593,7 +593,7 @@ const Tasks = () => {
                   {/* Delete Button */}
                   <button
                     onClick={() => handleDeleteTask(task.$id)}
-                    className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-400 hover:bg-red-500/20 transition-all"
+                    className="rounded-lg border border-error/30 bg-error/15 p-2 text-error hover:bg-error/20 transition-all"
                   >
                     <AiOutlineDelete className="h-4 w-4" />
                   </button>
@@ -607,15 +607,15 @@ const Tasks = () => {
       {/* Task Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="glass-panel w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 border-b border-white/10 bg-night-sky p-6 z-10">
+          <div className="fs-card w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 border-b border-border bg-bg p-6 z-10">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-text">
                   {editingTask ? 'Edit Task' : 'New Task'}
                 </h2>
                 <button
                   onClick={handleCloseModal}
-                  className="rounded-lg border border-white/10 bg-white/5 p-2 text-white hover:bg-white/10 transition-all"
+                  className="fs-btn-ghost p-2"
                 >
                   <AiOutlineClose className="h-5 w-5" />
                 </button>
@@ -636,8 +636,8 @@ const Tasks = () => {
 
               {/* Title */}
               <div>
-                <label htmlFor="task-title" className="mb-2 block text-sm font-medium text-white">
-                  Task Title <span className="text-red-400">*</span>
+                <label htmlFor="task-title" className="mb-2 block text-sm font-medium text-text">
+                  Task Title <span className="text-error">*</span>
                 </label>
                 <input
                   id="task-title"
@@ -646,24 +646,24 @@ const Tasks = () => {
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   aria-invalid={!!formErrors.title}
                   aria-describedby={formErrors.title ? 'title-error' : undefined}
-                  className={`w-full rounded-lg border bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all ${
-                    formErrors.title ? 'border-red-500/50 bg-red-500/10' : 'border-white/10'
+                  className={`w-full rounded-lg border bg-bg px-4 py-2 text-text placeholder-text-3 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-bg transition-all ${
+                    formErrors.title ? 'border-error/50 bg-error/10' : 'border-border'
                   }`}
                   placeholder="Enter task title (min 3 characters)"
                   required
                 />
                 {formErrors.title && (
-                  <p id="title-error" className="mt-1 text-xs text-red-400">{formErrors.title}</p>
+                  <p id="title-error" className="mt-1 text-xs text-error">{formErrors.title}</p>
                 )}
               </div>
 
               {/* Description */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-white">Description</label>
+                <label className="mb-2 block text-sm font-medium text-text">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="input-glass w-full"
                   placeholder="Enter task description"
                   rows="4"
                 />
@@ -672,11 +672,11 @@ const Tasks = () => {
               {/* Priority and Status */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Priority</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Priority</label>
                   <select
                     value={formData.priority}
                     onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -685,11 +685,11 @@ const Tasks = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Status</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Status</label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                   >
                     <option value="pending">Pending</option>
                     <option value="in-progress">In Progress</option>
@@ -701,11 +701,11 @@ const Tasks = () => {
               {/* Task Type and Assigned To */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Task Type</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Task Type</label>
                   <select
                     value={formData.taskType}
                     onChange={(e) => setFormData({ ...formData, taskType: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                   >
                     <option value="general">General</option>
                     <option value="patrol">Patrol</option>
@@ -718,11 +718,11 @@ const Tasks = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Assign To</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Assign To</label>
                   <select
                     value={formData.assignedTo}
                     onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                   >
                     <option value="">Unassigned</option>
                     {guards.map(guard => (
@@ -737,7 +737,7 @@ const Tasks = () => {
               {/* Due Date and Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="due-date" className="mb-2 block text-sm font-medium text-white">Due Date</label>
+                  <label htmlFor="due-date" className="mb-2 block text-sm font-medium text-text">Due Date</label>
                   <input
                     id="due-date"
                     type="date"
@@ -745,23 +745,23 @@ const Tasks = () => {
                     onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                     aria-invalid={!!formErrors.dueDate}
                     aria-describedby={formErrors.dueDate ? 'duedate-error' : undefined}
-                    className={`w-full rounded-lg border bg-white/5 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all ${
-                      formErrors.dueDate ? 'border-red-500/50 bg-red-500/10' : 'border-white/10'
+                    className={`w-full rounded-lg border bg-bg px-4 py-2 text-text focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-bg transition-all ${
+                      formErrors.dueDate ? 'border-error/50 bg-error/10' : 'border-border'
                     }`}
                   />
                   {formErrors.dueDate && (
-                    <p id="duedate-error" className="mt-1 text-xs text-red-400">{formErrors.dueDate}</p>
+                    <p id="duedate-error" className="mt-1 text-xs text-error">{formErrors.dueDate}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="due-time" className="mb-2 block text-sm font-medium text-white">Due Time</label>
+                  <label htmlFor="due-time" className="mb-2 block text-sm font-medium text-text">Due Time</label>
                   <input
                     id="due-time"
                     type="time"
                     value={formData.dueTime}
                     onChange={(e) => setFormData({ ...formData, dueTime: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all"
+                    className="w-full rounded-lg border border-border bg-bg px-4 py-2 text-text focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-bg transition-all"
                   />
                 </div>
               </div>
@@ -769,11 +769,11 @@ const Tasks = () => {
               {/* Client, Site, Shift */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Client</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Client</label>
                   <select
                     value={formData.clientId}
                     onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                   >
                     <option value="">None</option>
                     {clients.map(client => (
@@ -785,11 +785,11 @@ const Tasks = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Site</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Site</label>
                   <select
                     value={formData.siteId}
                     onChange={(e) => setFormData({ ...formData, siteId: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                     disabled={!formData.clientId}
                   >
                     <option value="">None</option>
@@ -804,11 +804,11 @@ const Tasks = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Related Shift</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Related Shift</label>
                   <select
                     value={formData.shiftId}
                     onChange={(e) => setFormData({ ...formData, shiftId: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                   >
                     <option value="">None</option>
                     {shifts
@@ -824,11 +824,11 @@ const Tasks = () => {
 
               {/* Notes */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-white">Notes</label>
+                <label className="mb-2 block text-sm font-medium text-text">Notes</label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="input-glass w-full"
                   placeholder="Additional notes..."
                   rows="3"
                 />
@@ -839,13 +839,13 @@ const Tasks = () => {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-medium text-white hover:bg-white/10 transition-all"
+                  className="fs-btn-ghost px-4 py-2"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent/90 transition-all"
+                  className="fs-btn-primary px-4 py-2"
                 >
                   {editingTask ? 'Update Task' : 'Create Task'}
                 </button>

@@ -142,7 +142,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-primary-dark via-night-sky to-night-sky px-6 py-10 text-white">
+    <div className="fs-page px-6 py-10">
       <div className="mx-auto max-w-6xl">
         <PortalHeader
           title="Dashboard"
@@ -158,80 +158,90 @@ const Dashboard = () => {
 
         <section className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map((stat) => (
-            <article key={stat.label} className="glass-panel p-6 transition-all duration-200 hover:bg-white/10">
-              <p className="text-sm text-white/60">{stat.label}</p>
-              <p className="mt-2 text-4xl font-bold text-accent">{stat.value}</p>
-              {stat.helper && <p className="mt-2 text-xs text-white/50">{stat.helper}</p>}
+            <article key={stat.label} className="fs-card">
+              <p className="text-sm text-text-2">{stat.label}</p>
+              <p className="mt-2 text-4xl font-bold text-brand">{stat.value}</p>
+              {stat.helper && <p className="mt-2 text-xs text-text-3">{stat.helper}</p>}
             </article>
           ))}
         </section>
 
         <section className="mt-10 grid gap-6 lg:grid-cols-2">
-          <article className="glass-panel p-6">
+          <article className="fs-card">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-white">Clients</h2>
-              {syncing ? <span className="text-xs text-white/50">Syncing…</span> : null}
+              <h2 className="text-2xl font-semibold text-text">Clients</h2>
+              {syncing ? <span className="text-xs text-text-3">Syncing…</span> : null}
             </div>
             <div className="mt-6 space-y-5">
-              {clients.map((client) => (
-                <div key={client.name} className="group border-b border-white/10 pb-4 last:border-none last:pb-0">
-                  <div className="flex flex-wrap items-start justify-between gap-2 text-sm text-white">
-                    <p className="font-semibold transition-colors duration-200 group-hover:text-accent">{client.name}</p>
-                    <span className={`text-xs font-semibold uppercase tracking-widest ${statusColours[client.status] || 'text-white/70'}`}>
-                      {client.status}
-                    </span>
+              {clients.length > 0 ? (
+                clients.map((client) => (
+                  <div key={client.name} className="group border-b border-border pb-4 last:border-none last:pb-0">
+                    <div className="flex flex-wrap items-start justify-between gap-2 text-sm text-text">
+                      <p className="font-semibold transition-colors duration-200 group-hover:text-brand">{client.name}</p>
+                      <span className={`text-xs font-semibold uppercase tracking-widest ${statusColours[client.status] || 'text-text-2'}`}>
+                        {client.status}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-text-2">{client.location}</p>
+                    {client.billing && <p className="mt-1 text-sm text-brand">{client.billing}</p>}
                   </div>
-                  <p className="mt-1 text-sm text-white/70">{client.location}</p>
-                  {client.billing && <p className="mt-1 text-sm text-accent">{client.billing}</p>}
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-text-3 text-sm py-4">No clients added yet</p>
+              )}
             </div>
           </article>
 
-          <article className="glass-panel p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-white">Recent Tasks</h2>
-              {syncing ? <span className="text-xs text-white/50">Syncing…</span> : null}
-            </div>
-            <div className="mt-6 space-y-5">
-              {tasks.map((task) => (
-                <div key={`${task.title}-${task.status}`} className="group border-b border-white/10 pb-4 last:border-none last:pb-0">
-                  <div className="flex flex-wrap items-start justify-between gap-2 text-sm text-white">
-                    <p className="font-semibold transition-colors duration-200 group-hover:text-accent">{task.title}</p>
-                    <span className={`text-xs font-semibold uppercase tracking-widest ${statusColours[task.status] || 'text-white/70'}`}>
-                      {task.status}
-                    </span>
+          {/* Only show Tasks section if tasks exist or if tasks feature is enabled */}
+          {tasks.length > 0 && (
+            <article className="fs-card">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-semibold text-text">Recent Tasks</h2>
+                {syncing ? <span className="text-xs text-text-3">Syncing…</span> : null}
+              </div>
+              <div className="mt-6 space-y-5">
+                {tasks.map((task) => (
+                  <div key={`${task.title}-${task.status}`} className="group border-b border-border pb-4 last:border-none last:pb-0">
+                    <div className="flex flex-wrap items-start justify-between gap-2 text-sm text-text">
+                      <p className="font-semibold transition-colors duration-200 group-hover:text-brand">{task.title}</p>
+                      <span className={`text-xs font-semibold uppercase tracking-widest ${statusColours[task.status] || 'text-text-2'}`}>
+                        {task.status}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-text-2">{task.meta}</p>
+                    <p className="mt-1 text-xs text-text-3">{task.due}</p>
                   </div>
-                  <p className="mt-1 text-sm text-white/70">{task.meta}</p>
-                  <p className="mt-1 text-xs text-white/40">{task.due}</p>
-                </div>
-              ))}
-            </div>
-          </article>
+                ))}
+              </div>
+            </article>
+          )}
         </section>
 
-        <section className="mt-10 glass-panel p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-white">Recent Incidents</h2>
-            {syncing ? <span className="text-xs text-white/50">Syncing…</span> : null}
-          </div>
-          <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {incidents.map((incident) => (
-              <article key={`${incident.title}-${incident.location}`} 
-                className="rounded-2xl border border-white/10 bg-white/5 p-5 transition-all duration-200 hover:border-accent/30 hover:bg-white/10">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-white">{incident.title}</h3>
-                  <span className={`text-xs font-semibold uppercase tracking-widest ${statusColours[incident.status] || 'text-white/70'}`}>
-                    {incident.status}
-                  </span>
-                </div>
-                <p className="mt-2 text-xs text-white/60">{incident.location}</p>
-                <p className="mt-1 text-xs text-white/40">{incident.timestamp}</p>
-                <p className="mt-3 text-sm text-white/70">{incident.summary}</p>
-              </article>
-            ))}
-          </div>
-        </section>
+        {/* Only show Incidents section if incidents exist */}
+        {incidents.length > 0 && (
+          <section className="mt-10 fs-card">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-text">Recent Incidents</h2>
+              {syncing ? <span className="text-xs text-text-3">Syncing…</span> : null}
+            </div>
+            <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {incidents.map((incident) => (
+                <article key={`${incident.title}-${incident.location}`} 
+                  className="rounded-2xl border border-border bg-bg-2 p-5 transition-all duration-200 hover:bg-surface-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-text">{incident.title}</h3>
+                    <span className={`text-xs font-semibold uppercase tracking-widest ${statusColours[incident.status] || 'text-text-2'}`}>
+                      {incident.status}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-text-2">{incident.location}</p>
+                  <p className="mt-1 text-xs text-text-3">{incident.timestamp}</p>
+                  <p className="mt-3 text-sm text-text-2">{incident.summary}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

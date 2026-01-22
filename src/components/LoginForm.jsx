@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { config } from '../lib/appwrite.js';
 
 const LoginForm = () => {
   const { login } = useAuth();
@@ -40,16 +41,22 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="mx-auto max-w-md rounded-3xl border border-white/10 bg-white/5 p-10 text-white shadow-glass">
+    <div className="glass-panel mx-auto max-w-md p-10 text-white">
       <h1 className="text-2xl font-semibold">Client portal login</h1>
-      <p className="mt-2 text-sm text-white/70">
+      {(config.isDemoMode || !config.projectId || config.projectId === 'demo-project' || !config.endpoint) && (
+        <div className="badge-warning mt-3 text-xs p-3">
+          Authentication is disabled on this dev server. Configure Appwrite and set <span className="font-semibold">VITE_ENABLE_DEMO_MODE=false</span> with
+          <span className="font-semibold"> VITE_APPWRITE_ENDPOINT</span> and <span className="font-semibold">VITE_APPWRITE_PROJECT_ID</span>.
+        </div>
+      )}
+      <p className="mt-2 text-sm text-secondary">
         {mfaRequired ? 'Enter your 2FA code to complete sign in.' : 'Sign in with your Appwrite credentials to access the Fortis portal.'}
       </p>
       <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
         {!mfaRequired ? (
           <>
             <div>
-              <label htmlFor={emailId} className="block text-sm text-white/70 mb-2">
+              <label htmlFor={emailId} className="block text-sm text-secondary mb-2">
                 Email address
               </label>
               <input
@@ -62,12 +69,12 @@ const LoginForm = () => {
                 onChange={handleChange}
                 aria-invalid={!!error && !mfaRequired}
                 aria-describedby={error && !mfaRequired ? errorId : undefined}
-                className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all"
+                className="input-glass w-full rounded-2xl"
                 placeholder="you@fortissecured.com"
               />
             </div>
             <div>
-              <label htmlFor={passwordId} className="block text-sm text-white/70 mb-2">
+              <label htmlFor={passwordId} className="block text-sm text-secondary mb-2">
                 Password
               </label>
               <input
@@ -80,14 +87,14 @@ const LoginForm = () => {
                 onChange={handleChange}
                 aria-invalid={!!error && !mfaRequired}
                 aria-describedby={error && !mfaRequired ? errorId : undefined}
-                className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all"
+                className="input-glass w-full rounded-2xl"
                 placeholder="Enter your password"
               />
             </div>
           </>
         ) : (
           <div>
-            <label htmlFor={mfaCodeId} className="block text-sm text-white/70 mb-2">
+            <label htmlFor={mfaCodeId} className="block text-sm text-secondary mb-2">
               2FA Code
             </label>
             <input
@@ -99,21 +106,21 @@ const LoginForm = () => {
               onChange={(e) => setMfaCode(e.target.value)}
               aria-invalid={!!error && mfaRequired}
               aria-describedby={error && mfaRequired ? errorId : undefined}
-              className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all"
+              className="input-glass w-full rounded-2xl"
               placeholder="Enter 6-digit code"
               maxLength={6}
             />
           </div>
         )}
         {error && (
-          <div id={errorId} role="alert" className="text-sm text-rose-400 p-3 bg-rose-400/10 rounded-lg border border-rose-400/20">
+          <div id={errorId} role="alert" className="badge-error text-sm p-3">
             {error}
           </div>
         )}
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-full bg-accent px-6 py-3 text-sm font-semibold text-night-sky shadow-lg shadow-accent/40 hover:bg-accent/90 disabled:cursor-not-allowed disabled:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky transition-all"
+          className="btn-primary w-full rounded-full shadow-lg shadow-accent/40"
           aria-busy={loading}
         >
           {loading ? 'Signing in…' : 'Sign in'}
@@ -122,17 +129,17 @@ const LoginForm = () => {
           <button
             type="button"
             onClick={() => { setMfaRequired(false); setError(''); }}
-            className="text-xs text-white/50 hover:text-white/70 underline focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky rounded px-2 py-1 transition-all"
+            className="link text-xs px-2 py-1"
             aria-label="Return to email and password login"
           >
             Back to login
           </button>
         )}
         <div className="flex items-center justify-between gap-2 text-xs">
-          <Link to="/forgot-password" className="text-white/50 hover:text-white/70 underline transition-all">
+          <Link to="/forgot-password" className="link">
             Forgot password?
           </Link>
-          <p className="text-white/50">
+          <p className="text-muted">
             Fortis Secured supports email/password, SSO and 2FA.
           </p>
         </div>

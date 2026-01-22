@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { isFeatureEnabled } from './config/features.ts';
 import { FeatureDisabled } from './components/FeatureDisabled.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { initializeWebVitalsMonitoring, detectPerformanceIssues } from './lib/performance.js';
 import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from './lib/analyticsUtils.js';
 
@@ -59,10 +60,13 @@ const Profile = lazy(() => import('./pages/portal/Profile.jsx'));
 const StaffSignup = lazy(() => import('./pages/StaffSignup.jsx'));
 const ComplianceWizard = lazy(() => import('./pages/portal/ComplianceWizard.jsx'));
 const SchedulingBoard = lazy(() => import('./pages/portal/SchedulingBoard.jsx'));
+const NewShift = lazy(() => import('./pages/portal/NewShift.jsx'));
 const AdminGrading = lazy(() => import('./pages/portal/AdminGrading.jsx'));
 const InviteManagement = lazy(() => import('./pages/portal/InviteManagement.jsx'));
 const DriveSyncStatus = lazy(() => import('./pages/portal/DriveSyncStatus.jsx'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
+const PasswordReset = lazy(() => import('./pages/PasswordReset.jsx'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -102,6 +106,10 @@ const AppContent = () => {
         <Route path="/" element={<PublicSite />} />
         <Route path="/signup" element={<StaffSignup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/password-reset" element={<PasswordReset />} />
+        {/* Legacy compatibility route for older email templates */}
+        <Route path="/portal/password-reset/:token" element={<ResetPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/schedule-demo" element={<ScheduleDemo />} />
         <Route path="/services" element={<Services />} />
         <Route path="/services/manned-guarding" element={<MannedGuarding />} />
@@ -125,6 +133,7 @@ const AppContent = () => {
           <Route path="scheduling" element={<FeatureRoute feature="SCHEDULING" name="Scheduling" element={<SchedulingWithDragDrop />} />} />
           <Route path="scheduling-drag-drop" element={<FeatureRoute feature="SCHEDULING" name="Scheduling" element={<SchedulingWithDragDrop />} />} />
           <Route path="scheduling-board" element={<FeatureRoute feature="SCHEDULING" name="Scheduling Board" element={<SchedulingBoard />} />} />
+          <Route path="scheduling/new" element={<FeatureRoute feature="SCHEDULING" name="New Shift" element={<NewShift />} />} />
           <Route path="recurring-patterns" element={<FeatureRoute feature="RECURRING_PATTERNS" name="Recurring Patterns" element={<RecurringPatterns />} />} />
           <Route path="my-schedule" element={<FeatureRoute feature="MY_SCHEDULE" name="My Schedule" element={<MySchedule />} />} />
           <Route path="my-schedule-view" element={<FeatureRoute feature="MY_SCHEDULE" name="My Schedule" element={<StaffScheduleView />} />} />
@@ -178,9 +187,11 @@ const App = () => {
   }, []);
 
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

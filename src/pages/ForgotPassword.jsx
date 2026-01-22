@@ -21,8 +21,9 @@ const ForgotPassword = () => {
     setLoading(true);
     setError(null);
     try {
-      // Send password recovery email via Appwrite
-      await account.createRecovery(email, `${window.location.origin}/reset-password`);
+      // Send password recovery email via Appwrite using configured base URL
+      const baseUrl = (import.meta.env.VITE_PUBLIC_BASE_URL || window.location.origin).replace(/\/$/, '');
+      await account.createRecovery(email, `${baseUrl}/reset-password`);
       setSuccess('Check your email for a password reset link. It expires in 1 hour.');
       setStep('check-inbox');
       setEmail('');

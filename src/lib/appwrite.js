@@ -58,6 +58,8 @@ export const config = {
   staffComplianceCollectionId: import.meta.env.VITE_APPWRITE_STAFF_COMPLIANCE_COLLECTION_ID,
   adminGradingCollectionId: import.meta.env.VITE_APPWRITE_ADMIN_GRADING_COLLECTION_ID,
   complianceUploadsCollectionId: import.meta.env.VITE_APPWRITE_COMPLIANCE_UPLOADS_COLLECTION_ID || 'compliance_uploads',
+  // Storage buckets
+  documentsBucketId: import.meta.env.VITE_APPWRITE_DOCUMENTS_BUCKET_ID || 'documents',
 };
 
 export const DATABASE_ID = databaseId;

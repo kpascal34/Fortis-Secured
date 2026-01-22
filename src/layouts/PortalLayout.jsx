@@ -3,6 +3,7 @@ import { Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PortalNav from '../components/PortalNav';
 import LoginForm from '../components/LoginForm';
+import Breadcrumb from '../components/Breadcrumb';
 import { useSEO } from '../lib/seo.js';
 
 const PortalLayout = () => {
@@ -54,7 +55,10 @@ const PortalLayout = () => {
       <PortalNav onSignOut={logout} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto">
-          <Outlet />
+          <div className="p-4 lg:p-8">
+            <Breadcrumb />
+            <Outlet />
+          </div>
         </div>
       </div>
     </div>

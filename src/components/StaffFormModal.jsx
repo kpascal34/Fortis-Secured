@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { databases, config } from '../lib/appwrite';
-import { ID } from 'appwrite';
+import { ID, Query } from 'appwrite';
 import { AiOutlineClose, AiOutlineLoading3Quarters } from 'react-icons/ai';
 
 const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
@@ -9,15 +9,15 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
     lastName: '',
     email: '',
     phone: '',
-    role: 'guard',
-    department: 'Security',
+    role: '',
+    department: '',
     licenseNumber: '',
     licenseExpiry: '',
     status: 'active',
     address: '',
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: '',
     dBSStatus: 'pending',
-    rightToWork: 'verified',
+    rightToWork: 'pending',
     emergencyContact: '',
     emergencyPhone: '',
   });
@@ -26,9 +26,57 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [errors, setErrors] = useState({});
+  
+  // Roles and departments state with defaults
+  const [roles, setRoles] = useState(['guard', 'supervisor', 'manager', 'admin']);
+  const [departments, setDepartments] = useState(['Security', 'HR', 'Operations', 'Management']);
+  const [loadingOptions, setLoadingOptions] = useState(false);
 
-  const roles = ['guard', 'supervisor', 'manager', 'admin'];
-  const departments = ['Security', 'HR', 'Operations', 'Management'];
+  // Fetch roles and departments from Appwrite on mount
+  useEffect(() => {
+    if (isOpen) {
+      fetchRolesAndDepartments();
+    }
+  }, [isOpen]);
+
+  const fetchRolesAndDepartments = async () => {
+    setLoadingOptions(true);
+    try {
+      // Try to fetch from a settings/configuration collection if it exists
+      // For now, we'll use the defaults. In the future, you can create a
+      // 'settings' collection in Appwrite to store configurable options
+      
+      // Example: Fetch unique roles from existing staff profiles
+      if (config.staffProfilesCollectionId) {
+        try {
+          const staffResponse = await databases.listDocuments(
+            config.databaseId,
+            config.staffProfilesCollectionId,
+            [Query.limit(100)]
+          );
+          
+          // Extract unique roles
+          const uniqueRoles = [...new Set(staffResponse.documents.map(doc => doc.role).filter(Boolean))];
+          if (uniqueRoles.length > 0) {
+            // Merge with defaults
+            setRoles([...new Set([...roles, ...uniqueRoles])]);
+          }
+          
+          // Extract unique departments
+          const uniqueDepts = [...new Set(staffResponse.documents.map(doc => doc.department).filter(Boolean))];
+          if (uniqueDepts.length > 0) {
+            setDepartments([...new Set([...departments, ...uniqueDepts])]);
+          }
+        } catch (err) {
+          console.log('Could not fetch existing roles/departments, using defaults:', err.message);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching options:', err);
+    } finally {
+      setLoadingOptions(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,6 +99,12 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Invalid email format';
+    }
+    if (!formData.role) {
+      newErrors.role = 'Role is required';
+    }
+    if (!formData.department) {
+      newErrors.department = 'Department is required';
     }
     if (!formData.startDate) {
       newErrors.startDate = 'Start date is required';
@@ -100,21 +154,48 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
         staffData
       );
 
+      // Auto-sync to scheduling guards collection
+      if (config.guardsCollectionId) {
+        try {
+          await databases.createDocument(
+            config.databaseId,
+            config.guardsCollectionId,
+            ID.unique(),
+            {
+              firstName: staffData.firstName,
+              lastName: staffData.lastName,
+              email: staffData.email,
+              phone: staffData.phone,
+              status: staffData.status || 'active',
+              role: staffData.role || 'guard',
+              payRate: formData.payRate || 0,
+              siaLicenceNumber: staffData.licenseNumber || '',
+              siaExpiryDate: staffData.licenseExpiry || null,
+              createdFrom: 'HR',
+            }
+          );
+        } catch (syncError) {
+          console.warn('Failed to sync staff to scheduling guards collection', syncError);
+        }
+      }
+
       setSuccess('Staff member created successfully!');
+      
+      // Reset form
       setFormData({
         firstName: '',
         lastName: '',
         email: '',
         phone: '',
-        role: 'guard',
-        department: 'Security',
+        role: '',
+        department: '',
         licenseNumber: '',
         licenseExpiry: '',
         status: 'active',
         address: '',
-        startDate: new Date().toISOString().split('T')[0],
+        startDate: '',
         dBSStatus: 'pending',
-        rightToWork: 'verified',
+        rightToWork: 'pending',
         emergencyContact: '',
         emergencyPhone: '',
       });
@@ -122,10 +203,11 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
       setTimeout(() => {
         onSuccess(response);
         onClose();
+        setSuccess('');
       }, 1500);
     } catch (err) {
       console.error('Error creating staff:', err);
-      setError(err.message || 'Failed to create staff member');
+      setError(err.message || 'Failed to create staff member. Please check all fields and try again.');
     } finally {
       setLoading(false);
     }
@@ -175,7 +257,7 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none transition-colors ${
                     errors.firstName ? 'border-red-500 focus:border-red-400' : 'border-white/10 focus:border-accent'
                   }`}
-                  placeholder="John"
+                  placeholder="Enter first name"
                 />
                 {errors.firstName && <p className="mt-1 text-sm text-red-400">{errors.firstName}</p>}
               </div>
@@ -192,7 +274,7 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none transition-colors ${
                     errors.lastName ? 'border-red-500 focus:border-red-400' : 'border-white/10 focus:border-accent'
                   }`}
-                  placeholder="Smith"
+                  placeholder="Enter last name"
                 />
                 {errors.lastName && <p className="mt-1 text-sm text-red-400">{errors.lastName}</p>}
               </div>
@@ -209,7 +291,7 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:outline-none transition-colors ${
                     errors.email ? 'border-red-500 focus:border-red-400' : 'border-white/10 focus:border-accent'
                   }`}
-                  placeholder="john@example.com"
+                  placeholder="staff.member@company.com"
                 />
                 {errors.email && <p className="mt-1 text-sm text-red-400">{errors.email}</p>}
               </div>
@@ -222,7 +304,7 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   value={formData.phone}
                   onChange={handleChange}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none transition-colors"
-                  placeholder="+44 7700 900001"
+                  placeholder="+44 7XXX XXXXXX"
                 />
               </div>
 
@@ -234,7 +316,7 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   value={formData.address}
                   onChange={handleChange}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none transition-colors"
-                  placeholder="123 Main Street, London"
+                  placeholder="Enter full address"
                 />
               </div>
             </div>
@@ -245,35 +327,49 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
             <h3 className="mb-4 text-lg font-medium text-white">Employment Details</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm text-white/70">Role</label>
+                <label className="mb-2 block text-sm text-white/70">
+                  Role <span className="text-red-400">*</span>
+                </label>
                 <select
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none transition-colors [&>option]:bg-night-sky"
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors [&>option]:bg-night-sky ${
+                    errors.role ? 'border-red-500 focus:border-red-400' : 'border-white/10 focus:border-accent'
+                  }`}
+                  disabled={loadingOptions}
                 >
+                  <option value="">Select a role...</option>
                   {roles.map((r) => (
                     <option key={r} value={r}>
                       {r.charAt(0).toUpperCase() + r.slice(1)}
                     </option>
                   ))}
                 </select>
+                {errors.role && <p className="mt-1 text-sm text-red-400">{errors.role}</p>}
               </div>
 
               <div>
-                <label className="mb-2 block text-sm text-white/70">Department</label>
+                <label className="mb-2 block text-sm text-white/70">
+                  Department <span className="text-red-400">*</span>
+                </label>
                 <select
                   name="department"
                   value={formData.department}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none transition-colors [&>option]:bg-night-sky"
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors [&>option]:bg-night-sky ${
+                    errors.department ? 'border-red-500 focus:border-red-400' : 'border-white/10 focus:border-accent'
+                  }`}
+                  disabled={loadingOptions}
                 >
+                  <option value="">Select a department...</option>
                   {departments.map((d) => (
                     <option key={d} value={d}>
                       {d}
                     </option>
                   ))}
                 </select>
+                {errors.department && <p className="mt-1 text-sm text-red-400">{errors.department}</p>}
               </div>
 
               <div>
@@ -321,7 +417,7 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   value={formData.licenseNumber}
                   onChange={handleChange}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none transition-colors"
-                  placeholder="SIA123456789"
+                  placeholder="Enter SIA license number"
                 />
               </div>
 
@@ -382,7 +478,7 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   value={formData.emergencyContact}
                   onChange={handleChange}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none transition-colors"
-                  placeholder="Jane Smith"
+                  placeholder="Enter emergency contact name"
                 />
               </div>
 
@@ -394,7 +490,7 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   value={formData.emergencyPhone}
                   onChange={handleChange}
                   className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none transition-colors"
-                  placeholder="+44 7700 900002"
+                  placeholder="+44 7XXX XXXXXX"
                 />
               </div>
             </div>

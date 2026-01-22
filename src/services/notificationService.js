@@ -108,3 +108,44 @@ export async function notifyMissingSections(staffId, complianceId, missingSectio
     { complianceId, missingSections }
   );
 }
+
+// Generic notification helpers
+export async function notifyShiftAssigned(staffId, shift) {
+  return sendComplianceNotification(
+    staffId,
+    'shift_assigned',
+    'New Shift Assigned',
+    `You have been assigned to ${shift?.position || 'a shift'} on ${shift?.date} at ${shift?.siteName || 'site'}.`,
+    { shiftId: shift?.id || shift?.$id, siteId: shift?.siteId, date: shift?.date, startTime: shift?.startTime, endTime: shift?.endTime }
+  );
+}
+
+export async function notifyLicenceExpiring(staffId, daysUntilExpiry) {
+  return sendComplianceNotification(
+    staffId,
+    'license_expiring',
+    'Licence Expiring Soon',
+    `Your licence is expiring in ${daysUntilExpiry} day(s). Please renew to remain eligible for shifts.`,
+    { daysUntilExpiry }
+  );
+}
+
+export async function notifyComplianceTask(staffId, task) {
+  return sendComplianceNotification(
+    staffId,
+    'compliance_task',
+    'Compliance Action Required',
+    task || 'Please complete your outstanding compliance tasks.',
+    {}
+  );
+}
+
+export async function notifyGradingFeedback(staffId, grade, comment) {
+  return sendComplianceNotification(
+    staffId,
+    'grading_feedback',
+    'New Performance Feedback',
+    `Your latest performance grade is ${grade}/5. ${comment || ''}`.trim(),
+    { grade, comment }
+  );
+}

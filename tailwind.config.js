@@ -1,19 +1,51 @@
+import { colors, spacing, typography, borderRadius, shadows } from './src/theme/tokens.js';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
       colors: {
-        primary: '#0B3D91',
-        'primary-dark': '#072B68',
-        accent: '#0BD3D3',
-        'night-sky': '#0B1220',
+        ...colors,
+        // Legacy color mappings for backwards compatibility
+        primary: colors.primary.DEFAULT,
+        'primary-dark': colors.primary.dark,
+        accent: colors.accent.DEFAULT,
+        'night-sky': colors.background.primary,
+
+        // CSS variable-driven tokens (accessible dark theme)
+        bg: 'rgb(var(--bg) / <alpha-value>)',
+        'bg-2': 'rgb(var(--bg-2) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        'surface-2': 'rgb(var(--surface-2) / <alpha-value>)',
+        border: 'rgb(var(--border) / <alpha-value>)',
+
+        text: 'rgb(var(--text) / <alpha-value>)',
+        'text-2': 'rgb(var(--text-2) / <alpha-value>)',
+        'text-3': 'rgb(var(--text-3) / <alpha-value>)',
+        'text-disabled': 'rgb(var(--text-disabled) / <alpha-value>)',
+
+        brand: 'rgb(var(--brand) / <alpha-value>)',
+        'brand-foreground': 'rgb(var(--brand-foreground) / <alpha-value>)',
+
+        success: 'rgb(var(--success) / <alpha-value>)',
+        warning: 'rgb(var(--warning) / <alpha-value>)',
+        error: 'rgb(var(--error) / <alpha-value>)',
+        info: 'rgb(var(--info) / <alpha-value>)',
       },
-      fontFamily: {
-        sans: ['Manrope', 'system-ui', 'sans-serif'],
+      spacing,
+      fontSize: typography.fontSize,
+      fontWeight: typography.fontWeight,
+      borderRadius: {
+        ...borderRadius,
+        xl: '14px',
+        '2xl': '18px',
       },
+      fontFamily: typography.fontFamily,
       boxShadow: {
-        glass: '0 8px 32px rgba(11, 18, 32, 0.35)',
+        ...shadows,
+        glass: shadows.glass,
+        card: '0 10px 30px rgba(0,0,0,0.25)',
       },
       animation: {
         float: 'float 8s ease-in-out infinite',

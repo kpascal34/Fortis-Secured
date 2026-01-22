@@ -388,6 +388,25 @@ const Incidents = () => {
     return labels[type] || type;
   };
 
+  const getSeverityBadge = (severity) => {
+    switch (severity) {
+      case 'critical': return 'fs-badge-error';
+      case 'high': return 'fs-badge-warning';
+      case 'medium': return 'fs-badge-warning';
+      case 'low': return 'fs-badge-info';
+      default: return 'fs-badge-info';
+    }
+  };
+
+  const getStatusDot = (status) => {
+    switch (status) {
+      case 'open': return 'bg-error';
+      case 'investigating': return 'bg-warning';
+      case 'resolved': return 'bg-success';
+      default: return 'bg-info';
+    }
+  };
+
   const stats = calculateStats();
   const filteredIncidents = filterIncidents();
 
@@ -403,16 +422,16 @@ const Incidents = () => {
   }
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="fs-page space-y-6 p-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Incident Reports</h1>
-          <p className="mt-2 text-white/70">Report and track security incidents</p>
+          <h1 className="fs-title">Incident Reports</h1>
+          <p className="fs-subtitle">Report and track security incidents</p>
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent/90 transition-all"
+          className="fs-btn-primary px-4 py-2"
         >
           <AiOutlinePlus className="h-5 w-5" />
           Report Incident
@@ -421,69 +440,69 @@ const Incidents = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-5">
-        <div className="glass-panel p-6">
+        <div className="fs-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/50">Total Reports</p>
-              <p className="mt-2 text-3xl font-bold text-white">{stats.total}</p>
+              <p className="text-sm text-text-3">Total Reports</p>
+              <p className="mt-2 text-3xl font-bold text-text">{stats.total}</p>
             </div>
-            <AiOutlineFile className="h-8 w-8 text-accent" />
+            <AiOutlineFile className="h-8 w-8 text-brand" />
           </div>
         </div>
 
-        <div className="glass-panel p-6">
+        <div className="fs-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/50">Open</p>
-              <p className="mt-2 text-3xl font-bold text-red-400">{stats.open}</p>
+              <p className="text-sm text-text-3">Open</p>
+              <p className="mt-2 text-3xl font-bold text-error">{stats.open}</p>
             </div>
-            <AiOutlineAlert className="h-8 w-8 text-red-400" />
+            <AiOutlineAlert className="h-8 w-8 text-error" />
           </div>
         </div>
 
-        <div className="glass-panel p-6">
+        <div className="fs-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/50">Investigating</p>
-              <p className="mt-2 text-3xl font-bold text-yellow-400">{stats.investigating}</p>
+              <p className="text-sm text-text-3">Investigating</p>
+              <p className="mt-2 text-3xl font-bold text-warning">{stats.investigating}</p>
             </div>
-            <AiOutlineClockCircle className="h-8 w-8 text-yellow-400" />
+            <AiOutlineClockCircle className="h-8 w-8 text-warning" />
           </div>
         </div>
 
-        <div className="glass-panel p-6">
+        <div className="fs-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/50">Resolved</p>
-              <p className="mt-2 text-3xl font-bold text-green-400">{stats.resolved}</p>
+              <p className="text-sm text-text-3">Resolved</p>
+              <p className="mt-2 text-3xl font-bold text-success">{stats.resolved}</p>
             </div>
-            <AiOutlineCheckCircle className="h-8 w-8 text-green-400" />
+            <AiOutlineCheckCircle className="h-8 w-8 text-success" />
           </div>
         </div>
 
-        <div className="glass-panel p-6">
+        <div className="fs-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/50">Critical</p>
-              <p className="mt-2 text-3xl font-bold text-red-600">{stats.critical}</p>
+              <p className="text-sm text-text-3">Critical</p>
+              <p className="mt-2 text-3xl font-bold text-error">{stats.critical}</p>
             </div>
-            <AiOutlineExclamationCircle className="h-8 w-8 text-red-600" />
+            <AiOutlineExclamationCircle className="h-8 w-8 text-error" />
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="glass-panel p-6">
+      <div className="fs-card">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           {/* Search */}
           <div className="relative">
-            <AiOutlineSearch className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-white/50" />
+            <AiOutlineSearch className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-text-3" />
             <input
               type="text"
               placeholder="Search incidents..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              className="input-glass w-full pl-10"
             />
           </div>
 
@@ -491,7 +510,7 @@ const Incidents = () => {
           <select
             value={view}
             onChange={(e) => setView(e.target.value)}
-            className="rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+            className="rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
           >
             <option value="all">All Incidents</option>
             <option value="open">Open</option>
@@ -504,7 +523,7 @@ const Incidents = () => {
           <select
             value={filterSeverity}
             onChange={(e) => setFilterSeverity(e.target.value)}
-            className="rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+            className="rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
           >
             <option value="">All Severities</option>
             <option value="critical">Critical</option>
@@ -517,7 +536,7 @@ const Incidents = () => {
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+            className="rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
           >
             <option value="">All Types</option>
             <option value="security-breach">Security Breach</option>
@@ -538,13 +557,13 @@ const Incidents = () => {
       {/* Incidents List */}
       <div className="grid grid-cols-1 gap-4">
         {filteredIncidents.length === 0 ? (
-          <div className="glass-panel p-12 text-center">
-            <AiOutlineFile className="mx-auto mb-4 h-16 w-16 text-white/20" />
-            <p className="text-lg text-white/50">No incidents found</p>
-            <p className="mt-2 text-sm text-white/30">Report your first incident to get started</p>
+          <div className="fs-card p-12 text-center">
+            <AiOutlineFile className="mx-auto mb-4 h-16 w-16 text-text-3/20" />
+            <p className="text-lg text-text-3">No incidents found</p>
+            <p className="mt-2 text-sm text-text-3">Report your first incident to get started</p>
             <button
               onClick={() => handleOpenModal()}
-              className="mt-6 inline-flex items-center gap-2 rounded-lg border border-accent bg-accent/10 px-4 py-2 text-sm font-medium text-accent hover:bg-accent/20 transition-all"
+              className="mt-6 fs-btn-ghost"
             >
               <AiOutlinePlus className="h-4 w-4" />
               Report Incident
@@ -552,20 +571,20 @@ const Incidents = () => {
           </div>
         ) : (
           filteredIncidents.map((incident) => (
-            <div key={incident.$id} className="glass-panel p-6 hover:border-accent/50 transition-all">
+            <div key={incident.$id} className="fs-card hover:bg-surface-2 transition-all">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getSeverityColor(incident.severity)}`}>
+                    <span className={`fs-badge ${getSeverityBadge(incident.severity)}`}>
                       {incident.severity?.toUpperCase()}
                     </span>
-                    <span className={`h-3 w-3 rounded-full ${getStatusColor(incident.status)}`} title={incident.status}></span>
-                    <h3 className="text-lg font-semibold text-white">{incident.title}</h3>
+                    <span className={`h-3 w-3 rounded-full ${getStatusDot(incident.status)}`} title={incident.status}></span>
+                    <h3 className="text-lg font-semibold text-text">{incident.title}</h3>
                   </div>
                   
-                  <p className="mt-2 text-sm text-white/70 line-clamp-2">{incident.description}</p>
+                  <p className="mt-2 text-sm text-text-2 line-clamp-2">{incident.description}</p>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-white/50">
+                  <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-text-3">
                     <div className="flex items-center gap-1">
                       <AiOutlineCalendar className="h-4 w-4" />
                       {incident.incidentDate ? new Date(incident.incidentDate).toLocaleDateString() : 'N/A'}
@@ -585,24 +604,24 @@ const Incidents = () => {
                     )}
 
                     {incident.siteId && (
-                      <div className="text-white/40">
+                      <div className="text-text-3">
                         / {getSiteName(incident.siteId)}
                       </div>
                     )}
 
-                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs">
+                    <span className="rounded-full bg-bg-2 px-2 py-0.5 text-xs text-text-2">
                       {getIncidentTypeLabel(incident.incidentType)}
                     </span>
 
                     {incident.policeNotified && (
-                      <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400">
+                      <span className="flex items-center gap-1 rounded-full bg-info/15 px-2 py-0.5 text-xs text-info">
                         <AiOutlineWarning className="h-3 w-3" />
                         Police Notified
                       </span>
                     )}
 
                     {incident.injuries && (
-                      <span className="flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs text-red-400">
+                      <span className="flex items-center gap-1 rounded-full bg-error/15 px-2 py-0.5 text-xs text-error">
                         <AiOutlineWarning className="h-3 w-3" />
                         Injuries
                       </span>
@@ -615,7 +634,7 @@ const Incidents = () => {
                   <select
                     value={incident.status}
                     onChange={(e) => handleUpdateStatus(incident.$id, e.target.value)}
-                    className={`rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-white ${getStatusColor(incident.status)} hover:opacity-90 transition-all focus:outline-none focus:ring-2 focus:ring-accent`}
+                    className={`rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text ${getStatusDot(incident.status)} hover:opacity-90 transition-all focus:outline-none focus:ring-2 focus:ring-brand`}
                   >
                     <option value="open">Open</option>
                     <option value="investigating">Investigating</option>
@@ -625,7 +644,7 @@ const Incidents = () => {
                   {/* View Button */}
                   <button
                     onClick={() => handleViewIncident(incident)}
-                    className="rounded-lg border border-white/10 bg-white/5 p-2 text-white hover:bg-white/10 transition-all"
+                    className="fs-btn-ghost p-2"
                   >
                     <AiOutlineEye className="h-4 w-4" />
                   </button>
@@ -633,7 +652,7 @@ const Incidents = () => {
                   {/* Edit Button */}
                   <button
                     onClick={() => handleOpenModal(incident)}
-                    className="rounded-lg border border-white/10 bg-white/5 p-2 text-white hover:bg-white/10 transition-all"
+                    className="fs-btn-ghost p-2"
                   >
                     <AiOutlineEdit className="h-4 w-4" />
                   </button>
@@ -641,7 +660,7 @@ const Incidents = () => {
                   {/* Delete Button */}
                   <button
                     onClick={() => handleDeleteIncident(incident.$id)}
-                    className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-400 hover:bg-red-500/20 transition-all"
+                    className="rounded-lg border border-error/30 bg-error/15 p-2 text-error hover:bg-error/20 transition-all"
                   >
                     <AiOutlineDelete className="h-4 w-4" />
                   </button>
@@ -655,25 +674,25 @@ const Incidents = () => {
       {/* Incident Detail Modal */}
       {showDetailModal && viewingIncident && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 border-b border-white/10 bg-night-sky p-6 z-10">
+          <div className="fs-card w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 border-b border-border bg-bg p-6 z-10">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getSeverityColor(viewingIncident.severity)}`}>
+                    <span className={`fs-badge ${getSeverityBadge(viewingIncident.severity)}`}>
                       {viewingIncident.severity?.toUpperCase()}
                     </span>
-                    <span className={`h-3 w-3 rounded-full ${getStatusColor(viewingIncident.status)}`}></span>
+                    <span className={`h-3 w-3 rounded-full ${getStatusDot(viewingIncident.status)}`}></span>
                   </div>
-                  <h2 className="text-2xl font-bold text-white">{viewingIncident.title}</h2>
-                  <p className="mt-1 text-sm text-white/50">
+                  <h2 className="text-2xl font-bold text-text">{viewingIncident.title}</h2>
+                  <p className="mt-1 text-sm text-text-3">
                     {viewingIncident.incidentDate ? new Date(viewingIncident.incidentDate).toLocaleDateString() : 'N/A'}
                     {viewingIncident.incidentTime && ` at ${viewingIncident.incidentTime}`}
                   </p>
                 </div>
                 <button
                   onClick={() => setShowDetailModal(false)}
-                  className="rounded-lg border border-white/10 bg-white/5 p-2 text-white hover:bg-white/10 transition-all"
+                  className="fs-btn-ghost p-2"
                 >
                   <AiOutlineClose className="h-5 w-5" />
                 </button>
@@ -683,48 +702,48 @@ const Incidents = () => {
             <div className="p-6 space-y-6">
               {/* Basic Info */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-3">Incident Details</h3>
+                <h3 className="text-lg font-semibold text-text mb-3">Incident Details</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-white/50">Type</p>
-                    <p className="text-white">{getIncidentTypeLabel(viewingIncident.incidentType)}</p>
+                    <p className="text-sm text-text-3">Type</p>
+                    <p className="text-text">{getIncidentTypeLabel(viewingIncident.incidentType)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-white/50">Status</p>
-                    <p className="text-white capitalize">{viewingIncident.status}</p>
+                    <p className="text-sm text-text-3">Status</p>
+                    <p className="text-text capitalize">{viewingIncident.status}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-white/50">Reported By</p>
-                    <p className="text-white">{getGuardName(viewingIncident.reportedBy)}</p>
+                    <p className="text-sm text-text-3">Reported By</p>
+                    <p className="text-text">{getGuardName(viewingIncident.reportedBy)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-white/50">Location</p>
-                    <p className="text-white">{viewingIncident.location || 'N/A'}</p>
+                    <p className="text-sm text-text-3">Location</p>
+                    <p className="text-text">{viewingIncident.location || 'N/A'}</p>
                   </div>
                 </div>
               </div>
 
               {/* Description */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-3">Description</h3>
-                <p className="text-white/70 whitespace-pre-wrap">{viewingIncident.description}</p>
+                <h3 className="text-lg font-semibold text-text mb-3">Description</h3>
+                <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.description}</p>
               </div>
 
               {/* Client/Site */}
               {(viewingIncident.clientId || viewingIncident.siteId) && (
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Client & Site</h3>
+                  <h3 className="text-lg font-semibold text-text mb-3">Client & Site</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {viewingIncident.clientId && (
                       <div>
-                        <p className="text-sm text-white/50">Client</p>
-                        <p className="text-white">{getClientName(viewingIncident.clientId)}</p>
+                        <p className="text-sm text-text-3">Client</p>
+                        <p className="text-text">{getClientName(viewingIncident.clientId)}</p>
                       </div>
                     )}
                     {viewingIncident.siteId && (
                       <div>
-                        <p className="text-sm text-white/50">Site</p>
-                        <p className="text-white">{getSiteName(viewingIncident.siteId)}</p>
+                        <p className="text-sm text-text-3">Site</p>
+                        <p className="text-text">{getSiteName(viewingIncident.siteId)}</p>
                       </div>
                     )}
                   </div>
@@ -734,18 +753,18 @@ const Incidents = () => {
               {/* Witness Info */}
               {(viewingIncident.witnessName || viewingIncident.witnessContact) && (
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Witness Information</h3>
+                  <h3 className="text-lg font-semibold text-text mb-3">Witness Information</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {viewingIncident.witnessName && (
                       <div>
-                        <p className="text-sm text-white/50">Name</p>
-                        <p className="text-white">{viewingIncident.witnessName}</p>
+                        <p className="text-sm text-text-3">Name</p>
+                        <p className="text-text">{viewingIncident.witnessName}</p>
                       </div>
                     )}
                     {viewingIncident.witnessContact && (
                       <div>
-                        <p className="text-sm text-white/50">Contact</p>
-                        <p className="text-white">{viewingIncident.witnessContact}</p>
+                        <p className="text-sm text-text-3">Contact</p>
+                        <p className="text-text">{viewingIncident.witnessContact}</p>
                       </div>
                     )}
                   </div>
@@ -755,19 +774,19 @@ const Incidents = () => {
               {/* Action Taken */}
               {viewingIncident.actionTaken && (
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Action Taken</h3>
-                  <p className="text-white/70 whitespace-pre-wrap">{viewingIncident.actionTaken}</p>
+                  <h3 className="text-lg font-semibold text-text mb-3">Action Taken</h3>
+                  <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.actionTaken}</p>
                 </div>
               )}
 
               {/* Police Information */}
               {viewingIncident.policeNotified && (
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Police Information</h3>
-                  <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4">
-                    <p className="text-blue-400 font-medium mb-2">Police Notified</p>
+                  <h3 className="text-lg font-semibold text-text mb-3">Police Information</h3>
+                  <div className="rounded-lg bg-info/15 border border-info/30 p-4">
+                    <p className="text-info font-medium mb-2">Police Notified</p>
                     {viewingIncident.policeReferenceNumber && (
-                      <p className="text-white/70">Reference: {viewingIncident.policeReferenceNumber}</p>
+                      <p className="text-text-2">Reference: {viewingIncident.policeReferenceNumber}</p>
                     )}
                   </div>
                 </div>
@@ -776,9 +795,9 @@ const Incidents = () => {
               {/* Injuries */}
               {viewingIncident.injuries && (
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Injuries Reported</h3>
-                  <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-4">
-                    <p className="text-white/70 whitespace-pre-wrap">{viewingIncident.injuryDetails || 'Details not provided'}</p>
+                  <h3 className="text-lg font-semibold text-text mb-3">Injuries Reported</h3>
+                  <div className="rounded-lg bg-error/15 border border-error/30 p-4">
+                    <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.injuryDetails || 'Details not provided'}</p>
                   </div>
                 </div>
               )}
@@ -786,9 +805,9 @@ const Incidents = () => {
               {/* Property Damage */}
               {viewingIncident.propertyDamage && (
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Property Damage</h3>
-                  <div className="rounded-lg bg-orange-500/10 border border-orange-500/20 p-4">
-                    <p className="text-white/70 whitespace-pre-wrap">{viewingIncident.damageDetails || 'Details not provided'}</p>
+                  <h3 className="text-lg font-semibold text-text mb-3">Property Damage</h3>
+                  <div className="rounded-lg bg-warning/15 border border-warning/30 p-4">
+                    <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.damageDetails || 'Details not provided'}</p>
                   </div>
                 </div>
               )}
@@ -796,9 +815,9 @@ const Incidents = () => {
               {/* Follow Up */}
               {viewingIncident.followUpRequired && (
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Follow-Up Required</h3>
-                  <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-4">
-                    <p className="text-white/70 whitespace-pre-wrap">{viewingIncident.followUpNotes || 'No notes provided'}</p>
+                  <h3 className="text-lg font-semibold text-text mb-3">Follow-Up Required</h3>
+                  <div className="rounded-lg bg-warning/15 border border-warning/30 p-4">
+                    <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.followUpNotes || 'No notes provided'}</p>
                   </div>
                 </div>
               )}
@@ -806,8 +825,8 @@ const Incidents = () => {
               {/* Resolution */}
               {viewingIncident.resolution && (
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Resolution</h3>
-                  <p className="text-white/70 whitespace-pre-wrap">{viewingIncident.resolution}</p>
+                  <h3 className="text-lg font-semibold text-text mb-3">Resolution</h3>
+                  <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.resolution}</p>
                 </div>
               )}
             </div>
@@ -818,15 +837,15 @@ const Incidents = () => {
       {/* Create/Edit Incident Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="fs-card w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 border-b border-white/10 bg-night-sky p-6 z-10">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-text">
                   {editingIncident ? 'Edit Incident Report' : 'Report New Incident'}
                 </h2>
                 <button
                   onClick={handleCloseModal}
-                  className="rounded-lg border border-white/10 bg-white/5 p-2 text-white hover:bg-white/10 transition-all"
+                  className="fs-btn-ghost p-2"
                 >
                   <AiOutlineClose className="h-5 w-5" />
                 </button>
@@ -836,14 +855,14 @@ const Incidents = () => {
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               {/* Title */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-white">
+                <label className="mb-2 block text-sm font-medium text-text">
                   Incident Title <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="input-glass w-full"
                   placeholder="Brief title of the incident"
                   required
                 />
@@ -852,11 +871,11 @@ const Incidents = () => {
               {/* Type, Severity, Status */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Incident Type <span className="text-red-400">*</span></label>
+                  <label className="mb-2 block text-sm font-medium text-text">Incident Type <span className="text-error">*</span></label>
                   <select
                     value={formData.incidentType}
                     onChange={(e) => setFormData({ ...formData, incidentType: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                     required
                   >
                     <option value="security-breach">Security Breach</option>
@@ -874,11 +893,11 @@ const Incidents = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Severity <span className="text-red-400">*</span></label>
+                  <label className="mb-2 block text-sm font-medium text-text">Severity <span className="text-error">*</span></label>
                   <select
                     value={formData.severity}
                     onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                     required
                   >
                     <option value="low">Low</option>
@@ -889,11 +908,11 @@ const Incidents = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Status</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Status</label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                   >
                     <option value="open">Open</option>
                     <option value="investigating">Investigating</option>
@@ -904,13 +923,13 @@ const Incidents = () => {
 
               {/* Description */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-white">
+                <label className="mb-2 block text-sm font-medium text-text">
                   Description <span className="text-red-400">*</span>
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="input-glass w-full"
                   placeholder="Detailed description of the incident"
                   rows="5"
                   required
@@ -920,34 +939,34 @@ const Incidents = () => {
               {/* Date, Time, Location */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Date <span className="text-red-400">*</span></label>
+                  <label className="mb-2 block text-sm font-medium text-text">Date <span className="text-error">*</span></label>
                   <input
                     type="date"
                     value={formData.incidentDate}
                     onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="input-glass w-full"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Time <span className="text-red-400">*</span></label>
+                  <label className="mb-2 block text-sm font-medium text-text">Time <span className="text-error">*</span></label>
                   <input
                     type="time"
                     value={formData.incidentTime}
                     onChange={(e) => setFormData({ ...formData, incidentTime: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="input-glass w-full"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Location</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Location</label>
                   <input
                     type="text"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="input-glass w-full"
                     placeholder="Specific location"
                   />
                 </div>
@@ -956,11 +975,11 @@ const Incidents = () => {
               {/* Reported By, Client, Site, Shift */}
               <div className="grid grid-cols-4 gap-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Reported By <span className="text-red-400">*</span></label>
+                  <label className="mb-2 block text-sm font-medium text-text">Reported By <span className="text-error">*</span></label>
                   <select
                     value={formData.reportedBy}
                     onChange={(e) => setFormData({ ...formData, reportedBy: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                     required
                   >
                     <option value="">Select Guard</option>
@@ -973,11 +992,11 @@ const Incidents = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Client</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Client</label>
                   <select
                     value={formData.clientId}
                     onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                   >
                     <option value="">None</option>
                     {clients.map(client => (
@@ -989,11 +1008,11 @@ const Incidents = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Site</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Site</label>
                   <select
                     value={formData.siteId}
                     onChange={(e) => setFormData({ ...formData, siteId: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                     disabled={!formData.clientId}
                   >
                     <option value="">None</option>
@@ -1008,11 +1027,11 @@ const Incidents = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Related Shift</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Related Shift</label>
                   <select
                     value={formData.shiftId}
                     onChange={(e) => setFormData({ ...formData, shiftId: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-night-sky py-2 px-4 text-white focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&>option]:bg-night-sky [&>option]:text-white"
+                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
                   >
                     <option value="">None</option>
                     {shifts
@@ -1029,26 +1048,26 @@ const Incidents = () => {
 
               {/* Witness Information */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-3">Witness Information</h3>
+                <h3 className="text-lg font-semibold text-text mb-3">Witness Information</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-white">Witness Name</label>
+                    <label className="mb-2 block text-sm font-medium text-text">Witness Name</label>
                     <input
                       type="text"
                       value={formData.witnessName}
                       onChange={(e) => setFormData({ ...formData, witnessName: e.target.value })}
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                      className="input-glass w-full"
                       placeholder="Full name"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-white">Witness Contact</label>
+                    <label className="mb-2 block text-sm font-medium text-text">Witness Contact</label>
                     <input
                       type="text"
                       value={formData.witnessContact}
                       onChange={(e) => setFormData({ ...formData, witnessContact: e.target.value })}
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                      className="input-glass w-full"
                       placeholder="Phone or email"
                     />
                   </div>
@@ -1057,11 +1076,11 @@ const Incidents = () => {
 
               {/* Action Taken */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-white">Action Taken</label>
+                <label className="mb-2 block text-sm font-medium text-text">Action Taken</label>
                 <textarea
                   value={formData.actionTaken}
                   onChange={(e) => setFormData({ ...formData, actionTaken: e.target.value })}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="input-glass w-full"
                   placeholder="Actions taken in response to the incident"
                   rows="3"
                 />
@@ -1070,7 +1089,7 @@ const Incidents = () => {
               {/* Checkboxes and Details */}
               <div className="space-y-4">
                 {/* Police */}
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="rounded-lg border border-border bg-bg-2 p-4">
                   <label className="flex items-center gap-2 mb-3">
                     <input
                       type="checkbox"
@@ -1078,21 +1097,21 @@ const Incidents = () => {
                       onChange={(e) => setFormData({ ...formData, policeNotified: e.target.checked })}
                       className="h-4 w-4 rounded border-white/10 bg-white/5 text-accent focus:ring-accent"
                     />
-                    <span className="text-sm font-medium text-white">Police Notified</span>
+                    <span className="text-sm font-medium text-text">Police Notified</span>
                   </label>
                   {formData.policeNotified && (
                     <input
                       type="text"
                       value={formData.policeReferenceNumber}
                       onChange={(e) => setFormData({ ...formData, policeReferenceNumber: e.target.value })}
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                      className="input-glass w-full"
                       placeholder="Police reference number"
                     />
                   )}
                 </div>
 
                 {/* Injuries */}
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="rounded-lg border border-border bg-bg-2 p-4">
                   <label className="flex items-center gap-2 mb-3">
                     <input
                       type="checkbox"
@@ -1100,13 +1119,13 @@ const Incidents = () => {
                       onChange={(e) => setFormData({ ...formData, injuries: e.target.checked })}
                       className="h-4 w-4 rounded border-white/10 bg-white/5 text-accent focus:ring-accent"
                     />
-                    <span className="text-sm font-medium text-white">Injuries Reported</span>
+                    <span className="text-sm font-medium text-text">Injuries Reported</span>
                   </label>
                   {formData.injuries && (
                     <textarea
                       value={formData.injuryDetails}
                       onChange={(e) => setFormData({ ...formData, injuryDetails: e.target.value })}
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                      className="input-glass w-full"
                       placeholder="Describe the injuries"
                       rows="2"
                     />
@@ -1114,7 +1133,7 @@ const Incidents = () => {
                 </div>
 
                 {/* Property Damage */}
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="rounded-lg border border-border bg-bg-2 p-4">
                   <label className="flex items-center gap-2 mb-3">
                     <input
                       type="checkbox"
@@ -1122,13 +1141,13 @@ const Incidents = () => {
                       onChange={(e) => setFormData({ ...formData, propertyDamage: e.target.checked })}
                       className="h-4 w-4 rounded border-white/10 bg-white/5 text-accent focus:ring-accent"
                     />
-                    <span className="text-sm font-medium text-white">Property Damage</span>
+                    <span className="text-sm font-medium text-text">Property Damage</span>
                   </label>
                   {formData.propertyDamage && (
                     <textarea
                       value={formData.damageDetails}
                       onChange={(e) => setFormData({ ...formData, damageDetails: e.target.value })}
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                      className="input-glass w-full"
                       placeholder="Describe the damage"
                       rows="2"
                     />
@@ -1136,7 +1155,7 @@ const Incidents = () => {
                 </div>
 
                 {/* Follow Up */}
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="rounded-lg border border-border bg-bg-2 p-4">
                   <label className="flex items-center gap-2 mb-3">
                     <input
                       type="checkbox"
@@ -1144,13 +1163,13 @@ const Incidents = () => {
                       onChange={(e) => setFormData({ ...formData, followUpRequired: e.target.checked })}
                       className="h-4 w-4 rounded border-white/10 bg-white/5 text-accent focus:ring-accent"
                     />
-                    <span className="text-sm font-medium text-white">Follow-Up Required</span>
+                    <span className="text-sm font-medium text-text">Follow-Up Required</span>
                   </label>
                   {formData.followUpRequired && (
                     <textarea
                       value={formData.followUpNotes}
                       onChange={(e) => setFormData({ ...formData, followUpNotes: e.target.value })}
-                      className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                      className="input-glass w-full"
                       placeholder="Follow-up notes"
                       rows="2"
                     />
@@ -1161,11 +1180,11 @@ const Incidents = () => {
               {/* Resolution (for closed incidents) */}
               {formData.status === 'resolved' && (
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white">Resolution</label>
+                  <label className="mb-2 block text-sm font-medium text-text">Resolution</label>
                   <textarea
                     value={formData.resolution}
                     onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="input-glass w-full"
                     placeholder="How was this incident resolved?"
                     rows="3"
                   />
@@ -1177,13 +1196,13 @@ const Incidents = () => {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-medium text-white hover:bg-white/10 transition-all"
+                  className="fs-btn-ghost px-4 py-2"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent/90 transition-all"
+                  className="fs-btn-primary px-4 py-2"
                 >
                   {editingIncident ? 'Update Report' : 'Submit Report'}
                 </button>

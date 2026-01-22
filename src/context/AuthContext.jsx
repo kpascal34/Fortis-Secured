@@ -56,10 +56,20 @@ export const AuthProvider = ({ children }) => {
   }, [fetchUser]);
 
   const login = useCallback(async ({ email, password }) => {
-    if (config.isDemoMode || !account) {
-      console.log('Demo mode - login skipped');
-      return;
+    // Prevent silent failures when auth is disabled or misconfigured
+    const misconfigured =
+      !config.endpoint ||
+      !config.projectId ||
+      config.projectId === 'demo-project' ||
+      config.projectId === 'your_project_id';
+
+    if (config.isDemoMode || !account || misconfigured) {
+      const msg =
+        'Login is disabled in this environment. Set VITE_ENABLE_DEMO_MODE=false and configure VITE_APPWRITE_ENDPOINT and VITE_APPWRITE_PROJECT_ID.';
+      console.warn(msg);
+      throw new Error(msg);
     }
+
     await account.createEmailSession(email, password);
     await fetchUser();
     

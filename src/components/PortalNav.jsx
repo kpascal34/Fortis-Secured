@@ -66,11 +66,7 @@ const NavItem = ({ item, isActive }) => {
     <Link
       to={item.href}
       aria-current={isActive ? 'page' : undefined}
-      className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky ${
-        isActive
-          ? 'bg-accent text-white'
-          : 'text-white/70 hover:bg-white/10 hover:text-white'
-      }`}
+      className={`fs-nav-item ${isActive ? 'fs-nav-item-active' : ''}`}
     >
       <Icon className="mr-3 h-5 w-5" aria-hidden="true" />
       {item.name}
@@ -85,11 +81,11 @@ export const PortalNav = ({ onSignOut }) => {
   return (
     <>
       {/* Mobile menu toggle */}
-      <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-white/10 bg-night-sky px-4 lg:hidden">
+      <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-bg px-4 lg:hidden">
         <h2 className="text-sm font-bold text-white">FORTIS</h2>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="inline-flex items-center rounded-lg p-2 text-white/70 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-accent"
+          className="inline-flex items-center rounded-lg p-2 text-text-2 hover:bg-surface focus:outline-none focus:ring-2 focus:ring-brand"
           aria-expanded={mobileOpen}
           aria-label="Toggle navigation menu"
         >
@@ -100,10 +96,10 @@ export const PortalNav = ({ onSignOut }) => {
       </div>
 
       {/* Navigation */}
-      <nav className={`${mobileOpen ? 'fixed inset-0 z-40 top-16 w-full overflow-y-auto' : 'hidden lg:block lg:flex-shrink-0'} lg:static lg:h-screen lg:w-64 lg:border-r lg:border-white/10 bg-night-sky p-4 overflow-y-auto`}>
+      <nav className={`${mobileOpen ? 'fixed inset-0 z-40 top-16 w-full overflow-y-auto' : 'hidden lg:block lg:flex-shrink-0'} lg:static lg:h-screen lg:w-64 lg:border-r lg:border-border bg-bg p-4 overflow-y-auto`}>
         <div className="mb-8 hidden lg:block">
-          <h2 className="px-3 text-lg font-bold text-white">FORTIS SECURED</h2>
-          <p className="px-3 text-xs text-white/50">Internal Portal</p>
+          <h2 className="px-3 text-lg font-bold text-text">FORTIS SECURED</h2>
+          <p className="px-3 text-xs text-text-3">Internal Portal</p>
         </div>
 
         <div className="space-y-1" onClick={() => setMobileOpen(false)}>
@@ -116,10 +112,10 @@ export const PortalNav = ({ onSignOut }) => {
           ))}
         </div>
 
-        <div className="mt-8 border-t border-white/10 pt-4">
+        <div className="mt-8 border-t border-border pt-4">
           <button
             onClick={onSignOut}
-            className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky"
+            className="fs-nav-item"
             aria-label="Sign out of portal"
           >
             <AiOutlineLogout className="mr-3 h-5 w-5" aria-hidden="true" />

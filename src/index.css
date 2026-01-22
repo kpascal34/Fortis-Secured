@@ -2,6 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    /* Brand */
+    --brand: 46 211 198;            /* #2ED3C6 */
+    --brand-foreground: 11 18 32;   /* #0B1220 */
+
+    /* Foundations (Operational Dark) */
+    --bg: 11 18 32;                 /* #0B1220 */
+    --bg-2: 17 26 46;               /* #111A2E */
+    --surface: 22 31 51;            /* #161F33 */
+    --surface-2: 28 40 66;          /* #1C2842 */
+    --border: 35 48 79;             /* #23304F */
+
+    /* Text */
+    --text: 230 234 242;            /* #E6EAF2 */
+    --text-2: 168 176 194;          /* #A8B0C2 */
+    --text-3: 107 116 136;          /* #6B7488 */
+    --text-disabled: 74 82 102;     /* #4A5266 */
+
+    /* Semantic */
+    --success: 61 220 151;          /* #3DDC97 */
+    --warning: 244 196 48;          /* #F4C430 */
+    --error: 229 83 61;             /* #E5533D */
+    --info: 77 136 255;             /* #4D88FF */
+
+    /* Shadows (optional) */
+    --shadow: 0 0 0;
+  }
+
+  html,
+  body {
+    background: rgb(var(--bg));
+    color: rgb(var(--text));
+  }
+}
+
 body {
   @apply bg-night-sky;
 }
@@ -14,6 +50,138 @@ a {
   @apply max-w-7xl mx-auto px-6 sm:px-8;
 }
 
+/* Improved glass panel with better contrast */
 .glass-panel {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-glass;
+  @apply bg-white/[0.06] backdrop-blur-xl border border-white/15 rounded-3xl shadow-glass;
 }
+
+.glass-panel-hover {
+  @apply hover:bg-white/[0.08] hover:border-white/20 transition-all duration-200;
+}
+
+/* Input styles with improved contrast */
+.input-glass {
+  @apply bg-white/[0.06] border border-white/15 text-white placeholder-white/40 rounded-lg px-4 py-2.5;
+  @apply focus:bg-white/10 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50;
+  @apply disabled:bg-white/[0.03] disabled:border-white/10 disabled:text-white/45 disabled:cursor-not-allowed;
+  @apply transition-all duration-200;
+}
+
+/* Select dropdown styles */
+.select-glass {
+  @apply input-glass appearance-none bg-no-repeat;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='rgba(255,255,255,0.6)' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-position: right 0.5rem center;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+/* Button styles with improved contrast */
+.btn-primary {
+  @apply bg-accent text-night-sky font-semibold px-6 py-3 rounded-lg;
+  @apply hover:bg-accent/90 active:bg-accent/80;
+  @apply disabled:bg-accent/30 disabled:text-night-sky/50 disabled:cursor-not-allowed;
+  @apply transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-night-sky;
+}
+
+.btn-secondary {
+  @apply bg-white/10 text-white font-semibold px-6 py-3 rounded-lg border border-white/15;
+  @apply hover:bg-white/15 hover:border-white/20;
+  @apply disabled:bg-white/[0.05] disabled:text-white/45 disabled:border-white/10 disabled:cursor-not-allowed;
+  @apply transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-night-sky;
+}
+
+.btn-ghost {
+  @apply text-white font-medium px-4 py-2 rounded-lg;
+  @apply hover:bg-white/10;
+  @apply disabled:text-white/45 disabled:cursor-not-allowed disabled:hover:bg-transparent;
+  @apply transition-all duration-200;
+}
+
+/* Card styles */
+.card-glass {
+  @apply glass-panel p-6;
+}
+
+/* Status badge styles */
+.badge-success {
+  @apply px-3 py-1 rounded-full text-sm font-medium;
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.30);
+}
+
+.badge-warning {
+  @apply px-3 py-1 rounded-full text-sm font-medium;
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.30);
+}
+
+.badge-error {
+  @apply px-3 py-1 rounded-full text-sm font-medium;
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.30);
+}
+
+.badge-info {
+  @apply px-3 py-1 rounded-full text-sm font-medium;
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #3B82F6;
+  border: 1px solid rgba(59, 130, 246, 0.30);
+}
+
+/* Text styles */
+.text-primary {
+  @apply text-white;
+}
+
+.text-secondary {
+  @apply text-white/85;
+}
+
+.text-muted {
+  @apply text-white/60;
+}
+
+.text-disabled {
+  @apply text-white/45;
+}
+
+/* Link styles */
+.link {
+  @apply text-accent underline-offset-4 hover:underline;
+  @apply focus:outline-none focus:ring-2 focus:ring-accent/50 rounded;
+  @apply transition-colors duration-200;
+}
+
+@layer components {
+  /* Base layout utilities */
+  .fs-page { @apply min-h-screen bg-bg text-text; }
+  .fs-shell { @apply flex; }
+  .fs-sidebar { @apply w-64 bg-bg border-r border-border; }
+  .fs-main { @apply flex-1 bg-bg; }
+
+  .fs-header { @apply rounded-2xl border border-border bg-bg-2 p-6 shadow-card; }
+  .fs-card { @apply rounded-2xl border border-border bg-surface p-6 shadow-card; }
+
+  .fs-muted { @apply text-text-3; }
+  .fs-title { @apply text-3xl font-semibold tracking-tight text-text; }
+  .fs-subtitle { @apply mt-2 text-sm text-text-2; }
+
+  .fs-btn-primary { @apply inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-foreground hover:opacity-90; }
+  .fs-btn-ghost { @apply inline-flex items-center justify-center rounded-xl border border-border bg-transparent px-4 py-2 text-sm font-semibold text-text hover:bg-surface-2; }
+
+  .fs-nav-item { @apply flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-text-2 hover:bg-surface; }
+  .fs-nav-item-active { @apply bg-surface text-text border border-border; box-shadow: inset 3px 0 0 rgb(var(--brand)); }
+
+  .fs-badge { @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold; }
+  .fs-badge-success { @apply fs-badge bg-success/15 text-success; }
+  .fs-badge-warning { @apply fs-badge bg-warning/15 text-warning; }
+  .fs-badge-error { @apply fs-badge bg-error/15 text-error; }
+  .fs-badge-info { @apply fs-badge bg-info/15 text-info; }
+}
+

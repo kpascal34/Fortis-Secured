@@ -245,7 +245,18 @@ const InviteManagement = () => {
                           <td className="py-3 px-4 text-white/70 text-sm">
                             {new Date(invite.createdAt).toLocaleDateString()}
                           </td>
-                          <td className="py-3 px-4 text-right">
+                          <td className="py-3 px-4 text-right space-x-2">
+                            <button
+                              onClick={() => {
+                                const signupUrl = `${window.location.origin}/signup?code=${invite.code}`;
+                                navigator.clipboard.writeText(signupUrl).then(() => {
+                                  alert('Invite URL copied to clipboard');
+                                });
+                              }}
+                              className="text-sm bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded transition-colors"
+                            >
+                              Copy Link
+                            </button>
                             {status === 'Active' && (
                               <button
                                 onClick={() => handleResend(invite)}
