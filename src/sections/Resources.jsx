@@ -23,7 +23,7 @@ const Resources = () => (
     <div className="absolute inset-0 -z-10 bg-gradient-to-b from-white to-gray-50" />
     <div className="section-container">
       <header className="mx-auto max-w-2xl text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.4em] text-accent">Resources</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.4em] text-brand-dark">Resources</p>
         <h2 className="mt-4 text-3xl font-bold text-gray-900 sm:text-4xl">Bring the Fortis methodology to your next programme</h2>
         <p className="mt-4 text-base text-gray-600">
           Insights, templates and readiness guides to accelerate your mobilisation and ongoing assurance.

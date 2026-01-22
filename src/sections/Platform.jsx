@@ -29,7 +29,7 @@ const Platform = () => (
     <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white to-gray-50" />
     <div className="section-container">
       <header className="max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.4em] text-accent">Fortis Portal</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.4em] text-brand-dark">Fortis Portal</p>
         <h2 className="mt-4 text-3xl font-bold text-gray-900 sm:text-4xl">
           Operate with confidence from any device
         </h2>
@@ -47,7 +47,7 @@ const Platform = () => (
               <dl className="mt-8 grid grid-cols-3 gap-4 text-center text-gray-900">
                 {item.stats.map((stat) => (
                   <div key={stat.label}>
-                    <dt className="text-3xl font-extrabold text-accent">{stat.value}</dt>
+                    <dt className="text-3xl font-extrabold text-brand">{stat.value}</dt>
                     <dd className="mt-2 text-xs uppercase tracking-wider text-gray-600">{stat.label}</dd>
                   </div>
                 ))}

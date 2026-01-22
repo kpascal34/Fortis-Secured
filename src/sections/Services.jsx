@@ -30,7 +30,7 @@ const Services = () => (
     <div className="absolute inset-0 -z-10 bg-gradient-to-b from-white to-gray-50" />
     <div className="section-container">
       <header className="mx-auto max-w-3xl text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.4em] text-accent">Specialised services</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.4em] text-brand-dark">Specialised services</p>
         <h2 className="mt-4 text-3xl font-bold text-gray-900 sm:text-4xl">
           Full-spectrum security designed for multi-site operators
         </h2>

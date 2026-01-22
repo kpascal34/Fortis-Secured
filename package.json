@@ -37,6 +37,9 @@
     "vite": "^5.1.4"
   },
   "devDependencies": {
+    "@axe-core/cli": "^4.11.0",
+    "pa11y": "^8.0.0",
+    "pa11y-ci": "^3.1.0",
     "terser": "^5.44.1",
     "vite-plugin-pwa": "^1.2.0"
   }

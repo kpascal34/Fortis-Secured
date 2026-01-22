@@ -28,7 +28,7 @@ const JoinTheTeam = () => {
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <Navbar />
-      <main>
+      <main id="join">
         <PageHeader
           eyebrow="Careers"
           title="Join Our Team"

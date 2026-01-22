@@ -12,7 +12,7 @@ const Footer = () => (
         <div className="flex flex-col">
           <span className="font-semibold text-gray-900 mb-2">Explore</span>
           <a className="hover:text-accent" href="#services">Services</a>
-          <a className="hover:text-accent mt-1" href="#join">Join the Team</a>
+          <a className="hover:text-accent mt-1" href="/join-the-team">Join the Team</a>
           <a className="hover:text-accent mt-1" href="#about">About Us</a>
           <a className="hover:text-accent mt-1" href="#contact">Contact</a>
         </div>

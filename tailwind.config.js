@@ -26,6 +26,7 @@ export default {
         'text-disabled': 'rgb(var(--text-disabled) / <alpha-value>)',
 
         brand: 'rgb(var(--brand) / <alpha-value>)',
+        'brand-dark': 'rgb(var(--brand-dark) / <alpha-value>)',
         'brand-foreground': 'rgb(var(--brand-foreground) / <alpha-value>)',
 
         success: 'rgb(var(--success) / <alpha-value>)',

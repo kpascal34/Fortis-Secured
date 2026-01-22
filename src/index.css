@@ -6,7 +6,9 @@
   :root {
     /* Brand */
     --brand: 46 211 198;            /* #2ED3C6 */
+    --brand-dark: 0 133 123;        /* #00857B - WCAG AA compliant for text on light bg (4.5:1) */
     --brand-foreground: 11 18 32;   /* #0B1220 */
+    --primary-dark: 0 102 102;      /* #006666 for text on light backgrounds */
 
     /* Foundations (Operational Dark) */
     --bg: 11 18 32;                 /* #0B1220 */

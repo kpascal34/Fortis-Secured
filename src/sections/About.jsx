@@ -20,7 +20,7 @@ const About = () => (
     <div className="absolute inset-0 -z-10 bg-gradient-to-b from-white to-gray-50" />
     <div className="section-container grid gap-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-center">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.4em] text-accent">About Fortis Secured</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.4em] text-brand-dark">About Fortis Secured</p>
         <h2 className="mt-4 text-3xl font-bold text-gray-900 sm:text-4xl">
           Raising Standards, Building Trust
         </h2>

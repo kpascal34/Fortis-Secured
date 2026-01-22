@@ -59,7 +59,7 @@ const Hero = () => {
             transition={{ delay: 0.05 }}
             className="text-4xl font-light leading-tight sm:text-5xl lg:text-6xl text-gray-900"
           >
-            Raising Standards in <span className="text-primary font-medium">Professional Security</span>
+            Raising Standards in <span className="text-brand-dark font-medium">Professional Security</span>
           </motion.h1>
 
           <motion.p
@@ -90,7 +90,7 @@ const Hero = () => {
             </a>
 
             <a
-              className="ml-0 hidden sm:inline-flex group items-center justify-center rounded-full border border-primary/20 px-6 py-3 text-sm font-medium text-primary hover:bg-primary/5 transition-all"
+              className="ml-0 hidden sm:inline-flex group items-center justify-center rounded-full border border-brand-dark/20 px-6 py-3 text-sm font-medium text-brand-dark hover:bg-brand-dark/5 transition-all"
               href="#contact"
             >
               Contact us
