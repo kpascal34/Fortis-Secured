@@ -15,7 +15,7 @@ const compCol = 'staff_compliance';
  */
 export async function getComplianceProgress(staffId) {
   const docs = await databases.listDocuments(dbId, compCol, [
-    Query.equal('staff_id', staffId),
+    Query.equal('staffId', staffId),
   ]);
 
   if (docs.documents.length === 0) {
@@ -35,8 +35,8 @@ export async function submitStep1Identity(staffId, data) {
   const comp = await getComplianceProgress(staffId);
 
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
-    step_1_identity: JSON.stringify(data),
-    current_step: Math.max(comp.current_step, 1),
+    step1Identity: JSON.stringify(data),
+    currentStep: Math.max(comp.currentStep, 1),
   });
 
   await logAudit({
@@ -85,7 +85,7 @@ export async function submitStep2Employment(staffId, data) {
 
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
     step_2_employment: JSON.stringify(data),
-    current_step: Math.max(comp.current_step, 2),
+    currentStep: Math.max(comp.currentStep, 2),
   });
 
   await logAudit({
@@ -151,8 +151,8 @@ export async function submitStep3Evidence(staffId, fileIds) {
   const comp = await getComplianceProgress(staffId);
 
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
-    step_3_evidence: JSON.stringify(fileIds.map(id => ({ file_id: id }))),
-    current_step: Math.max(comp.current_step, 3),
+    step_3_evidence: JSON.stringify(fileIds.map(id => ({ fileId: id }))),
+    currentStep: Math.max(comp.currentStep, 3),
   });
 
   await logAudit({
@@ -178,7 +178,7 @@ export async function submitStep4References(staffId, data) {
 
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
     step_4_references: JSON.stringify(data),
-    current_step: Math.max(comp.current_step, 4),
+    currentStep: Math.max(comp.currentStep, 4),
   });
 
   await logAudit({
@@ -220,8 +220,8 @@ export async function submitStep5Criminal(staffId, fileId) {
   const comp = await getComplianceProgress(staffId);
 
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
-    step_5_criminal: JSON.stringify({ file_id: fileId, upload_date: new Date().toISOString() }),
-    current_step: Math.max(comp.current_step, 5),
+    step_5_criminal: JSON.stringify({ fileId: fileId, upload_date: new Date().toISOString() }),
+    currentStep: Math.max(comp.currentStep, 5),
   });
 
   await logAudit({
@@ -253,7 +253,7 @@ export async function submitStep6SIALicence(staffId, licenceNumber, expiryDate) 
 
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
     step_6_sia: JSON.stringify({ licence_number: licenceNumber, expiry_date: expiryDate }),
-    current_step: Math.max(comp.current_step, 6),
+    currentStep: Math.max(comp.currentStep, 6),
   });
 
   // Also update staff_profiles
@@ -283,8 +283,8 @@ export async function submitStep7Video(staffId, fileId) {
   const comp = await getComplianceProgress(staffId);
 
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
-    step_7_video: JSON.stringify({ file_id: fileId, upload_date: new Date().toISOString() }),
-    current_step: 7,
+    step_7_video: JSON.stringify({ fileId: fileId, upload_date: new Date().toISOString() }),
+    currentStep: 7,
   });
 
   await logAudit({
@@ -305,8 +305,8 @@ export async function submitStep7Video(staffId, fileId) {
 export async function submitComplianceReview(staffId) {
   const comp = await getComplianceProgress(staffId);
 
-  if (comp.current_step !== 7) {
-    throw new Error(`All 7 steps required (currently on step ${comp.current_step})`);
+  if (comp.currentStep !== 7) {
+    throw new Error(`All 7 steps required (currently on step ${comp.currentStep})`);
   }
 
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
@@ -341,8 +341,8 @@ export async function adminReviewCompliance(adminId, staffId, approved, rejectio
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
     status: newStatus,
     rejection_reason: rejectionReason,
-    reviewed_at: new Date().toISOString(),
-    reviewed_by: adminId,
+    reviewedAt: new Date().toISOString(),
+    reviewedBy: adminId,
   });
 
   // Update staff status if approved

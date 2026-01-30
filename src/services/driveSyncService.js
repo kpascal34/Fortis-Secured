@@ -29,21 +29,21 @@ export async function getSyncStatusRecords(filters = {}) {
 
     // Filter by status if provided
     if (filters.status) {
-      queries.push(Query.equal('drive_sync_status', filters.status));
+      queries.push(Query.equal('driveSyncStatus', filters.status));
     }
 
     // Filter by staff ID if provided
     if (filters.staffId) {
-      queries.push(Query.equal('staff_id', filters.staffId));
+      queries.push(Query.equal('staffId', filters.staffId));
     }
 
     // Filter by file type if provided
     if (filters.fileType) {
-      queries.push(Query.equal('file_type', filters.fileType));
+      queries.push(Query.equal('fileType', filters.fileType));
     }
 
     // Order by most recent first
-    queries.push(Query.orderDesc('last_sync_attempt'));
+    queries.push(Query.orderDesc('lastSyncAttempt'));
 
     const response = await databases.listDocuments(
       dbId,
@@ -56,8 +56,8 @@ export async function getSyncStatusRecords(filters = {}) {
     console.error('Error fetching sync status records:', error);
     
     // Provide helpful error messages
-    if (error.message && error.message.includes('drive_sync_status')) {
-      throw new Error('Missing attribute: drive_sync_status. Add this enum attribute (pending, failed, success) to your compliance_uploads collection.');
+    if (error.message && error.message.includes('driveSyncStatus')) {
+      throw new Error('Missing attribute: driveSyncStatus. Add this enum attribute (pending, failed, success) to your compliance_uploads collection.');
     }
     if (error.message && error.message.includes('Invalid collection')) {
       throw new Error('Collection not found. Create the compliance_uploads collection in Appwrite.');
@@ -182,8 +182,8 @@ export async function updateSyncStatus(recordId, status, updates = {}) {
   try {
     const updateData = {
       ...updates,
-      drive_sync_status: status,
-      updated_at: new Date().toISOString(),
+      driveSyncStatus: status,
+      updatedAt: new Date().toISOString(),
     };
 
     const updated = await databases.updateDocument(
@@ -226,16 +226,16 @@ export async function logSyncAttempt(
 
   try {
     const recordData = {
-      staff_id: staffId,
-      file_name: fileName,
-      file_type: fileType,
-      drive_sync_status: status,
-      appwrite_file_id: appwriteFileId,
-      google_drive_file_id: driveFileId,
-      sync_error: syncError,
-      last_sync_attempt: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      staffId: staffId,
+      fileName: fileName,
+      fileType: fileType,
+      driveSyncStatus: status,
+      appwriteFileId: appwriteFileId,
+      googleDriveFileId: driveFileId,
+      syncError: syncError,
+      lastSyncAttempt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     const record = await databases.createDocument(
@@ -278,8 +278,8 @@ export async function clearOldSuccessfulSyncs(olderThanDays = 90) {
       dbId,
       complianceUploadsCol,
       [
-        Query.equal('drive_sync_status', 'success'),
-        Query.lessThan('created_at', cutoffDate.toISOString()),
+        Query.equal('driveSyncStatus', 'success'),
+        Query.lessThan('createdAt', cutoffDate.toISOString()),
       ]
     );
 
@@ -314,13 +314,13 @@ export async function getStaffSyncStatus(staffId) {
     const records = await databases.listDocuments(
       dbId,
       complianceUploadsCol,
-      [Query.equal('staff_id', staffId), Query.orderDesc('created_at')]
+      [Query.equal('staffId', staffId), Query.orderDesc('createdAt')]
     );
 
     const documents = records.documents || [];
-    const failed = documents.filter(d => d.drive_sync_status === 'failed');
-    const pending = documents.filter(d => d.drive_sync_status === 'pending');
-    const successful = documents.filter(d => d.drive_sync_status === 'success');
+    const failed = documents.filter(d => d.driveSyncStatus === 'failed');
+    const pending = documents.filter(d => d.driveSyncStatus === 'pending');
+    const successful = documents.filter(d => d.driveSyncStatus === 'success');
 
     return {
       staffId,
@@ -328,8 +328,8 @@ export async function getStaffSyncStatus(staffId) {
       failed: failed.length,
       pending: pending.length,
       successful: successful.length,
-      latestAttempt: documents[0]?.last_sync_attempt || null,
-      latestStatus: documents[0]?.drive_sync_status || null,
+      latestAttempt: documents[0]?.lastSyncAttempt || null,
+      latestStatus: documents[0]?.driveSyncStatus || null,
       failedRecords: failed,
       pendingRecords: pending,
       successfulRecords: successful,
@@ -353,7 +353,7 @@ export async function generateSyncReport() {
     const allRecords = await databases.listDocuments(
       dbId,
       complianceUploadsCol,
-      [Query.orderDesc('created_at')]
+      [Query.orderDesc('createdAt')]
     );
 
     const records = allRecords.documents || [];
@@ -363,17 +363,17 @@ export async function generateSyncReport() {
 
     records.forEach(record => {
       // Group by status
-      byStatus[record.drive_sync_status] = (byStatus[record.drive_sync_status] || 0) + 1;
+      byStatus[record.driveSyncStatus] = (byStatus[record.driveSyncStatus] || 0) + 1;
 
       // Group by file type
-      byFileType[record.file_type] = (byFileType[record.file_type] || 0) + 1;
+      byFileType[record.fileType] = (byFileType[record.fileType] || 0) + 1;
 
       // Group by staff
-      if (!byStaff[record.staff_id]) {
-        byStaff[record.staff_id] = { total: 0, failed: 0, pending: 0, success: 0 };
+      if (!byStaff[record.staffId]) {
+        byStaff[record.staffId] = { total: 0, failed: 0, pending: 0, success: 0 };
       }
-      byStaff[record.staff_id].total++;
-      byStaff[record.staff_id][record.drive_sync_status]++;
+      byStaff[record.staffId].total++;
+      byStaff[record.staffId][record.driveSyncStatus]++;
     });
 
     return {

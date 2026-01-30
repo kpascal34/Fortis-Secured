@@ -192,7 +192,7 @@ export async function signupStaffMember(inviteCode, password, firstName, lastNam
       firstName,
       lastName,
       email: invite.email,
-      employee_number: employeeNumber,
+      employeeNumber: employeeNumber,
       username,
       siaLicence: '', // To be filled in compliance wizard
       siaExpiryDate: null,
@@ -201,8 +201,8 @@ export async function signupStaffMember(inviteCode, password, firstName, lastNam
 
     // Initialize compliance progress
     await databases.createDocument(dbId, 'staff_compliance', ID.unique(), {
-      staff_id: user.$id,
-      current_step: 0,
+      staffId: user.$id,
+      currentStep: 0,
       status: 'in_progress',
     });
 
@@ -257,21 +257,21 @@ async function allocateEmployeeNumber(staffId) {
   // Format: FS-000123
   // Fetch highest number
   const numbers = await databases.listDocuments(dbId, numbersCol, [
-    Query.orderDesc('employee_number'),
+    Query.orderDesc('employeeNumber'),
     Query.limit(1),
   ]);
 
   let nextNum = 1;
   if (numbers.documents.length > 0) {
-    const last = numbers.documents[0].employee_number; // FS-000123
+    const last = numbers.documents[0].employeeNumber; // FS-000123
     nextNum = parseInt(last.split('-')[1]) + 1;
   }
 
   const empNum = `FS-${String(nextNum).padStart(6, '0')}`;
 
   await databases.createDocument(dbId, numbersCol, ID.unique(), {
-    staff_id: staffId,
-    employee_number: empNum,
+    staffId: staffId,
+    employeeNumber: empNum,
     allocated_at: new Date().toISOString(),
   });
 

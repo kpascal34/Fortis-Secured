@@ -19,14 +19,14 @@ export async function getStaffPendingGrading() {
     Query.equal('status', 'approved'),
   ]);
 
-  const staffIds = compDocs.documents.map(d => d.staff_id);
+  const staffIds = compDocs.documents.map(d => d.staffId);
 
   // Get existing grades
   const gradeDocs = await databases.listDocuments(dbId, gradesCol, [
     Query.limit(1000),
   ]);
 
-  const gradedIds = new Set(gradeDocs.documents.map(d => d.staff_id));
+  const gradedIds = new Set(gradeDocs.documents.map(d => d.staffId));
 
   // Filter pending
   const pendingIds = staffIds.filter(id => !gradedIds.has(id));
@@ -46,7 +46,7 @@ export async function getStaffPendingGrading() {
  */
 export async function getStaffGrade(staffId) {
   const docs = await databases.listDocuments(dbId, gradesCol, [
-    Query.equal('staff_id', staffId),
+    Query.equal('staffId', staffId),
   ]);
 
   if (docs.documents.length === 0) {
@@ -79,11 +79,11 @@ export async function submitStaffGrade(adminId, staffId, overallGrade, categorie
   const existing = await getStaffGrade(staffId);
 
   const gradeData = {
-    staff_id: staffId,
-    overall_grade: overallGrade,
+    staffId: staffId,
+    overallGrade: overallGrade,
     categories: categories ? JSON.stringify(categories) : null,
     graded_by: adminId,
-    graded_at: new Date().toISOString(),
+    gradedAt: new Date().toISOString(),
     notes: notes || null,
   };
 
@@ -124,7 +124,7 @@ function validateGrade(grade) {
  */
 export async function getAllStaffGrades() {
   const docs = await databases.listDocuments(dbId, gradesCol, [
-    Query.orderDesc('graded_at'),
+    Query.orderDesc('gradedAt'),
   ]);
 
   return docs.documents.map(d => {
@@ -148,9 +148,9 @@ export async function getStaffByGrade(minGrade, maxGrade) {
   }
 
   const docs = await databases.listDocuments(dbId, gradesCol, [
-    Query.greaterThanOrEqual('overall_grade', minGrade),
-    Query.lessThanOrEqual('overall_grade', maxGrade),
-    Query.orderDesc('overall_grade'),
+    Query.greaterThanOrEqual('overallGrade', minGrade),
+    Query.lessThanOrEqual('overallGrade', maxGrade),
+    Query.orderDesc('overallGrade'),
   ]);
 
   return docs.documents;

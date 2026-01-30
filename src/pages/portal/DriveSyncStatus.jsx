@@ -54,8 +54,8 @@ const DriveSyncStatus = () => {
 
       // Sort by last attempt descending for relevance
       const sortByTime = (a, b) => {
-        const da = a.last_sync_attempt ? new Date(a.last_sync_attempt).getTime() : 0;
-        const db = b.last_sync_attempt ? new Date(b.last_sync_attempt).getTime() : 0;
+        const da = a.lastSyncAttempt ? new Date(a.lastSyncAttempt).getTime() : 0;
+        const db = b.lastSyncAttempt ? new Date(b.lastSyncAttempt).getTime() : 0;
         return db - da;
       };
 
@@ -66,16 +66,16 @@ const DriveSyncStatus = () => {
 
       // Fetch staff profiles for display names
       const allItems = [...failedData, ...pendingData, ...successfulData];
-      const uniqueIds = Array.from(new Set(allItems.map(i => i.staff_id).filter(Boolean)));
+      const uniqueIds = Array.from(new Set(allItems.map(i => i.staffId).filter(Boolean)));
       const map = {};
       
       // Try to fetch profiles from your staff collection (adjust collection name as needed)
       for (const id of uniqueIds) {
         try {
           // This is a fallback - in production, you'd fetch from your actual staff collection
-          map[id] = { fullName: 'Staff Member', employee_number: id };
+          map[id] = { fullName: 'Staff Member', employeeNumber: id };
         } catch (_) {
-          map[id] = { fullName: 'Unknown', employee_number: id };
+          map[id] = { fullName: 'Unknown', employeeNumber: id };
         }
       }
       setProfiles(map);
@@ -85,9 +85,9 @@ const DriveSyncStatus = () => {
       
       // Provide helpful hints based on error type
       if (errorMsg.includes('not found') || errorMsg.includes('Invalid collection')) {
-        setError(`Collection not found. Create the compliance_uploads collection in Appwrite with these attributes: staff_id (string), file_name (string), file_type (string), drive_sync_status (enum: pending, failed, success), appwrite_file_id (string), google_drive_file_id (string), sync_error (string), last_sync_attempt (datetime).`);
-      } else if (errorMsg.includes('drive_sync_status')) {
-        setError(`Missing attribute: Add 'drive_sync_status' (enum with values: pending, failed, success) to the compliance_uploads collection in Appwrite.`);
+        setError(`Collection not found. Create the compliance_uploads collection in Appwrite with these attributes: staffId (string), fileName (string), fileType (string), driveSyncStatus (enum: pending, failed, success), appwriteFileId (string), googleDriveFileId (string), syncError (string), lastSyncAttempt (datetime).`);
+      } else if (errorMsg.includes('driveSyncStatus')) {
+        setError(`Missing attribute: Add 'driveSyncStatus' (enum with values: pending, failed, success) to the compliance_uploads collection in Appwrite.`);
       } else {
         setError(errorMsg);
       }
@@ -106,16 +106,16 @@ const DriveSyncStatus = () => {
     if (!search) return displayData;
     const term = search.toLowerCase();
     return displayData.filter(row => {
-      const name = profiles[row.staff_id]?.fullName || '';
-      const emp = profiles[row.staff_id]?.employee_number || '';
-      const fileName = row.file_name || '';
-      const fileType = row.file_type || '';
+      const name = profiles[row.staffId]?.fullName || '';
+      const emp = profiles[row.staffId]?.employeeNumber || '';
+      const fileName = row.fileName || '';
+      const fileType = row.fileType || '';
       return (
         name.toLowerCase().includes(term) ||
         emp.toLowerCase().includes(term) ||
         fileName.toLowerCase().includes(term) ||
         fileType.toLowerCase().includes(term) ||
-        String(row.staff_id).toLowerCase().includes(term)
+        String(row.staffId).toLowerCase().includes(term)
       );
     });
   }, [failed, pending, successful, profiles, search, activeTab]);
@@ -155,10 +155,10 @@ const DriveSyncStatus = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          staffId: row.staff_id,
-          appwriteFileId: row.file_id || row.appwrite_file_id,
-          fileName: row.file_name,
-          fileType: row.file_type
+          staffId: row.staffId,
+          appwriteFileId: row.fileId || row.appwriteFileId,
+          fileName: row.fileName,
+          fileType: row.fileType
         })
       });
 
@@ -168,8 +168,8 @@ const DriveSyncStatus = () => {
 
       // Update local status to pending while retrying
       await updateSyncStatus(row.$id, 'pending', {
-        last_sync_attempt: new Date().toISOString(),
-        sync_error: null,
+        lastSyncAttempt: new Date().toISOString(),
+        syncError: null,
       });
 
       setToast('Retry triggered successfully');
@@ -192,10 +192,10 @@ const DriveSyncStatus = () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              staffId: row.staff_id,
-              appwriteFileId: row.file_id || row.appwrite_file_id,
-              fileName: row.file_name,
-              fileType: row.file_type
+              staffId: row.staffId,
+              appwriteFileId: row.fileId || row.appwriteFileId,
+              fileName: row.fileName,
+              fileType: row.fileType
             })
           });
         } catch (e) {
@@ -345,7 +345,7 @@ const DriveSyncStatus = () => {
                     <p className="font-semibold mb-2">Quick Setup:</p>
                     <ol className="list-decimal list-inside space-y-1">
                       <li>Create a collection named <code className="bg-black/20 px-1 rounded">compliance_uploads</code> in Appwrite</li>
-                      <li>Add attributes: <code className="bg-black/20 px-1 rounded">staff_id</code>, <code className="bg-black/20 px-1 rounded">file_name</code>, <code className="bg-black/20 px-1 rounded">file_type</code>, <code className="bg-black/20 px-1 rounded">drive_sync_status</code> (enum), <code className="bg-black/20 px-1 rounded">last_sync_attempt</code> (datetime)</li>
+                      <li>Add attributes: <code className="bg-black/20 px-1 rounded">staffId</code>, <code className="bg-black/20 px-1 rounded">fileName</code>, <code className="bg-black/20 px-1 rounded">fileType</code>, <code className="bg-black/20 px-1 rounded">driveSyncStatus</code> (enum), <code className="bg-black/20 px-1 rounded">lastSyncAttempt</code> (datetime)</li>
                       <li>Set <code className="bg-black/20 px-1 rounded">VITE_APPWRITE_COMPLIANCE_UPLOADS_COLLECTION_ID</code> in your env</li>
                       <li>Redeploy and refresh this page</li>
                     </ol>
@@ -403,41 +403,41 @@ const DriveSyncStatus = () => {
                     <tr key={row.$id} className="border-t border-white/10 hover:bg-white/5 transition-colors">
                       <td className="px-3 py-3">
                         <div>
-                          <p className="font-medium">{profiles[row.staff_id]?.fullName || row.staff_id}</p>
-                          {profiles[row.staff_id]?.employee_number && (
-                            <p className="text-xs text-white/60">#{profiles[row.staff_id].employee_number}</p>
+                          <p className="font-medium">{profiles[row.staffId]?.fullName || row.staffId}</p>
+                          {profiles[row.staffId]?.employeeNumber && (
+                            <p className="text-xs text-white/60">#{profiles[row.staffId].employeeNumber}</p>
                           )}
                         </div>
                       </td>
                       <td className="px-3 py-3">
                         <span className="inline-flex rounded bg-white/10 px-2 py-1 text-xs font-semibold capitalize">
-                          {row.file_type || 'unknown'}
+                          {row.fileType || 'unknown'}
                         </span>
                       </td>
-                      <td className="px-3 py-3 max-w-[200px] truncate" title={row.file_name}>
-                        {row.file_name || '—'}
+                      <td className="px-3 py-3 max-w-[200px] truncate" title={row.fileName}>
+                        {row.fileName || '—'}
                       </td>
                       <td className="px-3 py-3">
                         <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                          row.drive_sync_status === 'success' ? 'bg-green-500/20 text-green-300' :
-                          row.drive_sync_status === 'failed' ? 'bg-red-500/20 text-red-300' :
+                          row.driveSyncStatus === 'success' ? 'bg-green-500/20 text-green-300' :
+                          row.driveSyncStatus === 'failed' ? 'bg-red-500/20 text-red-300' :
                           'bg-yellow-500/20 text-yellow-300'
                         }`}>
-                          {row.drive_sync_status === 'success' && '✓ Success'}
-                          {row.drive_sync_status === 'failed' && '✕ Failed'}
-                          {row.drive_sync_status === 'pending' && '⏳ Pending'}
+                          {row.driveSyncStatus === 'success' && '✓ Success'}
+                          {row.driveSyncStatus === 'failed' && '✕ Failed'}
+                          {row.driveSyncStatus === 'pending' && '⏳ Pending'}
                         </span>
                       </td>
                       <td className="px-3 py-3 text-sm">
-                        {row.last_sync_attempt 
-                          ? new Date(row.last_sync_attempt).toLocaleString() 
+                        {row.lastSyncAttempt 
+                          ? new Date(row.lastSyncAttempt).toLocaleString() 
                           : '—'
                         }
                       </td>
                       {activeTab === 'failed' && (
                         <td className="px-3 py-3 max-w-[250px]">
-                          <div className="text-xs text-red-300 truncate" title={row.sync_error}>
-                            {row.sync_error || 'Unknown error'}
+                          <div className="text-xs text-red-300 truncate" title={row.syncError}>
+                            {row.syncError || 'Unknown error'}
                           </div>
                         </td>
                       )}

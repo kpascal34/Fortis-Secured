@@ -15,23 +15,23 @@ const LICENSE_EXPIRY_THRESHOLD_DAYS = Number(process.env.VITE_LICENSE_EXPIRY_THR
 
 /**
  * Create shift (admin/manager only)
- * Scoped by client_id
+ * Scoped by clientId
  */
 export async function createShift(createdBy, clientId, shiftData) {
   validateShiftData(shiftData);
 
   const shift = await databases.createDocument(dbId, shiftsCol, ID.unique(), {
-    client_id: clientId,
-    site_id: shiftData.siteId,
-    position_title: shiftData.positionTitle,
+    clientId: clientId,
+    siteId: shiftData.siteId,
+    positionTitle: shiftData.positionTitle,
     date: shiftData.date, // ISO string
-    start_time: shiftData.startTime, // HH:MM
-    end_time: shiftData.endTime,
-    minimum_grade_required: shiftData.minimumGradeRequired || null,
-    positions_open: shiftData.positionsOpen || 1,
+    startTime: shiftData.startTime, // HH:MM
+    endTime: shiftData.endTime,
+    minimumGradeRequired: shiftData.minimumGradeRequired || null,
+    positionsOpen: shiftData.positionsOpen || 1,
     assignments: JSON.stringify([]),
     status: 'open',
-    created_by: createdBy,
+    createdBy: createdBy,
     special_requirements: shiftData.specialRequirements || null,
   });
 
@@ -89,7 +89,7 @@ export async function getShifts(userId, userRole, userClientId = null) {
 
   if (userRole === 'client' && userClientId) {
     // Clients only see their own sites' shifts
-    queries.push(Query.equal('client_id', userClientId));
+    queries.push(Query.equal('clientId', userClientId));
   }
 
   if (userRole === 'staff') {
@@ -126,7 +126,7 @@ export async function getShiftDetail(shiftId) {
  * Apply for shift (staff only)
  * Server-side eligibility check:
  * 1. Compliance must be approved
- * 2. Grade must meet minimum_grade_required (if set)
+ * 2. Grade must meet minimumGradeRequired (if set)
  */
 export async function applyForShift(staffId, shiftId) {
   const shift = await getShiftDetail(shiftId);
@@ -135,14 +135,14 @@ export async function applyForShift(staffId, shiftId) {
     throw new Error('Shift is not open');
   }
 
-  if (shift.assignments.length >= shift.positions_open) {
+  if (shift.assignments.length >= shift.positionsOpen) {
     throw new Error('Shift is now full');
   }
 
   // Check existing application
   const existing = await databases.listDocuments(dbId, applicationsCol, [
-    Query.equal('shift_id', shiftId),
-    Query.equal('staff_id', staffId),
+    Query.equal('shiftId', shiftId),
+    Query.equal('staffId', staffId),
   ]);
 
   if (existing.documents.length > 0) {
@@ -160,8 +160,8 @@ export async function applyForShift(staffId, shiftId) {
   }
 
   const application = await databases.createDocument(dbId, applicationsCol, ID.unique(), {
-    shift_id: shiftId,
-    staff_id: staffId,
+    shiftId: shiftId,
+    staffId: staffId,
     applied_at: new Date().toISOString(),
     status: 'pending',
     eligibility_check: JSON.stringify(eligibility),
@@ -194,7 +194,7 @@ async function checkEligibility(staffId, shift) {
 
   // Check compliance status
   const compDocs = await databases.listDocuments(dbId, 'staff_compliance', [
-    Query.equal('staff_id', staffId),
+    Query.equal('staffId', staffId),
   ]);
 
   if (compDocs.documents.length === 0) {
@@ -209,19 +209,19 @@ async function checkEligibility(staffId, shift) {
   }
 
   // Check grade (if required)
-  if (shift.minimum_grade_required) {
+  if (shift.minimumGradeRequired) {
     const gradeDocs = await databases.listDocuments(dbId, 'staff_grades', [
-      Query.equal('staff_id', staffId),
+      Query.equal('staffId', staffId),
     ]);
 
-    if (gradeDocs.documents.length === 0 || !gradeDocs.documents[0].overall_grade) {
+    if (gradeDocs.documents.length === 0 || !gradeDocs.documents[0].overallGrade) {
       reasons.push('Not yet graded');
     } else {
-      const grade = gradeDocs.documents[0].overall_grade;
-      if (grade >= shift.minimum_grade_required) {
+      const grade = gradeDocs.documents[0].overallGrade;
+      if (grade >= shift.minimumGradeRequired) {
         gradeEligible = true;
       } else {
-        reasons.push(`Grade ${grade} below required ${shift.minimum_grade_required}`);
+        reasons.push(`Grade ${grade} below required ${shift.minimumGradeRequired}`);
       }
     }
   } else {
@@ -275,23 +275,23 @@ export async function reviewApplication(adminId, applicationId, accepted) {
 
   const updated = await databases.updateDocument(dbId, applicationsCol, applicationId, {
     status: newStatus,
-    reviewed_by: adminId,
-    reviewed_at: new Date().toISOString(),
+    reviewedBy: adminId,
+    reviewedAt: new Date().toISOString(),
   });
 
   // Update shift assignments if accepted
   if (accepted) {
-    const shift = await getShiftDetail(app.shift_id);
+    const shift = await getShiftDetail(app.shiftId);
     shift.assignments.push({
-      staff_id: app.staff_id,
+      staffId: app.staffId,
       status: 'accepted',
       accepted_at: new Date().toISOString(),
     });
 
     // Check if now full
-    const newStatus = shift.assignments.length >= shift.positions_open ? 'filled' : 'open';
+    const newStatus = shift.assignments.length >= shift.positionsOpen ? 'filled' : 'open';
 
-    await databases.updateDocument(dbId, shiftsCol, app.shift_id, {
+    await databases.updateDocument(dbId, shiftsCol, app.shiftId, {
       assignments: JSON.stringify(shift.assignments),
       status: newStatus,
     });
@@ -303,7 +303,7 @@ export async function reviewApplication(adminId, applicationId, accepted) {
     action: 'UPDATE',
     entity: 'shift_applications',
     entityId: applicationId,
-    diff: JSON.stringify({ status: newStatus, staffId: app.staff_id }),
+    diff: JSON.stringify({ status: newStatus, staffId: app.staffId }),
   });
 
   return updated;
@@ -314,7 +314,7 @@ export async function reviewApplication(adminId, applicationId, accepted) {
  */
 export async function getShiftApplications(shiftId, adminId) {
   const apps = await databases.listDocuments(dbId, applicationsCol, [
-    Query.equal('shift_id', shiftId),
+    Query.equal('shiftId', shiftId),
   ]);
 
   // Parse eligibility checks
@@ -333,7 +333,7 @@ export async function getShiftApplications(shiftId, adminId) {
  */
 export async function getMyApplications(staffId) {
   const apps = await databases.listDocuments(dbId, applicationsCol, [
-    Query.equal('staff_id', staffId),
+    Query.equal('staffId', staffId),
   ]);
 
   return apps.documents.map(app => {

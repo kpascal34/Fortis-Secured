@@ -103,7 +103,7 @@ const Dashboard = () => {
       // Process incidents
       const incidentsData = incidentsResponse.documents.map(inc => ({
         title: inc.title || 'Incident',
-        location: inc.site_id || 'Unknown location',
+        location: inc.siteId || 'Unknown location',
         status: inc.status?.charAt(0).toUpperCase() + inc.status?.slice(1) || 'Open',
         timestamp: inc.reported_at ? new Date(inc.reported_at).toLocaleString('en-GB') : 'Recently',
         summary: inc.description || 'No details provided',

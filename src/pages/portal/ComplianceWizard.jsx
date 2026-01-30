@@ -45,7 +45,7 @@ const ComplianceWizard = () => {
   const [sia, setSia] = useState({ licenceNumber: '', expiryDate: '' });
   const [videoFile, setVideoFile] = useState('');
 
-  const currentStep = useMemo(() => progress?.current_step || step, [progress, step]);
+  const currentStep = useMemo(() => progress?.currentStep || step, [progress, step]);
 
   useEffect(() => {
     const loadProgress = async () => {
@@ -53,7 +53,7 @@ const ComplianceWizard = () => {
       try {
         const data = await getComplianceProgress(user.$id);
         setProgress(data);
-        if (data.current_step) setStep(data.current_step);
+        if (data.currentStep) setStep(data.currentStep);
       } catch (err) {
         setError(err.message || 'Could not load compliance record');
       }

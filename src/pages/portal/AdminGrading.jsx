@@ -146,7 +146,7 @@ const AdminGrading = () => {
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex-1">
-                      <p className="text-sm text-white/60">{staff.employee_number || staff.userId}</p>
+                      <p className="text-sm text-white/60">{staff.employeeNumber || staff.userId}</p>
                       <p className="text-lg font-semibold">{staff.firstName} {staff.lastName}</p>
                       {staff.email && <p className="text-xs text-white/50">{staff.email}</p>}
                     </div>
@@ -204,7 +204,7 @@ const AdminGrading = () => {
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex-1">
-                      <p className="text-sm text-white/60">{g.staffDetails?.employee_number || g.staffId}</p>
+                      <p className="text-sm text-white/60">{g.staffDetails?.employeeNumber || g.staffId}</p>
                       <p className="text-lg font-semibold">
                         {g.staffDetails?.firstName} {g.staffDetails?.lastName}
                       </p>

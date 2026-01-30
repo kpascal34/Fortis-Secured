@@ -229,7 +229,7 @@ const HR = () => {
                   leaveRequests
                     .filter((r) => r.status === 'pending')
                     .map((request) => {
-                      const staff = guards.find((s) => s.$id === request.staff_id);
+                      const staff = guards.find((s) => s.$id === request.staffId);
                       const startDate = new Date(request.startDate).toLocaleDateString('en-GB');
                       const endDate = new Date(request.endDate).toLocaleDateString('en-GB');
                       const days = Math.ceil((new Date(request.endDate) - new Date(request.startDate)) / (1000 * 60 * 60 * 24));
@@ -273,7 +273,7 @@ const HR = () => {
                   leaveRequests
                     .filter((r) => r.status === 'pending')
                     .map((request) => {
-                      const staff = guards.find((s) => s.$id === request.staff_id);
+                      const staff = guards.find((s) => s.$id === request.staffId);
                       const startDate = new Date(request.startDate).toLocaleDateString('en-GB');
                       const endDate = new Date(request.endDate).toLocaleDateString('en-GB');
                       const days = Math.ceil((new Date(request.endDate) - new Date(request.startDate)) / (1000 * 60 * 60 * 24));
@@ -357,7 +357,7 @@ const HR = () => {
                     expiringLicensesList.slice(0, 5).map((license) => {
                       const expiryDate = new Date(license.expiryDate).toLocaleDateString('en-GB');
                       const daysLeft = Math.ceil((new Date(license.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
-                      const staffName = guards.find((s) => s.$id === license.staff_id)?.firstName || 'Unknown';
+                      const staffName = guards.find((s) => s.$id === license.staffId)?.firstName || 'Unknown';
                       return (
                         <div key={license.$id} className="rounded-lg border border-border bg-bg-2 p-4">
                           <div className="flex items-start justify-between">
@@ -424,7 +424,7 @@ const HR = () => {
                 leaveRequests
                   .filter((r) => r.status === 'pending')
                   .map((request) => {
-                    const staff = guards.find((s) => s.$id === request.staffId || s.$id === request.staff_id);
+                    const staff = guards.find((s) => s.$id === request.staffId || s.$id === request.staffId);
                     const staffName = staff ? `${staff.firstName} ${staff.lastName}` : request.staffName || 'Unknown';
                     const startDate = new Date(request.startDate).toLocaleDateString('en-GB');
                     const endDate = new Date(request.endDate).toLocaleDateString('en-GB');
@@ -477,7 +477,7 @@ const HR = () => {
                       .filter((r) => r.status !== 'pending')
                       .slice(0, 5)
                       .map((request) => {
-                        const staff = guards.find((s) => s.$id === request.staffId || s.$id === request.staff_id);
+                        const staff = guards.find((s) => s.$id === request.staffId || s.$id === request.staffId);
                         const staffName = staff ? `${staff.firstName} ${staff.lastName}` : request.staffName || 'Unknown';
                         const startDate = new Date(request.startDate).toLocaleDateString('en-GB');
                         const endDate = new Date(request.endDate).toLocaleDateString('en-GB');

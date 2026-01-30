@@ -41,7 +41,7 @@ function getDriveService() {
  */
 export async function ensureStaffFolder(staffId, employeeNumber, fullName) {
   const existingFolder = await databases.listDocuments(dbId, 'google_drive_folders', [
-    Query.equal('staff_id', staffId),
+    Query.equal('staffId', staffId),
   ]);
 
   if (existingFolder.documents.length > 0) {
@@ -61,7 +61,7 @@ export async function ensureStaffFolder(staffId, employeeNumber, fullName) {
   if (!employeeNumber || !fullName) {
     try {
       const profile = await databases.getDocument(dbId, 'staff_profiles', staffId);
-      employeeNumber = employeeNumber || profile?.employee_number || 'FS-UNKNOWN';
+      employeeNumber = employeeNumber || profile?.employeeNumber || 'FS-UNKNOWN';
       fullName = fullName || profile?.fullName || 'Unknown';
     } catch (_) {
       employeeNumber = employeeNumber || 'FS-UNKNOWN';
@@ -87,11 +87,11 @@ export async function ensureStaffFolder(staffId, employeeNumber, fullName) {
     const folderId = response.data.id;
 
     const dbFolder = await databases.createDocument(dbId, 'google_drive_folders', ID.unique(), {
-      staff_id: staffId,
-      folder_id: folderId,
-      folder_name: folderName,
-      created_at: new Date().toISOString(),
-      parent_folder_id: parentFolderId,
+      staffId: staffId,
+      folderId: folderId,
+      folderName: folderName,
+      createdAt: new Date().toISOString(),
+      parentFolderId: parentFolderId,
     });
 
     await logAudit({
@@ -101,7 +101,7 @@ export async function ensureStaffFolder(staffId, employeeNumber, fullName) {
       entity: 'google_drive_folders',
       entityId: dbFolder.$id,
       diff: JSON.stringify({ folderId, folderName }),
-      drive_sync_status: 'synced',
+      driveSyncStatus: 'synced',
     });
 
     return dbFolder;
@@ -133,15 +133,15 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
     // Also update local DB record to reflect success if it exists
     try {
       const uploads = await databases.listDocuments(dbId, 'compliance_uploads', [
-        Query.equal('appwrite_file_id', appwriteFileId),
+        Query.equal('appwriteFileId', appwriteFileId),
       ]);
       if (uploads.documents.length > 0) {
         await databases.updateDocument(dbId, 'compliance_uploads', uploads.documents[0].$id, {
-          google_drive_file_id: data.driveFileId,
-          google_drive_folder_id: data.folderId,
-          sync_status: 'synced',
-          last_sync_attempt: new Date().toISOString(),
-          sync_error: null,
+          googleDriveFileId: data.driveFileId,
+          googleDriveFolderId: data.folderId,
+          syncStatus: 'synced',
+          lastSyncAttempt: new Date().toISOString(),
+          syncError: null,
         });
       }
     } catch (_) {}
@@ -149,12 +149,12 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
   }
   // Check if already synced
   const uploads = await databases.listDocuments(dbId, 'compliance_uploads', [
-    Query.equal('appwrite_file_id', appwriteFileId),
+    Query.equal('appwriteFileId', appwriteFileId),
   ]);
 
   if (uploads.documents.length > 0) {
     const upload = uploads.documents[0];
-    if (upload.sync_status === 'synced') {
+    if (upload.syncStatus === 'synced') {
       return upload; // Already synced
     }
   }
@@ -165,14 +165,14 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
     uploadRecord = uploads.documents[0];
   } else {
     uploadRecord = await databases.createDocument(dbId, 'compliance_uploads', ID.unique(), {
-      staff_id: staffId,
-      file_id: fileId,
-      file_name: fileName,
-      file_type: fileType,
-      appwrite_file_id: appwriteFileId,
-      uploaded_at: new Date().toISOString(),
-      sync_status: 'pending',
-      sync_attempts: 0,
+      staffId: staffId,
+      fileId: fileId,
+      fileName: fileName,
+      fileType: fileType,
+      appwriteFileId: appwriteFileId,
+      uploadedAt: new Date().toISOString(),
+      syncStatus: 'pending',
+      syncAttempts: 0,
     });
   }
 
@@ -192,7 +192,7 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
     };
 
     const typeFolderName = typeFolders[fileType] || 'Other';
-    let typeFolderId = await getOrCreateTypeFolder(drive, staffFolder.folder_id, typeFolderName);
+    let typeFolderId = await getOrCreateTypeFolder(drive, staffFolder.folderId, typeFolderName);
 
     // Download file from Appwrite
     const filesBucket =
@@ -224,12 +224,12 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
 
     // Update record
     await databases.updateDocument(dbId, 'compliance_uploads', uploadRecord.$id, {
-      google_drive_file_id: driveFileId,
-      google_drive_folder_id: typeFolderId,
-      sync_status: 'synced',
-      sync_attempts: uploadRecord.sync_attempts + 1,
-      last_sync_attempt: new Date().toISOString(),
-      sync_error: null,
+      googleDriveFileId: driveFileId,
+      googleDriveFolderId: typeFolderId,
+      syncStatus: 'synced',
+      syncAttempts: uploadRecord.syncAttempts + 1,
+      lastSyncAttempt: new Date().toISOString(),
+      syncError: null,
     });
 
     await logAudit({
@@ -239,20 +239,20 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
       entity: 'compliance_uploads',
       entityId: uploadRecord.$id,
       diff: JSON.stringify({ driveFileId, status: 'synced' }),
-      drive_sync_status: 'synced',
+      driveSyncStatus: 'synced',
     });
 
     return uploadRecord;
   } catch (err) {
-    const attempts = uploadRecord.sync_attempts + 1;
+    const attempts = uploadRecord.syncAttempts + 1;
 
     if (attempts < 3) {
       // Retry: schedule for 5 minutes later (TBD: use job queue)
       await databases.updateDocument(dbId, 'compliance_uploads', uploadRecord.$id, {
-        sync_attempts: attempts,
-        last_sync_attempt: new Date().toISOString(),
-        sync_error: err.message,
-        sync_status: 'pending',
+        syncAttempts: attempts,
+        lastSyncAttempt: new Date().toISOString(),
+        syncError: err.message,
+        syncStatus: 'pending',
       });
 
       // TODO: Implement background job for retry
@@ -260,10 +260,10 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
     } else {
       // Give up after 3 attempts
       await databases.updateDocument(dbId, 'compliance_uploads', uploadRecord.$id, {
-        sync_attempts: attempts,
-        sync_status: 'failed',
-        last_sync_attempt: new Date().toISOString(),
-        sync_error: err.message,
+        syncAttempts: attempts,
+        syncStatus: 'failed',
+        lastSyncAttempt: new Date().toISOString(),
+        syncError: err.message,
       });
 
       await logAudit({
@@ -273,7 +273,7 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
         entity: 'compliance_uploads',
         entityId: uploadRecord.$id,
         diff: JSON.stringify({ status: 'failed', error: err.message }),
-        drive_sync_status: 'failed',
+        driveSyncStatus: 'failed',
       });
     }
 
@@ -339,21 +339,21 @@ function getMimeType(fileName) {
  */
 export async function retryFailedSyncs() {
   const failed = await databases.listDocuments(dbId, 'compliance_uploads', [
-    Query.equal('sync_status', 'pending'),
-    Query.lessThan('sync_attempts', 3),
+    Query.equal('syncStatus', 'pending'),
+    Query.lessThan('syncAttempts', 3),
   ]);
 
   for (const upload of failed.documents) {
     try {
       await syncFileToGoogleDrive(
-        upload.staff_id,
-        upload.file_id,
-        upload.file_name,
-        upload.file_type,
-        upload.appwrite_file_id
+        upload.staffId,
+        upload.fileId,
+        upload.fileName,
+        upload.fileType,
+        upload.appwriteFileId
       );
     } catch (err) {
-      console.error(`Retry failed for ${upload.file_id}:`, err.message);
+      console.error(`Retry failed for ${upload.fileId}:`, err.message);
     }
   }
 }
@@ -363,8 +363,8 @@ export async function retryFailedSyncs() {
  */
 export async function getStaffUploads(staffId) {
   const uploads = await databases.listDocuments(dbId, 'compliance_uploads', [
-    Query.equal('staff_id', staffId),
-    Query.orderDesc('uploaded_at'),
+    Query.equal('staffId', staffId),
+    Query.orderDesc('uploadedAt'),
   ]);
 
   return uploads.documents;
@@ -375,7 +375,7 @@ export async function getStaffUploads(staffId) {
  */
 export async function getFailedSyncs() {
   const failed = await databases.listDocuments(dbId, 'compliance_uploads', [
-    Query.equal('sync_status', 'failed'),
+    Query.equal('syncStatus', 'failed'),
   ]);
 
   return failed.documents;

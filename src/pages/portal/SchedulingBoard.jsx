@@ -323,15 +323,15 @@ const SchedulingBoard = () => {
               <div key={shift.$id} className="rounded-xl border border-border bg-bg-2 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm text-text-2">{shift.site_id}</p>
-                    <p className="text-lg font-semibold text-text">{shift.position_title}</p>
-                    <p className="text-sm text-text-2">{shift.date} · {shift.start_time} - {shift.end_time}</p>
-                    {shift.minimum_grade_required && (
-                      <p className="text-xs text-text-3">Min grade: {shift.minimum_grade_required}</p>
+                    <p className="text-sm text-text-2">{shift.siteId}</p>
+                    <p className="text-lg font-semibold text-text">{shift.positionTitle}</p>
+                    <p className="text-sm text-text-2">{shift.date} · {shift.startTime} - {shift.endTime}</p>
+                    {shift.minimumGradeRequired && (
+                      <p className="text-xs text-text-3">Min grade: {shift.minimumGradeRequired}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-text-2">Open spots: {shift.positions_open - (shift.assignments?.length || 0)}</span>
+                    <span className="text-xs text-text-2">Open spots: {shift.positionsOpen - (shift.assignments?.length || 0)}</span>
                     {isStaff && (
                       <button
                         onClick={() => handleApply(shift.$id)}

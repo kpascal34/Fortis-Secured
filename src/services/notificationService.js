@@ -29,13 +29,13 @@ export async function sendComplianceNotification(staffId, type, title, message, 
       notificationsCol,
       ID.unique(),
       {
-        staff_id: staffId,
+        staffId: staffId,
         compliance_id: metadata.complianceId || null,
         type,
         title,
         message,
         read: false,
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
         metadata: JSON.stringify(metadata),
       }
     );

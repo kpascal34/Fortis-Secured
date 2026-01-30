@@ -152,7 +152,7 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
         date: shift.date,
         startTime: shift.startTime,
         endTime: shift.endTime,
-        position: shift.shiftType || shift.position_title,
+        position: shift.shiftType || shift.positionTitle,
         siteId: shift.siteId,
         siteName: shift.siteName,
       });
