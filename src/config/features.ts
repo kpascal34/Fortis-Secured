@@ -15,12 +15,12 @@ export const FEATURES = {
   COMPLIANCE: true,
   SCHEDULING: true,
 
-  // Disabled by default (scaling back)
-  CRM: false,
-  CLIENTS: false,
-  SITES: false,
+  // Enabled modules
+  CRM: true,
+  CLIENTS: true,
+  SITES: true,
   POSTS: false,
-  GUARDS: false,
+  GUARDS: true,
   TIME_TRACKING: false,
   TASKS: false,
   INCIDENTS: false,
