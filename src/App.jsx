@@ -1,11 +1,18 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext.jsx';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { isFeatureEnabled } from './config/features.ts';
 import { FeatureDisabled } from './components/FeatureDisabled.jsx';
+import AccessDenied from './components/AccessDenied.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { initializeWebVitalsMonitoring, detectPerformanceIssues } from './lib/performance.js';
 import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from './lib/analyticsUtils.js';
+
+const ROLES = {
+  ADMIN: 'admin',
+  STAFF: 'staff',
+  CLIENT: 'client',
+};
 
 // Eager load critical components
 import PublicSite from './pages/PublicSite.jsx';
@@ -30,7 +37,6 @@ const CookiePolicy = lazy(() => import('./pages/CookiePolicy.jsx'));
 const Dashboard = lazy(() => import('./pages/portal/Dashboard.jsx'));
 const Clients = lazy(() => import('./pages/portal/Clients.jsx'));
 const ClientDetail = lazy(() => import('./pages/portal/ClientDetail.jsx'));
-const Scheduling = lazy(() => import('./pages/portal/Scheduling.jsx'));
 const Sites = lazy(() => import('./pages/portal/Sites.jsx'));
 const Posts = lazy(() => import('./pages/portal/Posts.jsx'));
 const Guards = lazy(() => import('./pages/portal/Guards.jsx'));
@@ -79,12 +85,24 @@ const LoadingFallback = () => (
 );
 
 /**
- * FeatureRoute wrapper: renders component if feature enabled, else shows FeatureDisabled
+ * FeatureRoute wrapper: renders component if feature enabled, else shows FeatureDisabled.
+ * Also enforces a basic role gate so staff/client users don't see admin-only screens.
  */
-const FeatureRoute = ({ feature, name, element }) => {
+const FeatureRoute = ({ feature, name, element, roles }) => {
+  const { user, loading } = useAuth();
+
   if (!isFeatureEnabled(feature)) {
     return <FeatureDisabled featureName={name} />;
   }
+
+  if (loading) {
+    return <LoadingFallback />;
+  }
+
+  if (roles && roles.length > 0 && user && !roles.includes(user.role)) {
+    return <AccessDenied title="Access denied" message={`Your account role does not have access to ${name}.`} />;
+  }
+
   return element;
 };
 
@@ -126,47 +144,271 @@ const AppContent = () => {
 
         {/* Portal Routes */}
         <Route path="/portal" element={<PortalLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="profile" element={<Profile />} />
-          
+          <Route
+            index
+            element={
+              <FeatureRoute
+                feature="DASHBOARD"
+                name="Dashboard"
+                roles={[ROLES.ADMIN, ROLES.STAFF, ROLES.CLIENT]}
+                element={<Dashboard />}
+              />
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <FeatureRoute
+                feature="PROFILE"
+                name="My Profile"
+                roles={[ROLES.ADMIN, ROLES.STAFF, ROLES.CLIENT]}
+                element={<Profile />}
+              />
+            }
+          />
+
           {/* SCHEDULING Module Routes */}
-          <Route path="scheduling" element={<FeatureRoute feature="SCHEDULING" name="Scheduling" element={<SchedulingWithDragDrop />} />} />
-          <Route path="scheduling-drag-drop" element={<FeatureRoute feature="SCHEDULING" name="Scheduling" element={<SchedulingWithDragDrop />} />} />
-          <Route path="scheduling-board" element={<FeatureRoute feature="SCHEDULING" name="Scheduling Board" element={<SchedulingBoard />} />} />
-          <Route path="scheduling/new" element={<FeatureRoute feature="SCHEDULING" name="New Shift" element={<NewShift />} />} />
-          <Route path="recurring-patterns" element={<FeatureRoute feature="RECURRING_PATTERNS" name="Recurring Patterns" element={<RecurringPatterns />} />} />
-          <Route path="my-schedule" element={<FeatureRoute feature="MY_SCHEDULE" name="My Schedule" element={<MySchedule />} />} />
-          <Route path="my-schedule-view" element={<FeatureRoute feature="MY_SCHEDULE" name="My Schedule" element={<StaffScheduleView />} />} />
-          <Route path="open-shifts" element={<FeatureRoute feature="OPEN_SHIFTS" name="Open Shifts" element={<OpenShifts />} />} />
-          <Route path="shift-applications" element={<FeatureRoute feature="SHIFT_APPLICATIONS" name="Shift Applications" element={<ShiftApplications />} />} />
-          
+          <Route
+            path="scheduling"
+            element={
+              <FeatureRoute
+                feature="SCHEDULING"
+                name="Scheduling"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<SchedulingWithDragDrop />}
+              />
+            }
+          />
+          <Route
+            path="scheduling-drag-drop"
+            element={
+              <FeatureRoute
+                feature="SCHEDULING"
+                name="Scheduling"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<SchedulingWithDragDrop />}
+              />
+            }
+          />
+          <Route
+            path="scheduling-board"
+            element={
+              <FeatureRoute
+                feature="SCHEDULING"
+                name="Scheduling Board"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<SchedulingBoard />}
+              />
+            }
+          />
+          <Route
+            path="scheduling/new"
+            element={
+              <FeatureRoute
+                feature="SCHEDULING"
+                name="New Shift"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<NewShift />}
+              />
+            }
+          />
+          <Route
+            path="recurring-patterns"
+            element={
+              <FeatureRoute
+                feature="RECURRING_PATTERNS"
+                name="Recurring Patterns"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<RecurringPatterns />}
+              />
+            }
+          />
+          <Route
+            path="my-schedule"
+            element={
+              <FeatureRoute
+                feature="MY_SCHEDULE"
+                name="My Schedule"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<MySchedule />}
+              />
+            }
+          />
+          <Route
+            path="my-schedule-view"
+            element={
+              <FeatureRoute
+                feature="MY_SCHEDULE"
+                name="My Schedule"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<StaffScheduleView />}
+              />
+            }
+          />
+          <Route
+            path="open-shifts"
+            element={
+              <FeatureRoute
+                feature="OPEN_SHIFTS"
+                name="Open Shifts"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<OpenShifts />}
+              />
+            }
+          />
+          <Route
+            path="shift-applications"
+            element={
+              <FeatureRoute
+                feature="SHIFT_APPLICATIONS"
+                name="Shift Applications"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<ShiftApplications />}
+              />
+            }
+          />
+
           {/* COMPLIANCE Module Routes */}
-          <Route path="hr" element={<FeatureRoute feature="COMPLIANCE" name="HR & Compliance" element={<HR />} />} />
-          <Route path="compliance" element={<FeatureRoute feature="COMPLIANCE" name="Compliance Wizard" element={<ComplianceWizard />} />} />
-          <Route path="admin-grading" element={<FeatureRoute feature="COMPLIANCE" name="Admin Grading" element={<AdminGrading />} />} />
-          <Route path="invite-management" element={<FeatureRoute feature="COMPLIANCE" name="Invite Management" element={<InviteManagement />} />} />
-          <Route path="drive-sync" element={<FeatureRoute feature="COMPLIANCE" name="Drive Sync Status" element={<DriveSyncStatus />} />} />
-          <Route path="audit" element={<FeatureRoute feature="COMPLIANCE" name="Audit Log" element={<AuditLog />} />} />
-          
-          {/* Disabled Modules */}
-          <Route path="clients" element={<FeatureRoute feature="CRM" name="Clients / CRM" element={<Clients />} />} />
-          <Route path="clients/:id" element={<FeatureRoute feature="CRM" name="Client Details" element={<ClientDetail />} />} />
-          <Route path="sites" element={<FeatureRoute feature="SITES" name="Sites" element={<Sites />} />} />
-          <Route path="posts" element={<FeatureRoute feature="POSTS" name="Posts" element={<Posts />} />} />
-          <Route path="guards" element={<FeatureRoute feature="GUARDS" name="Guards" element={<Guards />} />} />
-          <Route path="time" element={<FeatureRoute feature="TIME_TRACKING" name="Time Tracking" element={<TimeTracking />} />} />
-          <Route path="tasks" element={<FeatureRoute feature="TASKS" name="Tasks" element={<Tasks />} />} />
-          <Route path="incidents" element={<FeatureRoute feature="INCIDENTS" name="Incidents" element={<Incidents />} />} />
-          <Route path="assets" element={<FeatureRoute feature="ASSETS" name="Assets" element={<Assets />} />} />
-          <Route path="messages" element={<FeatureRoute feature="MESSAGES" name="Messages" element={<Messages />} />} />
-          <Route path="finance" element={<FeatureRoute feature="FINANCE" name="Finance" element={<Finance />} />} />
-          <Route path="ai" element={<FeatureRoute feature="AI_ASSISTANT" name="AI Assistant" element={<AIAssistant />} />} />
-          <Route path="users" element={<FeatureRoute feature="USER_MANAGEMENT" name="User Management" element={<UserManagement />} />} />
-          <Route path="payroll" element={<FeatureRoute feature="PAYROLL" name="Payroll" element={<Payroll />} />} />
-          <Route path="reports" element={<FeatureRoute feature="REPORTS" name="Reports" element={<Reports />} />} />
-          <Route path="analytics" element={<FeatureRoute feature="ANALYTICS" name="Analytics" element={<Analytics />} />} />
-          <Route path="client-portal" element={<FeatureRoute feature="CRM" name="Client Portal" element={<ClientPortal />} />} />
-          <Route path="settings" element={<FeatureRoute feature="SETTINGS" name="Settings" element={<Settings />} />} />
+          <Route
+            path="hr"
+            element={
+              <FeatureRoute
+                feature="COMPLIANCE"
+                name="HR & Compliance"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<HR />}
+              />
+            }
+          />
+          <Route
+            path="compliance"
+            element={
+              <FeatureRoute
+                feature="COMPLIANCE"
+                name="Compliance Wizard"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<ComplianceWizard />}
+              />
+            }
+          />
+          <Route
+            path="admin-grading"
+            element={
+              <FeatureRoute
+                feature="COMPLIANCE"
+                name="Admin Grading"
+                roles={[ROLES.ADMIN]}
+                element={<AdminGrading />}
+              />
+            }
+          />
+          <Route
+            path="invite-management"
+            element={
+              <FeatureRoute
+                feature="COMPLIANCE"
+                name="Invite Management"
+                roles={[ROLES.ADMIN]}
+                element={<InviteManagement />}
+              />
+            }
+          />
+          <Route
+            path="drive-sync"
+            element={
+              <FeatureRoute
+                feature="COMPLIANCE"
+                name="Drive Sync Status"
+                roles={[ROLES.ADMIN]}
+                element={<DriveSyncStatus />}
+              />
+            }
+          />
+          <Route
+            path="audit"
+            element={
+              <FeatureRoute
+                feature="AUDIT_LOG"
+                name="Audit Log"
+                roles={[ROLES.ADMIN]}
+                element={<AuditLog />}
+              />
+            }
+          />
+
+          {/* Other modules */}
+          <Route
+            path="clients"
+            element={<FeatureRoute feature="CRM" name="Clients / CRM" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Clients />} />}
+          />
+          <Route
+            path="clients/:id"
+            element={<FeatureRoute feature="CRM" name="Client Details" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<ClientDetail />} />}
+          />
+          <Route
+            path="sites"
+            element={<FeatureRoute feature="SITES" name="Sites" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Sites />} />}
+          />
+          <Route
+            path="posts"
+            element={<FeatureRoute feature="POSTS" name="Posts" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Posts />} />}
+          />
+          <Route
+            path="guards"
+            element={<FeatureRoute feature="GUARDS" name="Guards" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Guards />} />}
+          />
+          <Route
+            path="time"
+            element={<FeatureRoute feature="TIME_TRACKING" name="Time Tracking" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<TimeTracking />} />}
+          />
+          <Route
+            path="tasks"
+            element={<FeatureRoute feature="TASKS" name="Tasks" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Tasks />} />}
+          />
+          <Route
+            path="incidents"
+            element={<FeatureRoute feature="INCIDENTS" name="Incidents" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Incidents />} />}
+          />
+          <Route
+            path="assets"
+            element={<FeatureRoute feature="ASSETS" name="Assets" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Assets />} />}
+          />
+          <Route
+            path="messages"
+            element={<FeatureRoute feature="MESSAGES" name="Messages" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Messages />} />}
+          />
+          <Route
+            path="finance"
+            element={<FeatureRoute feature="FINANCE" name="Finance" roles={[ROLES.ADMIN]} element={<Finance />} />}
+          />
+          <Route
+            path="ai"
+            element={<FeatureRoute feature="AI_ASSISTANT" name="AI Assistant" roles={[ROLES.ADMIN]} element={<AIAssistant />} />}
+          />
+          <Route
+            path="users"
+            element={<FeatureRoute feature="USER_MANAGEMENT" name="User Management" roles={[ROLES.ADMIN]} element={<UserManagement />} />}
+          />
+          <Route
+            path="payroll"
+            element={<FeatureRoute feature="PAYROLL" name="Payroll" roles={[ROLES.ADMIN]} element={<Payroll />} />}
+          />
+          <Route
+            path="reports"
+            element={<FeatureRoute feature="REPORTS" name="Reports" roles={[ROLES.ADMIN]} element={<Reports />} />}
+          />
+          <Route
+            path="analytics"
+            element={<FeatureRoute feature="ANALYTICS" name="Analytics" roles={[ROLES.ADMIN]} element={<Analytics />} />}
+          />
+          <Route
+            path="client-portal"
+            element={<FeatureRoute feature="CRM" name="Client Portal" roles={[ROLES.CLIENT, ROLES.ADMIN]} element={<ClientPortal />} />}
+          />
+          <Route
+            path="settings"
+            element={<FeatureRoute feature="SETTINGS" name="Settings" roles={[ROLES.ADMIN]} element={<Settings />} />}
+          />
         </Route>
 
         <Route path="*" element={<NotFound />} />
@@ -179,7 +421,7 @@ const App = () => {
   useEffect(() => {
     // Initialize Web Vitals monitoring on mount
     initializeWebVitalsMonitoring();
-    
+
     // Detect and log performance issues in development
     if (process.env.NODE_ENV === 'development') {
       detectPerformanceIssues();

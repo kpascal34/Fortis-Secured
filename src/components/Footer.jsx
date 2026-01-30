@@ -11,16 +11,16 @@ const Footer = () => (
       <div className="flex flex-wrap items-start gap-8">
         <div className="flex flex-col">
           <span className="font-semibold text-gray-900 mb-2">Explore</span>
-          <a className="hover:text-accent" href="#services">Services</a>
-          <a className="hover:text-accent mt-1" href="/join-the-team">Join the Team</a>
-          <a className="hover:text-accent mt-1" href="#about">About Us</a>
-          <a className="hover:text-accent mt-1" href="#contact">Contact</a>
+          <Link className="hover:text-accent" to="/services">Services</Link>
+          <Link className="hover:text-accent mt-1" to="/join-the-team">Join the Team</Link>
+          <Link className="hover:text-accent mt-1" to="/about">About Us</Link>
+          <Link className="hover:text-accent mt-1" to="/contact">Contact</Link>
         </div>
         <div className="flex flex-col">
           <span className="font-semibold text-gray-900 mb-2">Legal</span>
-          <a className="hover:text-accent" href="/privacy-policy">Privacy Policy</a>
-          <a className="hover:text-accent mt-1" href="/terms">Terms &amp; Conditions</a>
-          <a className="hover:text-accent mt-1" href="/cookie-policy">Cookie Policy</a>
+          <Link className="hover:text-accent" to="/privacy-policy">Privacy Policy</Link>
+          <Link className="hover:text-accent mt-1" to="/terms">Terms &amp; Conditions</Link>
+          <Link className="hover:text-accent mt-1" to="/cookie-policy">Cookie Policy</Link>
           <a className="hover:text-accent mt-1" href="/sitemap.xml">Sitemap</a>
         </div>
         <div className="flex flex-col">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PortalNav from '../components/PortalNav';
 import LoginForm from '../components/LoginForm';
@@ -8,6 +8,7 @@ import { useSEO } from '../lib/seo.js';
 
 const PortalLayout = () => {
   const { user, loading, logout } = useAuth();
+  const location = useLocation();
 
   const title = loading
     ? 'Loading Portal | Fortis Secured'
@@ -50,9 +51,14 @@ const PortalLayout = () => {
     );
   }
 
+  // Convenience redirect for client users
+  if (user.role === 'client' && (location.pathname === '/portal' || location.pathname === '/portal/')) {
+    return <Navigate to="/portal/client-portal" replace />;
+  }
+
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
-      <PortalNav onSignOut={logout} />
+      <PortalNav user={user} onSignOut={logout} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 lg:p-8">

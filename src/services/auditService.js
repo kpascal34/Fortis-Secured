@@ -34,7 +34,7 @@ export async function logAudit({
       console.log('[AUDIT]', { actorId, action, entity, entityId });
       return null;
     }
-    
+
     const logData = {
       actorId,
       actorRole,
@@ -45,20 +45,56 @@ export async function logAudit({
       ipAddress,
       userAgent,
     };
-    
+
     const document = await databases.createDocument(
       config.databaseId,
       config.auditLogsCollectionId,
       ID.unique(),
       logData
     );
-    
+
     return document;
   } catch (error) {
     console.error('Failed to log audit:', error);
     // Don't throw - audit logging should not block operations
     return null;
   }
+}
+
+/**
+ * Backwards-compatible helper used across the app.
+ * Some services log "actions" without having user context available.
+ *
+ * @param {object} params
+ * @param {string} [params.actorId='system']
+ * @param {string} [params.actorRole='system']
+ * @param {string} params.action
+ * @param {string} params.entity
+ * @param {string} params.entityId
+ * @param {object} [params.changes]
+ * @param {string} [params.ipAddress]
+ * @param {string} [params.userAgent]
+ */
+export async function logAction({
+  actorId = 'system',
+  actorRole = 'system',
+  action,
+  entity,
+  entityId,
+  changes = null,
+  ipAddress = null,
+  userAgent = null,
+} = {}) {
+  return logAudit({
+    actorId,
+    actorRole,
+    action,
+    entity,
+    entityId,
+    diff: changes,
+    ipAddress,
+    userAgent,
+  });
 }
 
 /**
