@@ -81,8 +81,10 @@ const OpenShifts = () => {
       // Fetch open/offered shifts (published = true and no staff assigned)
       try {
         const shiftsRes = await databases.listDocuments(config.databaseId, config.shiftsCollectionId, [
-          Query.equal('published', true),
-          Query.isNull('staffId'),
+          // `published` is stored as a string in this DB
+          Query.equal('published', 'true'),
+          // Guard assignment field used here is `guardId`
+          Query.isNull('guardId'),
           Query.orderAsc('date'),
           Query.limit(100),
         ]);

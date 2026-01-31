@@ -93,7 +93,9 @@ const Dashboard = () => {
       today.setHours(0, 0, 0, 0);
       const activeShifts = shiftsResponse.documents.filter(shift => {
         const shiftDate = new Date(shift.date || shift.startTime);
-        return shift.published && shiftDate >= today;
+        // `published` is stored as a string in this DB
+        const isPublished = String(shift.published) === 'true';
+        return isPublished && shiftDate >= today;
       }).length;
 
       // Total guards/staff
