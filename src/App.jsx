@@ -175,7 +175,7 @@ const AppContent = () => {
                 feature="SCHEDULING"
                 name="Scheduling"
                 roles={[ROLES.ADMIN, ROLES.STAFF]}
-                element={<SchedulingWithDragDrop />}
+                element={<Scheduling />}
               />
             }
           />
