@@ -76,37 +76,35 @@ const Scheduling = () => {
       let guardsData = [];
       let assignmentsData = [];
 
+      // Fetch collections independently so one failing collection (e.g. assignments)
+      // doesn’t blank out the entire scheduling screen.
       try {
-        const [shiftsRes, clientsRes, sitesRes, guardsRes, assignmentsRes] = await Promise.all([
-          databases.listDocuments(config.databaseId, config.shiftsCollectionId, [
-            Query.limit(100),
-          ]),
-          databases.listDocuments(config.databaseId, config.clientsCollectionId, [
-            Query.limit(100),
-          ]),
-          databases.listDocuments(config.databaseId, config.sitesCollectionId, [
-            Query.limit(100),
-          ]),
-          databases.listDocuments(config.databaseId, config.guardsCollectionId, [
-            Query.limit(100),
-          ]),
-          databases.listDocuments(config.databaseId, config.shiftAssignmentsCollectionId, [
-            Query.limit(200),
-          ]),
+        const results = await Promise.allSettled([
+          databases.listDocuments(config.databaseId, config.shiftsCollectionId, [Query.limit(100)]),
+          databases.listDocuments(config.databaseId, config.clientsCollectionId, [Query.limit(100)]),
+          databases.listDocuments(config.databaseId, config.sitesCollectionId, [Query.limit(100)]),
+          databases.listDocuments(config.databaseId, config.guardsCollectionId, [Query.limit(100)]),
+          databases.listDocuments(config.databaseId, config.shiftAssignmentsCollectionId, [Query.limit(200)]),
         ]);
 
-        shiftsData = shiftsRes.documents;
-        clientsData = clientsRes.documents;
-        sitesData = sitesRes.documents;
-        guardsData = guardsRes.documents;
-        assignmentsData = assignmentsRes.documents;
+        const [shiftsRes, clientsRes, sitesRes, guardsRes, assignmentsRes] = results;
+
+        if (shiftsRes.status === 'fulfilled') shiftsData = shiftsRes.value.documents;
+        else console.error('Failed to load shifts:', shiftsRes.reason);
+
+        if (clientsRes.status === 'fulfilled') clientsData = clientsRes.value.documents;
+        else console.error('Failed to load clients:', clientsRes.reason);
+
+        if (sitesRes.status === 'fulfilled') sitesData = sitesRes.value.documents;
+        else console.error('Failed to load sites:', sitesRes.reason);
+
+        if (guardsRes.status === 'fulfilled') guardsData = guardsRes.value.documents;
+        else console.error('Failed to load guards:', guardsRes.reason);
+
+        if (assignmentsRes.status === 'fulfilled') assignmentsData = assignmentsRes.value.documents;
+        else console.error('Failed to load shift assignments:', assignmentsRes.reason);
       } catch (error) {
-        console.error('Error fetching from database. Connect Appwrite to load live data.', error);
-        guardsData = [];
-        shiftsData = [];
-        clientsData = [];
-        sitesData = [];
-        assignmentsData = [];
+        console.error('Unexpected error fetching scheduling data:', error);
       }
 
       console.log('Fetched clients:', clientsData);
