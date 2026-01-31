@@ -151,7 +151,8 @@ const NewShift = () => {
         position: formData.positionTitle.trim(),
         requirements: formData.specialRequirements?.trim() || '',
         notes: formData.notes?.trim() || '',
-        status: 'draft',
+        // Appwrite enum: (scheduled, confirmed, completed, cancelled)
+        status: 'scheduled',
         published: 'false',
       };
 
