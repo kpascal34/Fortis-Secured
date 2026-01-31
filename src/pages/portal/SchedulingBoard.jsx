@@ -193,17 +193,24 @@ const SchedulingBoard = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    
+
+    // Safety: don’t create a shift unless the submit actually came from our Create Shift button.
+    // This prevents accidental submissions when interacting with form controls.
+    const submitter = e?.nativeEvent?.submitter;
+    if (submitter && submitter.getAttribute('data-action') !== 'create-shift') {
+      return;
+    }
+
     // Validate
     if (!validateForm()) {
       setError('Please correct the validation errors below');
       return;
     }
-    
+
     try {
       setCreating(true);
       setError(null);
-      
+
       // Create shift document (match Appwrite schema for the `shifts` collection)
       // NOTE: In this project, `shifts.date` is a *datetime* attribute, so we must store an ISO string.
       const dateISO = new Date(form.date).toISOString();
@@ -222,14 +229,17 @@ const SchedulingBoard = () => {
           // Schema fields
           position: form.positionTitle,
           requirements: form.specialRequirements || '',
-          status: 'draft',
+
+          // Appwrite enforces enum: (scheduled, confirmed, completed, cancelled)
+          // Default new shifts to scheduled.
+          status: 'scheduled',
 
           // In Appwrite, `published` is currently a string attribute in this DB.
           // Store 'false'/'true' to avoid type errors.
           published: 'false',
         }
       );
-      
+
       setForm({ clientId: '', siteId: '', positionTitle: '', date: '', startTime: '', endTime: '', positionsOpen: 1, minimumGradeRequired: '', specialRequirements: '' });
       await loadShifts();
     } catch (err) {
@@ -309,7 +319,12 @@ const SchedulingBoard = () => {
               <Input label="Special Requirements" value={form.specialRequirements} onChange={(v) => setForm({ ...form, specialRequirements: v })} disabled={loadingData} />
               <div className="md:col-span-3 flex justify-end gap-2">
                 {loadingData && <span className="text-xs text-white/60 self-center">Loading form data...</span>}
-                <button type="submit" disabled={creating || loadingData} className="fs-btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                <button
+                  type="submit"
+                  data-action="create-shift"
+                  disabled={creating || loadingData}
+                  className="fs-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   {creating ? 'Saving…' : 'Create Shift'}
                 </button>
               </div>
@@ -328,7 +343,7 @@ const SchedulingBoard = () => {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm text-text-2">{shift.siteId}</p>
-                    <p className="text-lg font-semibold text-text">{shift.positionTitle}</p>
+                    <p className="text-lg font-semibold text-text">{shift.position || shift.positionTitle}</p>
                     <p className="text-sm text-text-2">{shift.date} · {shift.startTime} - {shift.endTime}</p>
                     {shift.minimumGradeRequired && (
                       <p className="text-xs text-text-3">Min grade: {shift.minimumGradeRequired}</p>
