@@ -104,13 +104,20 @@ const ClientFormModal = ({ client, onClose }) => {
     setLoading(true);
 
     try {
+      // Appwrite schema compatibility: some projects require a `name` attribute.
+      // Keep `companyName` as the primary UI field, but also set `name` for back-compat.
+      const payload = {
+        ...formData,
+        name: formData.companyName,
+      };
+
       if (client) {
         // Update existing client
         await databases.updateDocument(
           config.databaseId,
           config.clientsCollectionId,
           client.$id,
-          formData
+          payload
         );
         setValidationMessage('Client updated successfully!');
       } else {
@@ -119,7 +126,7 @@ const ClientFormModal = ({ client, onClose }) => {
           config.databaseId,
           config.clientsCollectionId,
           ID.unique(),
-          formData
+          payload
         );
         setValidationMessage('Client created successfully!');
       }
