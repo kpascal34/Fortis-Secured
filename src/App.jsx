@@ -60,6 +60,7 @@ const ClientPortal = lazy(() => import('./pages/portal/ClientPortal.jsx'));
 const Analytics = lazy(() => import('./pages/portal/Analytics.jsx'));
 const RecurringPatterns = lazy(() => import('./pages/portal/RecurringPatterns.jsx'));
 const ScheduleDemo = lazy(() => import('./pages/ScheduleDemo.jsx'));
+const Scheduling = lazy(() => import('./pages/portal/Scheduling.jsx'));
 const SchedulingWithDragDrop = lazy(() => import('./pages/portal/SchedulingWithDragDrop.jsx'));
 const StaffScheduleView = lazy(() => import('./pages/portal/StaffScheduleView.jsx'));
 const Profile = lazy(() => import('./pages/portal/Profile.jsx'));
