@@ -99,8 +99,9 @@ const SchedulingBoard = () => {
         queries.push(Query.equal('clientId', profile.clientId));
       } else if (isStaff) {
         // Staff only see published open shifts
-        queries.push(Query.equal('published', true));
-        queries.push(Query.isNull('staffId'));
+        // In this DB, `published` is a string attribute on `shifts`.
+        queries.push(Query.equal('published', 'true'));
+        queries.push(Query.isNull('guardId'));
       }
       
       // Default sort by date
@@ -203,7 +204,10 @@ const SchedulingBoard = () => {
       setCreating(true);
       setError(null);
       
-      // Create shift document directly
+      // Create shift document (match Appwrite schema for the `shifts` collection)
+      // NOTE: In this project, `shifts.date` is a *datetime* attribute, so we must store an ISO string.
+      const dateISO = new Date(form.date).toISOString();
+
       await databases.createDocument(
         config.databaseId,
         config.shiftsCollectionId,
@@ -211,18 +215,18 @@ const SchedulingBoard = () => {
         {
           clientId: form.clientId || profile?.clientId || null,
           siteId: form.siteId,
-          positionTitle: form.positionTitle,
-          date: form.date,
+          date: dateISO,
           startTime: form.startTime,
           endTime: form.endTime,
-          minimumGradeRequired: form.minimumGradeRequired ? Number(form.minimumGradeRequired) : null,
-          positionsOpen: Number(form.positionsOpen || 1),
-          specialRequirements: form.specialRequirements || '',
-          published: false,
-          staffId: null,
+
+          // Schema fields
+          position: form.positionTitle,
+          requirements: form.specialRequirements || '',
           status: 'draft',
-          createdBy: user.$id,
-          createdAt: new Date().toISOString(),
+
+          // In Appwrite, `published` is currently a string attribute in this DB.
+          // Store 'false'/'true' to avoid type errors.
+          published: 'false',
         }
       );
       

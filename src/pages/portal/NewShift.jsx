@@ -137,24 +137,22 @@ const NewShift = () => {
     try {
       setSubmitting(true);
 
+      // Match Appwrite schema for the `shifts` collection (date = datetime)
+      const dateISO = new Date(formData.date).toISOString();
+
       const shiftData = {
         clientId: formData.clientId || null,
         siteId: formData.siteId || null,
-        positionTitle: formData.positionTitle.trim(),
-        date: formData.date,
+        date: dateISO,
         startTime: formData.startTime,
         endTime: formData.endTime,
-        breakLength: formData.breakLength || 0,
-        positionsOpen: formData.positionsOpen,
-        minimumGradeRequired: formData.minimumGradeRequired ? Number(formData.minimumGradeRequired) : null,
-        hourlyRate: formData.hourlyRate ? Number(formData.hourlyRate) : null,
-        specialRequirements: formData.specialRequirements?.trim() || '',
+
+        // Schema fields
+        position: formData.positionTitle.trim(),
+        requirements: formData.specialRequirements?.trim() || '',
         notes: formData.notes?.trim() || '',
-        published: false,
-        staffId: null,
         status: 'draft',
-        createdBy: user.$id,
-        createdAt: new Date().toISOString(),
+        published: 'false',
       };
 
       await databases.createDocument(
