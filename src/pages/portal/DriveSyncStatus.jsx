@@ -3,6 +3,7 @@ import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC';
 import { 
+  DRIVE_SYNC_REQUIRED_ATTRIBUTES,
   getFailedSyncs, 
   getPendingSyncs, 
   getSuccessfulSyncs,
@@ -27,6 +28,7 @@ const DriveSyncStatus = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [activeTab, setActiveTab] = useState('failed'); // failed, pending, successful
+  const [schemaIssue, setSchemaIssue] = useState(null);
 
   const load = async () => {
     if (!config.complianceUploadsCollectionId) {
@@ -43,6 +45,7 @@ const DriveSyncStatus = () => {
     
     setLoading(true);
     setError(null);
+    setSchemaIssue(null);
     try {
       // Fetch all sync statuses in parallel
       const [failedData, pendingData, successfulData, summaryData] = await Promise.all([
@@ -82,6 +85,12 @@ const DriveSyncStatus = () => {
     } catch (e) {
       console.error('Error loading sync status:', e);
       const errorMsg = e.message || 'Failed to load sync status';
+
+      if (e.code === 'DRIVE_SYNC_SCHEMA_MISSING') {
+        setSchemaIssue(e.details || null);
+        setError('Drive Sync Status setup is incomplete. Update the compliance_uploads schema in Appwrite using the checklist below.');
+        return;
+      }
       
       // Provide helpful hints based on error type
       if (errorMsg.includes('not found') || errorMsg.includes('Invalid collection')) {
@@ -223,6 +232,36 @@ const DriveSyncStatus = () => {
         )}
         {toast && (
           <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-200">{toast}</div>
+        )}
+
+        {schemaIssue && (
+          <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+            <p className="font-semibold text-amber-200">Schema setup required for Drive Sync Status</p>
+            <p className="mt-1 text-amber-100/80">
+              Collection: <code className="rounded bg-black/20 px-1 py-0.5">{config.complianceUploadsCollectionId || 'compliance_uploads'}</code>
+            </p>
+            <p className="mt-1 text-amber-100/80">Queries used by this page:</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-amber-100/80">
+              <li><code className="rounded bg-black/20 px-1 py-0.5">Query.equal('driveSyncStatus', ['failed' | 'pending' | 'success'])</code></li>
+              <li><code className="rounded bg-black/20 px-1 py-0.5">Query.orderDesc('lastSyncAttempt')</code></li>
+            </ul>
+
+            <p className="mt-3 text-amber-100/80">Required attributes checklist:</p>
+            <ul className="mt-1 space-y-1 text-xs">
+              {DRIVE_SYNC_REQUIRED_ATTRIBUTES.map((attribute) => {
+                const isMissing = schemaIssue?.missing?.some((item) => item.key === attribute.key);
+                const hasTypeMismatch = schemaIssue?.mismatchedType?.some((item) => item.key === attribute.key);
+                const hasEnumMismatch = schemaIssue?.invalidEnums?.some((item) => item.key === attribute.key);
+                const status = isMissing || hasTypeMismatch || hasEnumMismatch ? '❌' : '✅';
+                return (
+                  <li key={attribute.key}>
+                    {status} <code className="rounded bg-black/20 px-1 py-0.5">{attribute.key}</code> — {attribute.type}{attribute.required ? ', required' : ', optional'}
+                    {attribute.enum ? `, enum: ${attribute.enum.join(', ')}` : ''}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
 
         {/* Summary Cards */}
