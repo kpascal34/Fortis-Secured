@@ -128,7 +128,7 @@ export const fetchStaffShifts = async (staffId, startDate, endDate) => {
   }
 };
 
-// Create a new shift (stores 'shiftDate' in DB, maps UI 'date')
+// Create a new shift (stores 'date' in DB)
 export const createShift = async (shiftData) => {
   try {
     ensureConfigured();
@@ -337,7 +337,7 @@ export const getShiftStats = async (startDate, endDate, siteId = null) => {
   }
 };
 
-// Transform Appwrite shifts to drag-drop format (map 'shiftDate' -> 'date')
+// Transform Appwrite shifts to drag-drop format
 export const transformShiftsForDragDrop = (appwriteShifts) => {
   return appwriteShifts.map(shift => ({
     $id: shift.$id,

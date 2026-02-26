@@ -47,17 +47,17 @@ async function createOrUpdate() {
     // 2. staff_numbers: Employee number allocation
     console.log('📋 Setting up staff_numbers collection...');
     await createCollection('staff_numbers', [
-      { key: 'staff_id', type: 'string', size: 255, required: true }, // user ID
+      { key: 'staffId', type: 'string', size: 255, required: true }, // user ID
       { key: 'employee_number', type: 'string', size: 20, required: true }, // FS-000123
       { key: 'allocated_at', type: 'datetime', required: true },
     ]);
-    await createIndex('staff_numbers', 'staff_id_idx', 'unique', ['staff_id']);
+    await createIndex('staff_numbers', 'staffId_idx', 'unique', ['staffId']);
     await createIndex('staff_numbers', 'employee_number_idx', 'unique', ['employee_number']);
 
     // 3. staff_compliance: Multi-step compliance wizard progress
     console.log('📋 Setting up staff_compliance collection...');
     await createCollection('staff_compliance', [
-      { key: 'staff_id', type: 'string', size: 255, required: true },
+      { key: 'staffId', type: 'string', size: 255, required: true },
       { key: 'step_1_identity', type: 'string', size: 50000, required: false }, // JSON: personal details, address history
       { key: 'step_1_files', type: 'string', size: 5000, required: false }, // JSON array of {file_id, name, type}
       { key: 'step_2_employment', type: 'string', size: 50000, required: false }, // JSON: 5-year history
@@ -66,25 +66,25 @@ async function createOrUpdate() {
       { key: 'step_5_criminal', type: 'string', size: 5000, required: false }, // JSON: file_id, upload_date
       { key: 'step_6_sia', type: 'string', size: 500, required: false }, // JSON: licence_number, expiry_date
       { key: 'step_7_video', type: 'string', size: 5000, required: false }, // JSON: file_id, duration, upload_date
-      { key: 'current_step', type: 'integer', required: true }, // 1-7, 0 = not started
+      { key: 'currentStep', type: 'integer', required: true }, // 1-7, 0 = not started
       { key: 'completed_at', type: 'datetime', required: false },
       { key: 'status', type: 'string', size: 50, required: true }, // in_progress, submitted, approved, rejected
       { key: 'rejection_reason', type: 'string', size: 1000, required: false },
     ]);
-    await createIndex('staff_compliance', 'staff_id_idx', 'unique', ['staff_id']);
+    await createIndex('staff_compliance', 'staffId_idx', 'unique', ['staffId']);
     await createIndex('staff_compliance', 'status_idx', 'key', ['status']);
 
     // 4. staff_grades: Staff grading (1-5 overall + category breakdowns)
     console.log('📋 Setting up staff_grades collection...');
     await createCollection('staff_grades', [
-      { key: 'staff_id', type: 'string', size: 255, required: true },
+      { key: 'staffId', type: 'string', size: 255, required: true },
       { key: 'overall_grade', type: 'integer', required: false }, // 1-5, null = not graded
       { key: 'categories', type: 'string', size: 5000, required: false }, // JSON: {reliability: 4, punctuality: 5, ...}
       { key: 'graded_by', type: 'string', size: 255, required: false }, // admin ID
       { key: 'graded_at', type: 'datetime', required: false },
       { key: 'notes', type: 'string', size: 2000, required: false },
     ]);
-    await createIndex('staff_grades', 'staff_id_idx', 'unique', ['staff_id']);
+    await createIndex('staff_grades', 'staffId_idx', 'unique', ['staffId']);
     await createIndex('staff_grades', 'overall_grade_idx', 'key', ['overall_grade']);
 
     // 5. shifts: Shift templates/postings
@@ -112,19 +112,19 @@ async function createOrUpdate() {
     console.log('📋 Setting up shift_applications collection...');
     await createCollection('shift_applications', [
       { key: 'shift_id', type: 'string', size: 255, required: true },
-      { key: 'staff_id', type: 'string', size: 255, required: true },
+      { key: 'staffId', type: 'string', size: 255, required: true },
       { key: 'applied_at', type: 'datetime', required: true },
       { key: 'status', type: 'string', size: 50, required: true }, // pending, accepted, rejected, cancelled
       { key: 'eligibility_check', type: 'string', size: 500, required: true }, // JSON: {compliant: bool, grade_eligible: bool, reasons: []}
     ]);
     await createIndex('shift_applications', 'shift_id_idx', 'key', ['shift_id']);
-    await createIndex('shift_applications', 'staff_id_idx', 'key', ['staff_id']);
+    await createIndex('shift_applications', 'staffId_idx', 'key', ['staffId']);
     await createIndex('shift_applications', 'status_idx', 'key', ['status']);
 
     // 7. compliance_uploads: File metadata for Google Drive sync
     console.log('📋 Setting up compliance_uploads collection...');
     await createCollection('compliance_uploads', [
-      { key: 'staff_id', type: 'string', size: 255, required: true },
+      { key: 'staffId', type: 'string', size: 255, required: true },
       { key: 'file_id', type: 'string', size: 255, required: true }, // Appwrite file ID
       { key: 'file_name', type: 'string', size: 500, required: true },
       { key: 'file_type', type: 'string', size: 50, required: true }, // identity, employment, criminal, sia, video, etc.
@@ -137,20 +137,20 @@ async function createOrUpdate() {
       { key: 'sync_error', type: 'string', size: 1000, required: false },
       { key: 'last_sync_attempt', type: 'datetime', required: false },
     ]);
-    await createIndex('compliance_uploads', 'staff_id_idx', 'key', ['staff_id']);
+    await createIndex('compliance_uploads', 'staffId_idx', 'key', ['staffId']);
     await createIndex('compliance_uploads', 'appwrite_file_id_idx', 'unique', ['appwrite_file_id']);
     await createIndex('compliance_uploads', 'sync_status_idx', 'key', ['sync_status']);
 
     // 8. google_drive_folders: Per-staff Google Drive folders
     console.log('📋 Setting up google_drive_folders collection...');
     await createCollection('google_drive_folders', [
-      { key: 'staff_id', type: 'string', size: 255, required: true },
+      { key: 'staffId', type: 'string', size: 255, required: true },
       { key: 'folder_id', type: 'string', size: 255, required: true }, // Google Drive folder ID
       { key: 'folder_name', type: 'string', size: 255, required: true },
       { key: 'created_at', type: 'datetime', required: true },
       { key: 'parent_folder_id', type: 'string', size: 255, required: false }, // Parent shared folder
     ]);
-    await createIndex('google_drive_folders', 'staff_id_idx', 'unique', ['staff_id']);
+    await createIndex('google_drive_folders', 'staffId_idx', 'unique', ['staffId']);
     await createIndex('google_drive_folders', 'folder_id_idx', 'unique', ['folder_id']);
 
     // Update existing audit_logs to include google_drive metadata

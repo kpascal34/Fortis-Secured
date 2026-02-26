@@ -43,7 +43,7 @@ async function createStaffComplianceCollection() {
     await databases.createStringAttribute(
       databaseId,
       collectionId,
-      'staff_id',
+      'staffId',
       255,
       true // required
     );
@@ -60,7 +60,7 @@ async function createStaffComplianceCollection() {
     await databases.createIntegerAttribute(
       databaseId,
       collectionId,
-      'current_step',
+      'currentStep',
       true, // required
       1,
       7
@@ -69,7 +69,7 @@ async function createStaffComplianceCollection() {
     await databases.createStringAttribute(
       databaseId,
       collectionId,
-      'step_1_identity',
+      'step1Identity',
       65535,
       false
     );
@@ -147,14 +147,14 @@ async function createStaffComplianceCollection() {
     await databases.createDatetimeAttribute(
       databaseId,
       collectionId,
-      'created_at',
+      'createdAt',
       true
     );
 
     await databases.createDatetimeAttribute(
       databaseId,
       collectionId,
-      'updated_at',
+      'updatedAt',
       true
     );
 
@@ -171,14 +171,14 @@ async function createStaffComplianceCollection() {
       await databases.createIndex(
         databaseId,
         collectionId,
-        'staff_id_unique',
+        'staffId_unique',
         'unique',
-        ['staff_id'],
+        ['staffId'],
         ['asc']
       );
-      console.log('✓ Unique staff_id index created');
+      console.log('✓ Unique staffId index created');
     } catch (error) {
-      console.log('Note: staff_id index may already exist:', error.message);
+      console.log('Note: staffId index may already exist:', error.message);
     }
 
     try {
@@ -199,36 +199,36 @@ async function createStaffComplianceCollection() {
       await databases.createIndex(
         databaseId,
         collectionId,
-        'current_step_idx',
+        'currentStep_idx',
         'key',
-        ['current_step'],
+        ['currentStep'],
         ['asc']
       );
-      console.log('✓ current_step index created');
+      console.log('✓ currentStep index created');
     } catch (error) {
-      console.log('Note: current_step index may already exist:', error.message);
+      console.log('Note: currentStep index may already exist:', error.message);
     }
 
     try {
       await databases.createIndex(
         databaseId,
         collectionId,
-        'updated_at_idx',
+        'updatedAt_idx',
         'key',
-        ['updated_at'],
+        ['updatedAt'],
         ['desc']
       );
-      console.log('✓ updated_at index created');
+      console.log('✓ updatedAt index created');
     } catch (error) {
-      console.log('Note: updated_at index may already exist:', error.message);
+      console.log('Note: updatedAt index may already exist:', error.message);
     }
 
     console.log('\n✅ Setup complete!');
     console.log('\nCollection ID:', collectionId);
     console.log('\nCollection Structure (BS7858 Compliance):');
-    console.log('- staff_id (string, required): Staff member ID');
+    console.log('- staffId (string, required): Staff member ID');
     console.log('- status (enum, required): pending | in_progress | approved | rejected');
-    console.log('- current_step (integer, required): 1-7 wizard steps');
+    console.log('- currentStep (integer, required): 1-7 wizard steps');
     console.log('- step_1_identity (string, optional): JSON - personal info & 5-year address');
     console.log('- step_2_employment (string, optional): JSON - 5-year employment history');
     console.log('- step_3_evidence (string, optional): JSON - document file IDs');
@@ -239,12 +239,12 @@ async function createStaffComplianceCollection() {
     console.log('- submitted_at (datetime, optional): When completed');
     console.log('- approved_at (datetime, optional): When approved');
     console.log('- approved_by (string, optional): Admin ID');
-    console.log('- created_at (datetime, required)');
-    console.log('- updated_at (datetime, required)');
+    console.log('- createdAt (datetime, required)');
+    console.log('- updatedAt (datetime, required)');
     console.log('\nQuery Examples:');
     console.log('- Pending: Query.equal("status", "pending")');
     console.log('- Approved: Query.equal("status", "approved")');
-    console.log('- By step: Query.equal("current_step", 3)');
+    console.log('- By step: Query.equal("currentStep", 3)');
     console.log('\nNext steps:');
     console.log('1. Add to Vercel environment variables:');
     console.log(`   VITE_APPWRITE_STAFF_COMPLIANCE_COLLECTION_ID=${collectionId}`);
