@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC';
@@ -67,18 +68,20 @@ const SchedulingBoard = () => {
         }
       }
       
-      // Define common positions (static for now)
-      setPositions([
-        'Security Guard',
-        'Door Supervisor',
-        'Close Protection Officer',
-        'CCTV Operator',
-        'Security Manager',
-        'Event Security',
-        'Mobile Patrol',
-        'Reception Security',
-        'Retail Security',
-      ]);
+      // Load positions/posts from collection
+      if (config.postsCollectionId && databases && !config.isDemoMode) {
+        try {
+          const positionsRes = await databases.listDocuments(
+            config.databaseId,
+            config.postsCollectionId,
+            [Query.limit(200), Query.orderAsc('postName')]
+          );
+          setPositions(positionsRes.documents);
+        } catch (err) {
+          console.warn('Failed to load positions:', err);
+          setPositions([]);
+        }
+      }
     } catch (err) {
       console.error('Failed to load form data:', err);
     } finally {
@@ -135,6 +138,46 @@ const SchedulingBoard = () => {
     if (isManager) return 'manager';
     if (isClient) return 'client';
     return 'staff';
+  };
+
+  const hasClients = clients.length > 0;
+  const filteredSites = sites.filter((site) => {
+    if (!form.clientId) return false;
+    return site.clientId === form.clientId;
+  });
+  const filteredPositions = positions.filter((position) => {
+    if (form.siteId && position.siteId) return position.siteId === form.siteId;
+    if (form.clientId && position.clientId) return position.clientId === form.clientId;
+    return true;
+  });
+  const canSubmit = Boolean(
+    !creating &&
+    !loadingData &&
+    hasClients &&
+    form.clientId &&
+    form.siteId &&
+    form.positionTitle &&
+    form.date &&
+    form.startTime &&
+    form.endTime &&
+    form.startTime < form.endTime
+  );
+
+  const handleClientChange = (clientId) => {
+    setForm((prev) => ({
+      ...prev,
+      clientId,
+      siteId: '',
+      positionTitle: '',
+    }));
+  };
+
+  const handleSiteChange = (siteId) => {
+    setForm((prev) => ({
+      ...prev,
+      siteId,
+      positionTitle: '',
+    }));
   };
 
   const handleApply = async (shiftId) => {
@@ -271,9 +314,9 @@ const SchedulingBoard = () => {
               <Select 
                 label="Client" 
                 value={form.clientId} 
-                onChange={(v) => setForm({ ...form, clientId: v })} 
-                required={clients.length > 0}
-                disabled={loadingData || isClient}
+                onChange={handleClientChange}
+                required={hasClients}
+                disabled={loadingData || !hasClients}
                 error={validationErrors.clientId}
               >
                 <option value="">Select client</option>
@@ -286,13 +329,13 @@ const SchedulingBoard = () => {
               <Select 
                 label="Site" 
                 value={form.siteId} 
-                onChange={(v) => setForm({ ...form, siteId: v })} 
+                onChange={handleSiteChange}
                 required
-                disabled={loadingData}
+                disabled={loadingData || !form.clientId}
                 error={validationErrors.siteId}
               >
-                <option value="">Select site</option>
-                {sites.map(site => (
+                <option value="">{form.clientId ? 'Select site' : 'Select client first'}</option>
+                {filteredSites.map(site => (
                   <option key={site.$id} value={site.$id}>
                     {site.siteName || site.name || site.$id}
                   </option>
@@ -303,12 +346,12 @@ const SchedulingBoard = () => {
                 value={form.positionTitle} 
                 onChange={(v) => setForm({ ...form, positionTitle: v })} 
                 required
-                disabled={loadingData}
+                disabled={loadingData || !form.siteId}
                 error={validationErrors.positionTitle}
               >
-                <option value="">Select position</option>
-                {positions.map(pos => (
-                  <option key={pos} value={pos}>{pos}</option>
+                <option value="">{form.siteId ? 'Select position' : 'Select site first'}</option>
+                {filteredPositions.map(pos => (
+                  <option key={pos.$id} value={pos.postName || pos.name || pos.title || pos.$id}>{pos.postName || pos.name || pos.title || pos.$id}</option>
                 ))}
               </Select>
               <Input label="Date" type="date" value={form.date} onChange={(v) => setForm({ ...form, date: v })} required disabled={loadingData} error={validationErrors.date} />
@@ -319,10 +362,15 @@ const SchedulingBoard = () => {
               <Input label="Special Requirements" value={form.specialRequirements} onChange={(v) => setForm({ ...form, specialRequirements: v })} disabled={loadingData} />
               <div className="md:col-span-3 flex justify-end gap-2">
                 {loadingData && <span className="text-xs text-white/60 self-center">Loading form data...</span>}
+                {!loadingData && !hasClients && (
+                  <Link className="fs-btn-secondary" to="/portal/clients">
+                    Create your first client
+                  </Link>
+                )}
                 <button
                   type="submit"
                   data-action="create-shift"
-                  disabled={creating || loadingData}
+                  disabled={!canSubmit}
                   className="fs-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creating ? 'Saving…' : 'Create Shift'}
@@ -391,7 +439,7 @@ const Input = ({ label, value, onChange, type = 'text', required = false, min, m
       onChange={(e) => onChange(e.target.value)}
       className={`mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ${
         error ? 'ring-red-500/50' : 'ring-white/10'
-      } focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed`}
+      } focus:ring-accent`}
     />
     {error && <span className="text-xs text-red-400 mt-1 block">{error}</span>}
   </label>
@@ -410,7 +458,7 @@ const Select = ({ label, value, onChange, required = false, disabled = false, er
       onChange={(e) => onChange(e.target.value)}
       className={`mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ${
         error ? 'ring-red-500/50' : 'ring-white/10'
-      } focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed`}
+      } focus:ring-accent`}
     >
       {children}
     </select>
