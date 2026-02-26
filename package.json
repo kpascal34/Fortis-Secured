@@ -15,7 +15,8 @@
     "setup:create-staff-numbers": "node scripts/create_staff_numbers_collection.mjs",
     "setup:create-staff-compliance": "node scripts/create_staff_compliance_collection.mjs",
     "setup:create-staff-hr": "node scripts/create_staff_collections.mjs",
-    "seed:sample-data": "node scripts/populate_sample_data.mjs"
+    "seed:sample-data": "node scripts/populate_sample_data.mjs",
+    "setup:hr-workflows": "node scripts/setup_hr_workflows_collections.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.958.0",

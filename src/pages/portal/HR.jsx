@@ -40,6 +40,22 @@ const HR = () => {
   const [editingTraining, setEditingTraining] = useState(null);
   const [documents, setDocuments] = useState([]);
 
+  const parseParticipants = (participants) => {
+    if (!participants) return [];
+    if (Array.isArray(participants)) return participants;
+
+    if (typeof participants === 'string') {
+      try {
+        const parsed = JSON.parse(participants);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  };
+
   useEffect(() => {
     fetchAllData();
   }, []);
@@ -131,6 +147,39 @@ const HR = () => {
     } catch (err) {
       console.error('Error updating leave request:', err);
       alert('Failed to update leave request');
+    }
+  };
+
+  const handleTrainingStatusUpdate = async (trainingId, status) => {
+    try {
+      await databases.updateDocument(
+        config.databaseId,
+        config.staffTrainingCollectionId || 'staff_training',
+        trainingId,
+        { status }
+      );
+      fetchAllData();
+    } catch (err) {
+      console.error('Error updating training status:', err);
+      alert('Failed to update training status');
+    }
+  };
+
+  const handleDocumentStatusUpdate = async (docId, status) => {
+    try {
+      await databases.updateDocument(
+        config.databaseId,
+        config.complianceUploadsCollectionId || 'documents',
+        docId,
+        {
+          status,
+          reviewedAt: new Date().toISOString(),
+        }
+      );
+      fetchAllData();
+    } catch (err) {
+      console.error('Error updating document status:', err);
+      alert('Failed to update document status');
     }
   };
 
@@ -245,54 +294,16 @@ const HR = () => {
                               <p className="text-sm text-text-2 mt-1">Reason: {request.reason || 'No reason provided'}</p>
                             </div>
                             <div className="flex gap-2">
-                              <button className="fs-badge fs-badge-success">Approve</button>
-                              <button className="fs-badge fs-badge-error">Reject</button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                ) : (
-                  <p className="text-text-3 text-sm">No pending leave requests</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="fs-card">
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {/* Pending Leave Requests */}
-            <div>
-              <h2 className="text-xl font-semibold text-text mb-4">Pending Leave Requests</h2>
-              <div className="space-y-3">
-                {leaveRequests.filter((r) => r.status === 'pending').length > 0 ? (
-                  leaveRequests
-                    .filter((r) => r.status === 'pending')
-                    .map((request) => {
-                      const staff = guards.find((s) => s.$id === request.staffId);
-                      const startDate = new Date(request.startDate).toLocaleDateString('en-GB');
-                      const endDate = new Date(request.endDate).toLocaleDateString('en-GB');
-                      const days = Math.ceil((new Date(request.endDate) - new Date(request.startDate)) / (1000 * 60 * 60 * 24));
-                      return (
-                        <div key={request.$id} className="rounded-lg border border-border bg-bg-2 p-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <p className="font-semibold text-text">{staff?.firstName} {staff?.lastName}</p>
-                              <p className="text-sm text-text-2 mt-1">{request.type}</p>
-                              <p className="text-sm text-text-3 mt-2">
-                                {startDate} - {endDate} ({days} days)
-                              </p>
-                              <p className="text-sm text-text-2 mt-1">Reason: {request.reason || 'No reason provided'}</p>
-                            </div>
-                            <div className="flex gap-2">
-                              <button className="rounded-lg bg-green-500/20 border border-green-500/50 px-4 py-2 text-sm text-green-500 hover:bg-green-500/30 transition-colors">
+                              <button
+                                onClick={() => handleLeaveAction(request.$id, 'approve')}
+                                className="rounded-lg bg-green-500/20 border border-green-500/50 px-4 py-2 text-sm text-green-500 hover:bg-green-500/30 transition-colors"
+                              >
                                 Approve
                               </button>
-                              <button className="rounded-lg bg-red-500/20 border border-red-500/50 px-4 py-2 text-sm text-red-500 hover:bg-red-500/30 transition-colors">
+                              <button
+                                onClick={() => handleLeaveAction(request.$id, 'reject')}
+                                className="rounded-lg bg-red-500/20 border border-red-500/50 px-4 py-2 text-sm text-red-500 hover:bg-red-500/30 transition-colors"
+                              >
                                 Reject
                               </button>
                             </div>
@@ -526,14 +537,7 @@ const HR = () => {
                 trainingSchedule.map((training) => {
                   const startDate = new Date(training.startDate).toLocaleDateString('en-GB');
                   const endDate = new Date(training.endDate).toLocaleDateString('en-GB');
-                  let participants = [];
-                  try {
-                    participants = typeof training.participants === 'string' 
-                      ? JSON.parse(training.participants) 
-                      : training.participants || [];
-                  } catch (e) {
-                    participants = [];
-                  }
+                  const participants = parseParticipants(training.participants);
                   const completedCount = participants.filter(p => p.completed).length;
                   
                   return (
@@ -588,6 +592,14 @@ const HR = () => {
                           )}
                         </div>
                         <div className="flex gap-2">
+                          {training.status !== 'completed' && (
+                            <button
+                              onClick={() => handleTrainingStatusUpdate(training.$id, 'completed')}
+                              className="rounded-lg bg-green-500/20 border border-green-500/40 px-3 py-2 text-sm text-green-400 hover:bg-green-500/30 transition-colors"
+                            >
+                              Mark Complete
+                            </button>
+                          )}
                           <button 
                             onClick={() => {
                               setEditingTraining(training);
@@ -663,9 +675,38 @@ const HR = () => {
                             {doc.description && (
                               <p className="text-xs text-white/60 mt-1">{doc.description}</p>
                             )}
+                            <div className="mt-2">
+                              <span className={`rounded-full px-2 py-1 text-xs ${
+                                doc.status === 'approved'
+                                  ? 'bg-green-500/20 text-green-300'
+                                  : doc.status === 'rejected'
+                                  ? 'bg-red-500/20 text-red-300'
+                                  : 'bg-yellow-500/20 text-yellow-300'
+                              }`}>
+                                {(doc.status || 'pending').replace('_', ' ')}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         <div className="flex gap-2">
+                          {doc.status !== 'approved' && (
+                            <button
+                              onClick={() => handleDocumentStatusUpdate(doc.$id, 'approved')}
+                              className="rounded-lg bg-green-500/20 p-2 hover:bg-green-500/30 transition-colors"
+                              title="Approve"
+                            >
+                              <AiOutlineCheck className="text-green-300" />
+                            </button>
+                          )}
+                          {doc.status !== 'rejected' && (
+                            <button
+                              onClick={() => handleDocumentStatusUpdate(doc.$id, 'rejected')}
+                              className="rounded-lg bg-red-500/20 p-2 hover:bg-red-500/30 transition-colors"
+                              title="Reject"
+                            >
+                              <AiOutlineCloseIcon className="text-red-300" />
+                            </button>
+                          )}
                           <button 
                             onClick={() => handleDownloadDocument(doc)}
                             className="rounded-lg bg-white/5 p-2 hover:bg-white/10 transition-colors"

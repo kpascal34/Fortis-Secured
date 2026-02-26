@@ -131,6 +131,8 @@ const DocumentUploadModal = ({ isOpen, onClose, onSuccess, staffId = null }) => 
         uploadedBy: user.$id,
         uploadedByName: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
         relatedStaffId: formData.relatedStaffId || null,
+        status: 'pending',
+        reviewedAt: null,
         uploadedAt: new Date().toISOString(),
       };
 
