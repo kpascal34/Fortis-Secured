@@ -49,6 +49,7 @@ const Finance = lazy(() => import('./pages/portal/Finance.jsx'));
 const UserManagement = lazy(() => import('./pages/portal/UserManagement.jsx'));
 const AIAssistant = lazy(() => import('./pages/portal/AIAssistant.jsx'));
 const Settings = lazy(() => import('./pages/portal/Settings.jsx'));
+const ManageDepartments = lazy(() => import('./pages/portal/ManageDepartments.jsx'));
 const Reports = lazy(() => import('./pages/portal/Reports.jsx'));
 const HR = lazy(() => import('./pages/portal/HR.jsx'));
 const Payroll = lazy(() => import('./pages/portal/Payroll.jsx'));
@@ -409,6 +410,10 @@ const AppContent = () => {
           <Route
             path="settings"
             element={<FeatureRoute feature="SETTINGS" name="Settings" roles={[ROLES.ADMIN]} element={<Settings />} />}
+          />
+          <Route
+            path="departments"
+            element={<FeatureRoute feature="SETTINGS" name="Manage Departments" roles={[ROLES.ADMIN]} element={<ManageDepartments />} />}
           />
         </Route>
 

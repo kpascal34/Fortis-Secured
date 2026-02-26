@@ -56,7 +56,7 @@ const Profile = () => {
       if (formData.fullName) updates.fullName = formData.fullName;
       
       // Role-specific fields
-      if (isAdmin && formData.department) {
+      if ((isAdmin || isManager || isStaff) && formData.department) {
         updates.department = formData.department;
       }
       
@@ -204,8 +204,8 @@ const Profile = () => {
               </>
             )}
 
-            {/* Admin Fields */}
-            {isAdmin && (
+            {/* Department Field */}
+            {(isAdmin || isManager || isStaff) && (
               <div>
                 <label htmlFor="department" className="block text-sm font-medium text-white/90 mb-2">
                   Department
