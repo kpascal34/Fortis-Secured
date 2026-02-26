@@ -5,68 +5,72 @@ import {
   AiOutlineHome,
   AiOutlineUser,
   AiOutlineCalendar,
-  AiOutlineClockCircle,
-  AiOutlineCheckSquare,
-  AiOutlineWarning,
-  AiOutlineInbox,
-  AiOutlineMessage,
-  AiOutlineDollar,
-  AiOutlineRobot,
   AiOutlineTeam,
   AiOutlineAudit,
-  AiOutlineBarChart,
   AiOutlineSetting,
   AiOutlineLogout,
-  AiOutlineReload,
   AiOutlineFileDone,
+  AiOutlineMenu,
+  AiOutlineDown,
+  AiOutlineRight,
 } from 'react-icons/ai';
+
+const STORAGE_KEY = 'fortis:portal-nav-expanded-groups';
 
 const ROLES = {
   ADMIN: 'admin',
+  MANAGER: 'manager',
   STAFF: 'staff',
   CLIENT: 'client',
 };
 
-const allNavigation = [
-  { name: 'Dashboard', href: '/portal', icon: AiOutlineHome, feature: 'DASHBOARD', roles: [ROLES.ADMIN, ROLES.STAFF, ROLES.CLIENT] },
-  { name: 'My Profile', href: '/portal/profile', icon: AiOutlineUser, feature: 'PROFILE', roles: [ROLES.ADMIN, ROLES.STAFF, ROLES.CLIENT] },
-
-  // Staff/Admin operational modules
-  { name: 'Clients / CRM', href: '/portal/clients', icon: AiOutlineTeam, feature: 'CRM', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Scheduling', href: '/portal/scheduling', icon: AiOutlineCalendar, feature: 'SCHEDULING', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Scheduling Board', href: '/portal/scheduling-board', icon: AiOutlineCalendar, feature: 'SCHEDULING', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Recurring Patterns', href: '/portal/recurring-patterns', icon: AiOutlineReload, feature: 'RECURRING_PATTERNS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'My Schedule', href: '/portal/my-schedule', icon: AiOutlineUser, feature: 'MY_SCHEDULE', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Open Shifts', href: '/portal/open-shifts', icon: AiOutlineCalendar, feature: 'OPEN_SHIFTS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Shift Applications', href: '/portal/shift-applications', icon: AiOutlineFileDone, feature: 'SHIFT_APPLICATIONS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Sites', href: '/portal/sites', icon: AiOutlineInbox, feature: 'SITES', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Posts', href: '/portal/posts', icon: AiOutlineCheckSquare, feature: 'POSTS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Guards', href: '/portal/guards', icon: AiOutlineUser, feature: 'GUARDS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Time Tracking', href: '/portal/time', icon: AiOutlineClockCircle, feature: 'TIME_TRACKING', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Tasks', href: '/portal/tasks', icon: AiOutlineCheckSquare, feature: 'TASKS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Incidents', href: '/portal/incidents', icon: AiOutlineWarning, feature: 'INCIDENTS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Assets', href: '/portal/assets', icon: AiOutlineInbox, feature: 'ASSETS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Messages', href: '/portal/messages', icon: AiOutlineMessage, feature: 'MESSAGES', roles: [ROLES.ADMIN, ROLES.STAFF] },
-
-  // Compliance (staff + admin), with admin-only submodules
-  { name: 'HR & Compliance', href: '/portal/hr', icon: AiOutlineAudit, feature: 'COMPLIANCE', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Compliance Wizard', href: '/portal/compliance', icon: AiOutlineAudit, feature: 'COMPLIANCE', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Admin Grading', href: '/portal/admin-grading', icon: AiOutlineFileDone, feature: 'COMPLIANCE', roles: [ROLES.ADMIN] },
-  { name: 'Invite Management', href: '/portal/invite-management', icon: AiOutlineFileDone, feature: 'COMPLIANCE', roles: [ROLES.ADMIN] },
-  { name: 'Drive Sync Status', href: '/portal/drive-sync', icon: AiOutlineAudit, feature: 'COMPLIANCE', roles: [ROLES.ADMIN] },
-
-  // Admin-only modules
-  { name: 'Invoices & Financial', href: '/portal/finance', icon: AiOutlineDollar, feature: 'FINANCE', roles: [ROLES.ADMIN] },
-  { name: 'Payroll', href: '/portal/payroll', icon: AiOutlineDollar, feature: 'PAYROLL', roles: [ROLES.ADMIN] },
-  { name: 'Reports', href: '/portal/reports', icon: AiOutlineBarChart, feature: 'REPORTS', roles: [ROLES.ADMIN] },
-  { name: 'Analytics', href: '/portal/analytics', icon: AiOutlineBarChart, feature: 'ANALYTICS', roles: [ROLES.ADMIN] },
-  { name: 'Audit Log', href: '/portal/audit', icon: AiOutlineAudit, feature: 'AUDIT_LOG', roles: [ROLES.ADMIN] },
-  { name: 'AI Assistant', href: '/portal/ai', icon: AiOutlineRobot, feature: 'AI_ASSISTANT', roles: [ROLES.ADMIN] },
-  { name: 'User Management', href: '/portal/users', icon: AiOutlineTeam, feature: 'USER_MANAGEMENT', roles: [ROLES.ADMIN] },
-  { name: 'Settings', href: '/portal/settings', icon: AiOutlineSetting, feature: 'SETTINGS', roles: [ROLES.ADMIN] },
-
-  // Client portal
-  { name: 'Client Portal', href: '/portal/client-portal', icon: AiOutlineTeam, feature: 'CRM', roles: [ROLES.CLIENT, ROLES.ADMIN] },
+const navigationGroups = [
+  {
+    id: 'overview',
+    label: 'Overview',
+    items: [
+      { name: 'Dashboard', href: '/portal', icon: AiOutlineHome, feature: 'DASHBOARD', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF, ROLES.CLIENT] },
+    ],
+  },
+  {
+    id: 'operations',
+    label: 'Operations',
+    items: [
+      { name: 'Clients', href: '/portal/clients', icon: AiOutlineTeam, feature: 'CRM', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF] },
+      { name: 'Sites', href: '/portal/sites', icon: AiOutlineTeam, feature: 'SITES', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF] },
+      { name: 'Scheduling (Calendar)', href: '/portal/scheduling', icon: AiOutlineCalendar, feature: 'SCHEDULING', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF] },
+      { name: 'Scheduling Board', href: '/portal/scheduling-board', icon: AiOutlineCalendar, feature: 'SCHEDULING', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF] },
+      { name: 'People', href: '/portal/guards', icon: AiOutlineUser, feature: 'GUARDS', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF] },
+      { name: 'Leave', href: '/portal/open-shifts', icon: AiOutlineCalendar, feature: 'OPEN_SHIFTS', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF] },
+      { name: 'Training', href: '/portal/recurring-patterns', icon: AiOutlineCalendar, feature: 'RECURRING_PATTERNS', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF] },
+      { name: 'Documents', href: '/portal/assets', icon: AiOutlineFileDone, feature: 'ASSETS', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF] },
+    ],
+  },
+  {
+    id: 'compliance',
+    label: 'Compliance',
+    items: [
+      { name: 'Staff (HR & Compliance)', href: '/portal/hr', icon: AiOutlineAudit, feature: 'COMPLIANCE', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF] },
+      { name: 'Admin Grading', href: '/portal/admin-grading', icon: AiOutlineFileDone, feature: 'COMPLIANCE', roles: [ROLES.ADMIN] },
+      { name: 'Compliance Wizard', href: '/portal/compliance', icon: AiOutlineAudit, feature: 'COMPLIANCE', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF] },
+      { name: 'Drive Sync Status', href: '/portal/drive-sync', icon: AiOutlineAudit, feature: 'COMPLIANCE', roles: [ROLES.ADMIN] },
+    ],
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    items: [
+      { name: 'Invite Management', href: '/portal/invite-management', icon: AiOutlineTeam, feature: 'COMPLIANCE', roles: [ROLES.ADMIN] },
+      { name: 'Settings (Departments, Roles)', href: '/portal/settings', icon: AiOutlineSetting, feature: 'SETTINGS', roles: [ROLES.ADMIN] },
+    ],
+  },
+  {
+    id: 'account',
+    label: 'Account',
+    items: [
+      { name: 'My Profile', href: '/portal/profile', icon: AiOutlineUser, feature: 'PROFILE', roles: [ROLES.ADMIN, ROLES.MANAGER, ROLES.STAFF, ROLES.CLIENT] },
+    ],
+  },
 ];
 
 const isRoleAllowed = (role, allowedRoles) => {
@@ -74,15 +78,47 @@ const isRoleAllowed = (role, allowedRoles) => {
   return allowedRoles.includes(role);
 };
 
-const getEnabledNavigation = (role) =>
-  allNavigation.filter((item) => isFeatureEnabled(item.feature) && isRoleAllowed(role, item.roles));
+const isGroupRouteActive = (group, pathname) =>
+  group.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
 
-const NavItem = ({ item, isActive }) => {
+const getInitialExpandedGroups = (groups, pathname) => {
+  const defaults = groups.reduce((acc, group) => {
+    acc[group.id] = isGroupRouteActive(group, pathname);
+    return acc;
+  }, {});
+
+  if (typeof window === 'undefined') return defaults;
+
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) return defaults;
+
+    const parsed = JSON.parse(stored);
+    return groups.reduce((acc, group) => {
+      const storedValue = parsed?.[group.id];
+      acc[group.id] = typeof storedValue === 'boolean' ? storedValue : defaults[group.id];
+      return acc;
+    }, {});
+  } catch {
+    return defaults;
+  }
+};
+
+const getVisibleNavigationGroups = (role) =>
+  navigationGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => isFeatureEnabled(item.feature) && isRoleAllowed(role, item.roles)),
+    }))
+    .filter((group) => group.items.length > 0);
+
+const NavItem = ({ item, isActive, onClick }) => {
   const Icon = item.icon;
 
   return (
     <Link
       to={item.href}
+      onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
       className={`fs-nav-item ${isActive ? 'fs-nav-item-active' : ''}`}
     >
@@ -95,26 +131,51 @@ const NavItem = ({ item, isActive }) => {
 export const PortalNav = ({ user, onSignOut }) => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const role = user?.role || ROLES.CLIENT;
+  const role = user?.role?.toLowerCase?.() || ROLES.CLIENT;
+  const visibleGroups = React.useMemo(() => getVisibleNavigationGroups(role), [role]);
+
+  const [expandedGroups, setExpandedGroups] = React.useState(() =>
+    getInitialExpandedGroups(visibleGroups, location.pathname)
+  );
+
+  React.useEffect(() => {
+    setExpandedGroups((prev) => {
+      const next = visibleGroups.reduce((acc, group) => {
+        const hasValue = Object.prototype.hasOwnProperty.call(prev, group.id);
+        acc[group.id] = hasValue ? prev[group.id] : isGroupRouteActive(group, location.pathname);
+        return acc;
+      }, {});
+
+      return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
+    });
+  }, [visibleGroups, location.pathname]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups));
+  }, [expandedGroups]);
+
+  const toggleGroup = (groupId) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }));
+  };
 
   return (
     <>
-      {/* Mobile menu toggle */}
       <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-bg px-4 lg:hidden">
         <h2 className="text-sm font-bold text-white">FORTIS</h2>
         <button
-          onClick={() => setMobileOpen(!mobileOpen)}
+          onClick={() => setMobileOpen((prev) => !prev)}
           className="inline-flex items-center rounded-lg p-2 text-text-2 hover:bg-surface focus:outline-none focus:ring-2 focus:ring-brand"
           aria-expanded={mobileOpen}
           aria-label="Toggle navigation menu"
         >
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <AiOutlineMenu className="h-6 w-6" aria-hidden="true" />
         </button>
       </div>
 
-      {/* Navigation */}
       <nav
         className={`${
           mobileOpen ? 'fixed inset-0 z-40 top-16 w-full overflow-y-auto' : 'hidden lg:block lg:flex-shrink-0'
@@ -125,10 +186,45 @@ export const PortalNav = ({ user, onSignOut }) => {
           <p className="px-3 text-xs text-text-3">Internal Portal</p>
         </div>
 
-        <div className="space-y-1" onClick={() => setMobileOpen(false)}>
-          {getEnabledNavigation(role).map((item) => (
-            <NavItem key={item.name} item={item} isActive={location.pathname === item.href} />
-          ))}
+        <div className="space-y-3">
+          {visibleGroups.map((group) => {
+            const isExpanded = Boolean(expandedGroups[group.id]);
+            const isActiveGroup = isGroupRouteActive(group, location.pathname);
+
+            return (
+              <section key={group.id} className="rounded-xl border border-border/60 bg-surface/20">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id)}
+                  className={`flex w-full items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wide ${
+                    isActiveGroup ? 'text-brand' : 'text-text-3'
+                  }`}
+                  aria-expanded={isExpanded}
+                  aria-controls={`nav-group-${group.id}`}
+                >
+                  <span>{group.label}</span>
+                  {isExpanded ? (
+                    <AiOutlineDown className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <AiOutlineRight className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+
+                {isExpanded && (
+                  <div id={`nav-group-${group.id}`} className="space-y-1 pb-2" onClick={() => setMobileOpen(false)}>
+                    {group.items.map((item) => (
+                      <NavItem
+                        key={item.name}
+                        item={item}
+                        isActive={location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)}
+                        onClick={() => setMobileOpen(false)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
 
         <div className="mt-8 border-t border-border pt-4">
@@ -139,7 +235,6 @@ export const PortalNav = ({ user, onSignOut }) => {
         </div>
       </nav>
 
-      {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/50 lg:hidden"
