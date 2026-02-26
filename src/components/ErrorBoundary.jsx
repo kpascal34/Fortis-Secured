@@ -1,6 +1,8 @@
 import React from 'react';
 import { AiOutlineWarning } from 'react-icons/ai';
 
+const isDev = import.meta.env.DEV;
+
 /**
  * Global Error Boundary Component
  * Catches errors anywhere in the child component tree and displays a friendly error message
@@ -16,13 +18,23 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
+    const errorCode = `${this.props.errorCodePrefix || 'FS-ERR'}-${Date.now().toString(36).toUpperCase()}`;
+
     this.setState({
       error,
       errorInfo,
+      errorCode,
     });
 
     // Log to console in development
-    console.error('Error caught by boundary:', error, errorInfo);
+    if (isDev) {
+      console.group(`[ErrorBoundary] ${this.props.area || 'Application'} crash (${errorCode})`);
+      console.error('Error caught by boundary:', error);
+      console.error('Component stack:', errorInfo?.componentStack);
+      console.groupEnd();
+    } else {
+      console.error('Error caught by boundary:', error, errorInfo);
+    }
 
     // Here you could also log to an error tracking service like Sentry
     // Example: Sentry.captureException(error, { contexts: { react: errorInfo } });
@@ -38,6 +50,8 @@ class ErrorBoundary extends React.Component {
           componentStack: errorInfo.componentStack,
           timestamp: new Date().toISOString(),
           url: window.location.href,
+          area: this.props.area || 'application',
+          errorCode,
         }),
       }).catch(() => {
         // Silently fail if logging fails
@@ -48,12 +62,21 @@ class ErrorBoundary extends React.Component {
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+    this.setState({ hasError: false, error: null, errorInfo: null, errorCode: null });
   };
 
   render() {
     if (this.state.hasError) {
-      const isDevelopment = process.env.NODE_ENV === 'development';
+      const isDevelopment = isDev;
+
+      if (typeof this.props.renderFallback === 'function') {
+        return this.props.renderFallback({
+          error: this.state.error,
+          errorInfo: this.state.errorInfo,
+          errorCode: this.state.errorCode,
+          onReset: this.handleReset,
+        });
+      }
 
       return (
         <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-dark via-night-sky to-night-sky px-4">
@@ -71,6 +94,11 @@ class ErrorBoundary extends React.Component {
             <p className="text-center text-white/70 mb-4">
               We encountered an unexpected error. Our team has been notified and is working on a fix.
             </p>
+
+            <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-200">
+              <p className="font-semibold">Error code: {this.state.errorCode || 'FS-ERR-UNKNOWN'}</p>
+              <p>Check browser console and server logs for this code.</p>
+            </div>
 
             {isDevelopment && this.state.error && (
               <div className="mb-6 rounded-lg bg-red-500/10 border border-red-500/20 p-4">
