@@ -101,7 +101,7 @@ export const PortalNav = ({ user, onSignOut }) => {
     <>
       {/* Mobile menu toggle */}
       <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-bg px-4 lg:hidden">
-        <h2 className="text-sm font-bold text-white">FORTIS</h2>
+        <h2 className="text-sm font-bold text-text">FORTIS</h2>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="inline-flex items-center rounded-lg p-2 text-text-2 hover:bg-surface focus:outline-none focus:ring-2 focus:ring-brand"
@@ -118,11 +118,11 @@ export const PortalNav = ({ user, onSignOut }) => {
       <nav
         className={`${
           mobileOpen ? 'fixed inset-0 z-40 top-16 w-full overflow-y-auto' : 'hidden lg:block lg:flex-shrink-0'
-        } lg:static lg:h-screen lg:w-64 lg:border-r lg:border-border bg-bg p-4 overflow-y-auto`}
+        } lg:static lg:h-screen lg:w-64 fs-sidebar p-4 overflow-y-auto`}
       >
         <div className="mb-8 hidden lg:block">
           <h2 className="px-3 text-lg font-bold text-text">FORTIS SECURED</h2>
-          <p className="px-3 text-xs text-text-3">Internal Portal</p>
+          <p className="px-3 text-xs text-text-2">Internal Portal</p>
         </div>
 
         <div className="space-y-1" onClick={() => setMobileOpen(false)}>
@@ -142,7 +142,7 @@ export const PortalNav = ({ user, onSignOut }) => {
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-[var(--overlay)] lg:hidden"
           onClick={() => setMobileOpen(false)}
           style={{ top: '64px' }}
         />

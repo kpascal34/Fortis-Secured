@@ -74,6 +74,7 @@ const DriveSyncStatus = lazy(() => import('./pages/portal/DriveSyncStatus.jsx'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const PasswordReset = lazy(() => import('./pages/PasswordReset.jsx'));
+const UIAudit = lazy(() => import('./pages/portal/UIAudit.jsx'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -142,6 +143,8 @@ const AppContent = () => {
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/cookie-policy" element={<CookiePolicy />} />
+
+        {import.meta.env.DEV && <Route path="/portal/ui-audit" element={<UIAudit />} />}
 
         {/* Portal Routes */}
         <Route path="/portal" element={<PortalLayout />}>

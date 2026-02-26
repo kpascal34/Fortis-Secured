@@ -90,7 +90,7 @@ const StaffRecordsTable = ({ refreshTrigger, onEdit, onDelete }) => {
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-red-500/50 bg-red-500/10 px-6 py-8 text-center">
+      <div className="fs-banner border-red-500/50 bg-red-500/10 px-6 py-8 text-center">
         <p className="text-red-400">{error}</p>
         <button
           onClick={fetchStaff}
@@ -104,7 +104,7 @@ const StaffRecordsTable = ({ refreshTrigger, onEdit, onDelete }) => {
 
   if (!staff || staff.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-12 text-center">
+      <div className="fs-banner px-6 py-12 text-center">
         <p className="text-white/70">No staff members found</p>
         <p className="mt-2 text-sm text-white/50">Add a new staff member to get started</p>
       </div>
@@ -113,10 +113,10 @@ const StaffRecordsTable = ({ refreshTrigger, onEdit, onDelete }) => {
 
   return (
     <>
-      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+      <div className="fs-table overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/10 text-left text-sm font-semibold text-white">
+            <tr className="text-left text-sm font-semibold">
               <th className="px-6 py-4">Name</th>
               <th className="px-6 py-4">Email</th>
               <th className="px-6 py-4">Role</th>
@@ -127,25 +127,23 @@ const StaffRecordsTable = ({ refreshTrigger, onEdit, onDelete }) => {
             </tr>
           </thead>
           <tbody>
-            {staff.map((member, idx) => (
+            {staff.map((member) => (
               <tr
                 key={member.$id}
-                className={`border-b border-white/5 transition-colors hover:bg-white/5 ${
-                  idx % 2 === 0 ? 'bg-transparent' : 'bg-white/2.5'
-                }`}
+                className="transition-colors"
               >
                 <td className="px-6 py-4 text-sm">
                   <div className="font-medium text-white">
                     {member.firstName} {member.lastName}
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm text-white/70">{member.email}</td>
+                <td className="px-6 py-4 text-sm text-text-2">{member.email}</td>
                 <td className="px-6 py-4 text-sm">
                   <span className="inline-flex rounded-full bg-accent/20 px-3 py-1 text-xs font-medium text-accent">
                     {member.role}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-sm text-white/70">{member.department}</td>
+                <td className="px-6 py-4 text-sm text-text-2">{member.department}</td>
                 <td className="px-6 py-4 text-sm">
                   {isLicenseExpired(member.licenseExpiry) ? (
                     <span className="inline-flex rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-400">
@@ -156,9 +154,9 @@ const StaffRecordsTable = ({ refreshTrigger, onEdit, onDelete }) => {
                       Expiring: {formatDate(member.licenseExpiry)}
                     </span>
                   ) : member.licenseExpiry ? (
-                    <span className="text-white/70">{formatDate(member.licenseExpiry)}</span>
+                    <span className="text-text-2">{formatDate(member.licenseExpiry)}</span>
                   ) : (
-                    <span className="text-white/50">-</span>
+                    <span className="text-text-3">-</span>
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm">
@@ -212,8 +210,8 @@ const StaffRecordsTable = ({ refreshTrigger, onEdit, onDelete }) => {
 
       {/* Details Modal */}
       {showDetails && selectedStaff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-gradient-to-br from-primary-dark to-night-sky p-8 shadow-2xl">
+        <div className="fs-modal-overlay">
+          <div className="fs-modal">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-2xl font-semibold text-white">
                 {selectedStaff.firstName} {selectedStaff.lastName}
@@ -223,7 +221,7 @@ const StaffRecordsTable = ({ refreshTrigger, onEdit, onDelete }) => {
                   setShowDetails(false);
                   setSelectedStaff(null);
                 }}
-                className="rounded-lg p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                className="rounded-lg p-2 text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
               >
                 ✕
               </button>

@@ -22,20 +22,20 @@ export function FeatureDisabled({ featureName = 'This feature' }) {
         </div>
 
         <h2 className="text-2xl font-bold text-white mb-3">Coming Soon</h2>
-        <p className="text-white/70 mb-6">
+        <p className="fs-banner mb-6 text-left">
           {featureName} is not currently available. We're scaling back to focus on our core offerings and will return with enhanced functionality.
         </p>
 
         <div className="flex flex-col gap-3">
           <button
             onClick={() => navigate('/portal')}
-            className="inline-flex items-center justify-center px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent/90 transition-colors"
+            className="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 font-medium text-brand-foreground transition-colors hover:opacity-90"
           >
             Return to Dashboard
           </button>
           <button
             onClick={() => navigate(-1)}
-            className="inline-flex items-center justify-center px-4 py-2 border border-white/20 text-white rounded-lg font-medium hover:bg-white/5 transition-colors"
+            className="inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 font-medium text-text transition-colors hover:bg-surface-2"
           >
             Go Back
           </button>
