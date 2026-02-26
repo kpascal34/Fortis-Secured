@@ -47,6 +47,8 @@ const ComplianceWizard = () => {
 
   const currentStep = useMemo(() => progress?.currentStep || step, [progress, step]);
 
+  const stepLockReason = (requiredStep) => (currentStep < requiredStep ? `Complete Step ${requiredStep} first` : '');
+
   useEffect(() => {
     const loadProgress = async () => {
       if (!user || userLoading) return;
@@ -357,7 +359,8 @@ const ComplianceWizard = () => {
         </GlassPanel>
 
         {/* Step 2 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
+        <StepSection disabledReason={stepLockReason(1)}>
+          <GlassPanel className="mb-6 border-white/10 bg-white/5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">Step 2: Employment History (5 years, no gaps &gt;31 days)</h3>
           </div>
@@ -372,11 +375,13 @@ const ComplianceWizard = () => {
             ))}
             <button className="text-sm text-accent" type="button" onClick={() => setStep2({ jobs: [...step2.jobs, defaultJob] })}>+ Add job</button>
           </div>
-          <ActionRow onSave={onSaveStep2} disabled={busy || currentStep < 1} done={currentStep >= 2} />
-        </GlassPanel>
+          <ActionRow onSave={onSaveStep2} disabled={busy || currentStep < 1} disabledReason={stepLockReason(1)} done={currentStep >= 2} />
+                    </GlassPanel>
+        </StepSection>
 
         {/* Step 3 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
+        <StepSection disabledReason={stepLockReason(2)}>
+          <GlassPanel className="mb-6 border-white/10 bg-white/5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">Step 3: Evidence Uploads</h3>
             <span className="text-sm text-white/60">Enter Appwrite file IDs (comma separated)</span>
@@ -386,11 +391,13 @@ const ComplianceWizard = () => {
             <label className="mb-2 block text-sm text-white/80">Or upload evidence</label>
             <input type="file" accept="application/pdf,image/*" onChange={handleUploadEvidence} className="block w-full text-sm text-white/80" />
           </div>
-          <ActionRow onSave={onSaveStep3} disabled={busy || currentStep < 2} done={currentStep >= 3} />
-        </GlassPanel>
+          <ActionRow onSave={onSaveStep3} disabled={busy || currentStep < 2} disabledReason={stepLockReason(2)} done={currentStep >= 3} />
+                    </GlassPanel>
+        </StepSection>
 
         {/* Step 4 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
+        <StepSection disabledReason={stepLockReason(3)}>
+          <GlassPanel className="mb-6 border-white/10 bg-white/5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">Step 4: References (1 employer + 1 character)</h3>
           </div>
@@ -405,11 +412,13 @@ const ComplianceWizard = () => {
               </div>
             ))}
           </div>
-          <ActionRow onSave={onSaveStep4} disabled={busy || currentStep < 3} done={currentStep >= 4} />
-        </GlassPanel>
+          <ActionRow onSave={onSaveStep4} disabled={busy || currentStep < 3} disabledReason={stepLockReason(3)} done={currentStep >= 4} />
+                    </GlassPanel>
+        </StepSection>
 
         {/* Step 5 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
+        <StepSection disabledReason={stepLockReason(4)}>
+          <GlassPanel className="mb-6 border-white/10 bg-white/5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">Step 5: Criminal Record (Basic Disclosure upload)</h3>
           </div>
@@ -418,11 +427,13 @@ const ComplianceWizard = () => {
             <label className="mb-2 block text-sm text-white/80">Or upload criminal record</label>
             <input type="file" accept="application/pdf,image/*" onChange={handleUploadCriminal} className="block w-full text-sm text-white/80" />
           </div>
-          <ActionRow onSave={onSaveStep5} disabled={busy || currentStep < 4} done={currentStep >= 5} />
-        </GlassPanel>
+          <ActionRow onSave={onSaveStep5} disabled={busy || currentStep < 4} disabledReason={stepLockReason(4)} done={currentStep >= 5} />
+                    </GlassPanel>
+        </StepSection>
 
         {/* Step 6 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
+        <StepSection disabledReason={stepLockReason(5)}>
+          <GlassPanel className="mb-6 border-white/10 bg-white/5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">Step 6: SIA Licence</h3>
           </div>
@@ -430,11 +441,13 @@ const ComplianceWizard = () => {
             <Input label="Licence number" value={sia.licenceNumber} onChange={(v) => setSia({ ...sia, licenceNumber: v })} />
             <Input label="Expiry date" type="date" value={sia.expiryDate} onChange={(v) => setSia({ ...sia, expiryDate: v })} />
           </div>
-          <ActionRow onSave={onSaveStep6} disabled={busy || currentStep < 5} done={currentStep >= 6} />
-        </GlassPanel>
+          <ActionRow onSave={onSaveStep6} disabled={busy || currentStep < 5} disabledReason={stepLockReason(5)} done={currentStep >= 6} />
+                    </GlassPanel>
+        </StepSection>
 
         {/* Step 7 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
+        <StepSection disabledReason={stepLockReason(6)}>
+          <GlassPanel className="mb-6 border-white/10 bg-white/5">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">Step 7: Intro Video</h3>
           </div>
@@ -443,14 +456,15 @@ const ComplianceWizard = () => {
             <label className="mb-2 block text-sm text-white/80">Or upload intro video</label>
             <input type="file" accept="video/*" onChange={handleUploadVideo} className="block w-full text-sm text-white/80" />
           </div>
-          <ActionRow onSave={onSaveStep7} disabled={busy || currentStep < 6} done={currentStep >= 7} />
-        </GlassPanel>
+          <ActionRow onSave={onSaveStep7} disabled={busy || currentStep < 6} disabledReason={stepLockReason(6)} done={currentStep >= 7} />
+                    </GlassPanel>
+        </StepSection>
 
         <div className="flex justify-end">
           <button
             onClick={onSubmit}
             disabled={busy || currentStep < 7}
-            className="rounded-lg bg-accent px-5 py-3 font-semibold text-night-sky disabled:cursor-not-allowed disabled:bg-white/20"
+            className="rounded-lg bg-accent px-5 py-3 font-semibold text-night-sky disabled:cursor-not-allowed disabled:opacity-70 disabled:bg-white/20"
           >
             Submit for Review
           </button>
@@ -468,24 +482,41 @@ const Input = ({ label, value, onChange, type = 'text', placeholder = '' }) => (
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ring-white/10 focus:ring-accent"
+      className="mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ring-white/10 focus:ring-accent disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white"
     />
   </label>
 );
 
-const ActionRow = ({ onSave, disabled, done }) => (
+const ActionRow = ({ onSave, disabled, disabledReason = '', done }) => (
   <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3">
-    <div className="text-xs text-white/60">{done ? 'Saved' : 'Not saved'}</div>
+    <div className="text-xs text-white/70">{done ? 'Saved' : disabledReason || 'Not saved'}</div>
     <button
       type="button"
       onClick={onSave}
       disabled={disabled}
-      className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-night-sky disabled:cursor-not-allowed disabled:bg-white/20"
+      className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-night-sky disabled:cursor-not-allowed disabled:opacity-70 disabled:bg-white/20"
     >
       Save Step
     </button>
   </div>
 );
+
+const StepSection = ({ disabledReason = '', children }) => {
+  const disabled = Boolean(disabledReason);
+
+  return (
+    <div className="relative">
+      <div className={`transition-opacity ${disabled ? 'opacity-75' : 'opacity-100'}`}>{children}</div>
+      {disabled && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-night-sky/45 px-4 text-center">
+          <span className="rounded-md border border-white/20 bg-night-sky/80 px-3 py-2 text-sm font-medium text-white">
+            {disabledReason}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 function updateAddress(idx, key, value, state, setter) {
   const addresses = state.addresses.map((a, i) => (i === idx ? { ...a, [key]: value } : a));

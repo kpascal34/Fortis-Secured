@@ -29,6 +29,16 @@ const SchedulingBoard = () => {
     specialRequirements: '',
   });
 
+  const createShiftDisabledReason = (() => {
+    if (loadingData) return 'Loading scheduling data…';
+    if (clients.length === 0 && !isClient) return 'Add a client first';
+    if (sites.length === 0) return 'Add a site first';
+    if (positions.length === 0) return 'Add at least one position first';
+    return '';
+  })();
+
+  const createShiftLocked = Boolean(createShiftDisabledReason);
+
   const loadFormData = async () => {
     if (!user) return;
     try {
@@ -267,13 +277,14 @@ const SchedulingBoard = () => {
               <h3 className="text-lg font-semibold">Create Shift</h3>
               <span className="text-xs text-white/60">Client-scoped</span>
             </div>
-            <form className="grid gap-3 md:grid-cols-3" onSubmit={handleCreate}>
+            <div className="relative">
+              <form className={`grid gap-3 md:grid-cols-3 transition-opacity ${createShiftLocked ? 'opacity-75' : 'opacity-100'}`} onSubmit={handleCreate}>
               <Select 
                 label="Client" 
                 value={form.clientId} 
                 onChange={(v) => setForm({ ...form, clientId: v })} 
                 required={clients.length > 0}
-                disabled={loadingData || isClient}
+                disabled={createShiftLocked || isClient}
                 error={validationErrors.clientId}
               >
                 <option value="">Select client</option>
@@ -288,7 +299,7 @@ const SchedulingBoard = () => {
                 value={form.siteId} 
                 onChange={(v) => setForm({ ...form, siteId: v })} 
                 required
-                disabled={loadingData}
+                disabled={createShiftLocked}
                 error={validationErrors.siteId}
               >
                 <option value="">Select site</option>
@@ -303,7 +314,7 @@ const SchedulingBoard = () => {
                 value={form.positionTitle} 
                 onChange={(v) => setForm({ ...form, positionTitle: v })} 
                 required
-                disabled={loadingData}
+                disabled={createShiftLocked}
                 error={validationErrors.positionTitle}
               >
                 <option value="">Select position</option>
@@ -311,24 +322,32 @@ const SchedulingBoard = () => {
                   <option key={pos} value={pos}>{pos}</option>
                 ))}
               </Select>
-              <Input label="Date" type="date" value={form.date} onChange={(v) => setForm({ ...form, date: v })} required disabled={loadingData} error={validationErrors.date} />
-              <Input label="Start Time" type="time" value={form.startTime} onChange={(v) => setForm({ ...form, startTime: v })} required disabled={loadingData} error={validationErrors.startTime} />
-              <Input label="End Time" type="time" value={form.endTime} onChange={(v) => setForm({ ...form, endTime: v })} required disabled={loadingData} error={validationErrors.endTime} />
-              <Input label="Positions" type="number" min={1} value={form.positionsOpen} onChange={(v) => setForm({ ...form, positionsOpen: v })} required disabled={loadingData} />
-              <Input label="Minimum Grade (1-5)" type="number" min={1} max={5} value={form.minimumGradeRequired} onChange={(v) => setForm({ ...form, minimumGradeRequired: v })} disabled={loadingData} />
-              <Input label="Special Requirements" value={form.specialRequirements} onChange={(v) => setForm({ ...form, specialRequirements: v })} disabled={loadingData} />
+              <Input label="Date" type="date" value={form.date} onChange={(v) => setForm({ ...form, date: v })} required disabled={createShiftLocked} error={validationErrors.date} />
+              <Input label="Start Time" type="time" value={form.startTime} onChange={(v) => setForm({ ...form, startTime: v })} required disabled={createShiftLocked} error={validationErrors.startTime} />
+              <Input label="End Time" type="time" value={form.endTime} onChange={(v) => setForm({ ...form, endTime: v })} required disabled={createShiftLocked} error={validationErrors.endTime} />
+              <Input label="Positions" type="number" min={1} value={form.positionsOpen} onChange={(v) => setForm({ ...form, positionsOpen: v })} required disabled={createShiftLocked} />
+              <Input label="Minimum Grade (1-5)" type="number" min={1} max={5} value={form.minimumGradeRequired} onChange={(v) => setForm({ ...form, minimumGradeRequired: v })} disabled={createShiftLocked} />
+              <Input label="Special Requirements" value={form.specialRequirements} onChange={(v) => setForm({ ...form, specialRequirements: v })} disabled={createShiftLocked} />
               <div className="md:col-span-3 flex justify-end gap-2">
-                {loadingData && <span className="text-xs text-white/60 self-center">Loading form data...</span>}
+                {loadingData && <span className="text-xs text-white/70 self-center">Loading form data...</span>}
                 <button
                   type="submit"
                   data-action="create-shift"
-                  disabled={creating || loadingData}
-                  className="fs-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={creating || createShiftLocked}
+                  className="fs-btn-primary disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {creating ? 'Saving…' : 'Create Shift'}
                 </button>
               </div>
-            </form>
+              </form>
+              {createShiftLocked && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-night-sky/45 px-4 text-center">
+                <span className="rounded-md border border-white/20 bg-night-sky/80 px-3 py-2 text-sm font-medium text-white">
+                  {createShiftDisabledReason}
+                </span>
+              </div>
+              )}
+            </div>
           </GlassPanel>
         )}
 
@@ -391,7 +410,7 @@ const Input = ({ label, value, onChange, type = 'text', required = false, min, m
       onChange={(e) => onChange(e.target.value)}
       className={`mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ${
         error ? 'ring-red-500/50' : 'ring-white/10'
-      } focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed`}
+      } focus:ring-accent disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white`}
     />
     {error && <span className="text-xs text-red-400 mt-1 block">{error}</span>}
   </label>
@@ -410,7 +429,7 @@ const Select = ({ label, value, onChange, required = false, disabled = false, er
       onChange={(e) => onChange(e.target.value)}
       className={`mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ${
         error ? 'ring-red-500/50' : 'ring-white/10'
-      } focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed`}
+      } focus:ring-accent disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white`}
     >
       {children}
     </select>
