@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC';
-import { createStaffInvite } from '../../services/staffInviteService.js';
+import { createStaffInvite, buildInviteLink } from '../../services/staffInviteService.js';
 import { databases, config } from '../../lib/appwrite.js';
 import { Query } from 'appwrite';
 
@@ -17,6 +17,14 @@ const InviteManagement = () => {
   const [invites, setInvites] = useState([]);
   const [loadingInvites, setLoadingInvites] = useState(true);
   const [resending, setResending] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+
+  const showFeedback = (type, message) => {
+    setFeedback({ type, message });
+    setTimeout(() => {
+      setFeedback((current) => (current?.message === message ? null : current));
+    }, 4000);
+  };
 
   const loadInvites = async () => {
     try {
@@ -43,7 +51,7 @@ const InviteManagement = () => {
   const handleResend = async (invite) => {
     try {
       setResending(invite.$id);
-      const signupUrl = `${window.location.origin}/signup?code=${invite.code}`;
+      const signupUrl = buildInviteLink(invite.code);
       
       const response = await fetch('/api/send-invite-email', {
         method: 'POST',
@@ -56,13 +64,13 @@ const InviteManagement = () => {
       });
 
       if (response.ok) {
-        alert('Invite email resent successfully!');
+        showFeedback('success', `Invite resent to ${invite.email}`);
       } else {
         throw new Error('Failed to resend email');
       }
     } catch (err) {
       console.error('Failed to resend invite:', err);
-      alert('Failed to resend invite email: ' + err.message);
+      showFeedback('error', `Failed to resend invite email: ${err.message}`);
     } finally {
       setResending(null);
     }
@@ -155,9 +163,20 @@ const InviteManagement = () => {
         />
 
         {error && <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</div>}
+        {feedback && (
+          <div
+            className={`mb-4 rounded-lg p-3 text-sm ${
+              feedback.type === 'error'
+                ? 'border border-red-500/30 bg-red-500/10 text-red-200'
+                : 'border border-green-500/30 bg-green-500/10 text-green-200'
+            }`}
+          >
+            {feedback.message}
+          </div>
+        )}
         {result && (
           <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-200">
-            Invite created for {email || result.email || 'user'}.<br />
+            Invite created for {result.email || 'user'}.<br />
             Code: <span className="font-mono">{result.inviteCode}</span><br />
             Signup URL: <span className="font-mono break-all">{result.signupUrl}</span>
           </div>
@@ -248,14 +267,19 @@ const InviteManagement = () => {
                           <td className="py-3 px-4 text-right space-x-2">
                             <button
                               onClick={() => {
-                                const signupUrl = `${window.location.origin}/signup?code=${invite.code}`;
-                                navigator.clipboard.writeText(signupUrl).then(() => {
-                                  alert('Invite URL copied to clipboard');
-                                });
+                                const signupUrl = buildInviteLink(invite.code);
+                                navigator.clipboard
+                                  .writeText(signupUrl)
+                                  .then(() => {
+                                    showFeedback('success', `Invite link copied for ${invite.email}`);
+                                  })
+                                  .catch(() => {
+                                    showFeedback('error', 'Unable to copy invite link to clipboard');
+                                  });
                               }}
                               className="text-sm bg-white/10 hover:bg-white/20 text-white px-3 py-1 rounded transition-colors"
                             >
-                              Copy Link
+                              Copy Invite Link
                             </button>
                             {status === 'Active' && (
                               <button

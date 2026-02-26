@@ -124,10 +124,14 @@ const AppContent = () => {
         {/* Public Site Routes */}
         <Route path="/" element={<PublicSite />} />
         <Route path="/signup" element={<StaffSignup />} />
+        <Route path="/portal/invite/:token" element={<StaffSignup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/portal/forgot-password" element={<ForgotPassword />} />
         <Route path="/password-reset" element={<PasswordReset />} />
-        {/* Legacy compatibility route for older email templates */}
+        {/* Password reset + compatibility routes */}
         <Route path="/portal/password-reset/:token" element={<ResetPassword />} />
+        <Route path="/portal/reset-password" element={<ResetPassword />} />
+        <Route path="/portal/reset-password/:token" element={<ResetPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/schedule-demo" element={<ScheduleDemo />} />
         <Route path="/services" element={<Services />} />

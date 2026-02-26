@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link, useParams } from 'react-router-dom';
 import GlassPanel from '../components/GlassPanel.jsx';
 import PortalHeader from '../components/PortalHeader.jsx';
 import { validateInviteCode, signupStaffMember } from '../services/staffInviteService.js';
 
 const StaffSignup = () => {
   const [searchParams] = useSearchParams();
+  const { token } = useParams();
   const navigate = useNavigate();
-  const code = searchParams.get('code') || '';
+  const code = token || searchParams.get('code') || '';
 
   const [invite, setInvite] = useState(null);
   const [loading, setLoading] = useState(false);

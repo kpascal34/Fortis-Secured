@@ -13,6 +13,10 @@ const dbId = config.databaseId;
 const invitesCol = config.staffInvitesCollectionId || 'staff_invites';
 const numbersCol = config.staffNumbersCollectionId || 'staff_numbers';
 
+export function buildInviteLink(inviteCode, origin = window.location.origin) {
+  return `${origin}/portal/invite/${inviteCode}`;
+}
+
 /**
  * Create staff invite (admin only)
  */
@@ -54,7 +58,7 @@ export async function createStaffInvite(adminId, email, expiresInDays = 30) {
     diff: JSON.stringify({ email, expiresAt }),
   });
 
-  const signupUrl = `${window.location.origin}/signup?code=${inviteCode}`;
+  const signupUrl = buildInviteLink(inviteCode);
 
   // Send invite email via API
   try {
