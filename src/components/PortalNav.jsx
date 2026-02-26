@@ -20,62 +20,53 @@ import {
   AiOutlineReload,
   AiOutlineFileDone,
 } from 'react-icons/ai';
-
-const ROLES = {
-  ADMIN: 'admin',
-  STAFF: 'staff',
-  CLIENT: 'client',
-};
+import { ACTIONS, ROLES, can } from '../lib/authz.js';
 
 const allNavigation = [
-  { name: 'Dashboard', href: '/portal', icon: AiOutlineHome, feature: 'DASHBOARD', roles: [ROLES.ADMIN, ROLES.STAFF, ROLES.CLIENT] },
-  { name: 'My Profile', href: '/portal/profile', icon: AiOutlineUser, feature: 'PROFILE', roles: [ROLES.ADMIN, ROLES.STAFF, ROLES.CLIENT] },
+  { name: 'Dashboard', href: '/portal', icon: AiOutlineHome, feature: 'DASHBOARD', action: ACTIONS.DASHBOARD_VIEW },
+  { name: 'My Profile', href: '/portal/profile', icon: AiOutlineUser, feature: 'PROFILE', action: ACTIONS.PROFILE_VIEW },
 
   // Staff/Admin operational modules
-  { name: 'Clients / CRM', href: '/portal/clients', icon: AiOutlineTeam, feature: 'CRM', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Scheduling', href: '/portal/scheduling', icon: AiOutlineCalendar, feature: 'SCHEDULING', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Scheduling Board', href: '/portal/scheduling-board', icon: AiOutlineCalendar, feature: 'SCHEDULING', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Recurring Patterns', href: '/portal/recurring-patterns', icon: AiOutlineReload, feature: 'RECURRING_PATTERNS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'My Schedule', href: '/portal/my-schedule', icon: AiOutlineUser, feature: 'MY_SCHEDULE', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Open Shifts', href: '/portal/open-shifts', icon: AiOutlineCalendar, feature: 'OPEN_SHIFTS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Shift Applications', href: '/portal/shift-applications', icon: AiOutlineFileDone, feature: 'SHIFT_APPLICATIONS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Sites', href: '/portal/sites', icon: AiOutlineInbox, feature: 'SITES', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Posts', href: '/portal/posts', icon: AiOutlineCheckSquare, feature: 'POSTS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Guards', href: '/portal/guards', icon: AiOutlineUser, feature: 'GUARDS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Time Tracking', href: '/portal/time', icon: AiOutlineClockCircle, feature: 'TIME_TRACKING', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Tasks', href: '/portal/tasks', icon: AiOutlineCheckSquare, feature: 'TASKS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Incidents', href: '/portal/incidents', icon: AiOutlineWarning, feature: 'INCIDENTS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Assets', href: '/portal/assets', icon: AiOutlineInbox, feature: 'ASSETS', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Messages', href: '/portal/messages', icon: AiOutlineMessage, feature: 'MESSAGES', roles: [ROLES.ADMIN, ROLES.STAFF] },
+  { name: 'Clients / CRM', href: '/portal/clients', icon: AiOutlineTeam, feature: 'CRM', action: ACTIONS.CLIENTS_VIEW },
+  { name: 'Scheduling', href: '/portal/scheduling', icon: AiOutlineCalendar, feature: 'SCHEDULING', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Scheduling Board', href: '/portal/scheduling-board', icon: AiOutlineCalendar, feature: 'SCHEDULING', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Recurring Patterns', href: '/portal/recurring-patterns', icon: AiOutlineReload, feature: 'RECURRING_PATTERNS', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'My Schedule', href: '/portal/my-schedule', icon: AiOutlineUser, feature: 'MY_SCHEDULE', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Open Shifts', href: '/portal/open-shifts', icon: AiOutlineCalendar, feature: 'OPEN_SHIFTS', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Shift Applications', href: '/portal/shift-applications', icon: AiOutlineFileDone, feature: 'SHIFT_APPLICATIONS', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Sites', href: '/portal/sites', icon: AiOutlineInbox, feature: 'SITES', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Posts', href: '/portal/posts', icon: AiOutlineCheckSquare, feature: 'POSTS', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Guards', href: '/portal/guards', icon: AiOutlineUser, feature: 'GUARDS', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Time Tracking', href: '/portal/time', icon: AiOutlineClockCircle, feature: 'TIME_TRACKING', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Tasks', href: '/portal/tasks', icon: AiOutlineCheckSquare, feature: 'TASKS', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Incidents', href: '/portal/incidents', icon: AiOutlineWarning, feature: 'INCIDENTS', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Assets', href: '/portal/assets', icon: AiOutlineInbox, feature: 'ASSETS', action: ACTIONS.SCHEDULING_VIEW },
+  { name: 'Messages', href: '/portal/messages', icon: AiOutlineMessage, feature: 'MESSAGES', action: ACTIONS.SCHEDULING_VIEW },
 
   // Compliance (staff + admin), with admin-only submodules
-  { name: 'HR & Compliance', href: '/portal/hr', icon: AiOutlineAudit, feature: 'COMPLIANCE', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Compliance Wizard', href: '/portal/compliance', icon: AiOutlineAudit, feature: 'COMPLIANCE', roles: [ROLES.ADMIN, ROLES.STAFF] },
-  { name: 'Admin Grading', href: '/portal/admin-grading', icon: AiOutlineFileDone, feature: 'COMPLIANCE', roles: [ROLES.ADMIN] },
-  { name: 'Invite Management', href: '/portal/invite-management', icon: AiOutlineFileDone, feature: 'COMPLIANCE', roles: [ROLES.ADMIN] },
-  { name: 'Drive Sync Status', href: '/portal/drive-sync', icon: AiOutlineAudit, feature: 'COMPLIANCE', roles: [ROLES.ADMIN] },
+  { name: 'HR & Compliance', href: '/portal/hr', icon: AiOutlineAudit, feature: 'COMPLIANCE', action: ACTIONS.COMPLIANCE_VIEW },
+  { name: 'Compliance Wizard', href: '/portal/compliance', icon: AiOutlineAudit, feature: 'COMPLIANCE', action: ACTIONS.COMPLIANCE_VIEW },
+  { name: 'Admin Grading', href: '/portal/admin-grading', icon: AiOutlineFileDone, feature: 'COMPLIANCE', action: ACTIONS.ADMIN_GRADING_VIEW },
+  { name: 'Invite Management', href: '/portal/invite-management', icon: AiOutlineFileDone, feature: 'COMPLIANCE', action: ACTIONS.INVITE_MANAGEMENT_VIEW },
+  { name: 'Drive Sync Status', href: '/portal/drive-sync', icon: AiOutlineAudit, feature: 'COMPLIANCE', action: ACTIONS.DRIVE_SYNC_VIEW },
 
   // Admin-only modules
-  { name: 'Invoices & Financial', href: '/portal/finance', icon: AiOutlineDollar, feature: 'FINANCE', roles: [ROLES.ADMIN] },
-  { name: 'Payroll', href: '/portal/payroll', icon: AiOutlineDollar, feature: 'PAYROLL', roles: [ROLES.ADMIN] },
-  { name: 'Reports', href: '/portal/reports', icon: AiOutlineBarChart, feature: 'REPORTS', roles: [ROLES.ADMIN] },
-  { name: 'Analytics', href: '/portal/analytics', icon: AiOutlineBarChart, feature: 'ANALYTICS', roles: [ROLES.ADMIN] },
-  { name: 'Audit Log', href: '/portal/audit', icon: AiOutlineAudit, feature: 'AUDIT_LOG', roles: [ROLES.ADMIN] },
-  { name: 'AI Assistant', href: '/portal/ai', icon: AiOutlineRobot, feature: 'AI_ASSISTANT', roles: [ROLES.ADMIN] },
-  { name: 'User Management', href: '/portal/users', icon: AiOutlineTeam, feature: 'USER_MANAGEMENT', roles: [ROLES.ADMIN] },
-  { name: 'Settings', href: '/portal/settings', icon: AiOutlineSetting, feature: 'SETTINGS', roles: [ROLES.ADMIN] },
+  { name: 'Invoices & Financial', href: '/portal/finance', icon: AiOutlineDollar, feature: 'FINANCE', action: ACTIONS.FINANCE_VIEW },
+  { name: 'Payroll', href: '/portal/payroll', icon: AiOutlineDollar, feature: 'PAYROLL', action: ACTIONS.PAYROLL_VIEW },
+  { name: 'Reports', href: '/portal/reports', icon: AiOutlineBarChart, feature: 'REPORTS', action: ACTIONS.REPORTS_VIEW },
+  { name: 'Analytics', href: '/portal/analytics', icon: AiOutlineBarChart, feature: 'ANALYTICS', action: ACTIONS.ANALYTICS_VIEW },
+  { name: 'Audit Log', href: '/portal/audit', icon: AiOutlineAudit, feature: 'AUDIT_LOG', action: ACTIONS.AUDIT_LOG_VIEW },
+  { name: 'AI Assistant', href: '/portal/ai', icon: AiOutlineRobot, feature: 'AI_ASSISTANT', action: ACTIONS.AI_ASSISTANT_VIEW },
+  { name: 'User Management', href: '/portal/users', icon: AiOutlineTeam, feature: 'USER_MANAGEMENT', action: ACTIONS.USER_MANAGEMENT_VIEW },
+  { name: 'Settings', href: '/portal/settings', icon: AiOutlineSetting, feature: 'SETTINGS', action: ACTIONS.SETTINGS_VIEW },
+  { name: 'Debug Auth', href: '/portal/admin/debug-auth', icon: AiOutlineSetting, feature: 'USER_MANAGEMENT', action: ACTIONS.DEBUG_AUTH_VIEW },
 
   // Client portal
-  { name: 'Client Portal', href: '/portal/client-portal', icon: AiOutlineTeam, feature: 'CRM', roles: [ROLES.CLIENT, ROLES.ADMIN] },
+  { name: 'Client Portal', href: '/portal/client-portal', icon: AiOutlineTeam, feature: 'CRM', action: ACTIONS.CLIENT_PORTAL_VIEW },
 ];
 
-const isRoleAllowed = (role, allowedRoles) => {
-  if (!allowedRoles || allowedRoles.length === 0) return true;
-  return allowedRoles.includes(role);
-};
-
 const getEnabledNavigation = (role) =>
-  allNavigation.filter((item) => isFeatureEnabled(item.feature) && isRoleAllowed(role, item.roles));
+  allNavigation.filter((item) => isFeatureEnabled(item.feature) && can(role, item.action));
 
 const NavItem = ({ item, isActive }) => {
   const Icon = item.icon;

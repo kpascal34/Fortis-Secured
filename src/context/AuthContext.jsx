@@ -1,10 +1,15 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { account, config } from '../lib/appwrite.js';
 import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from '../lib/analyticsUtils.js';
+import { can, getRoleFromAuthData, getRolePermissions } from '../lib/authz.js';
 
 const AuthContext = createContext({
   user: null,
+  role: null,
+  permissions: [],
+  authDebug: null,
   loading: true,
+  can: () => false,
   login: async () => {},
   logout: async () => {},
 });
@@ -26,70 +31,83 @@ const internalDomains = normalizeCsv(import.meta.env.VITE_INTERNAL_EMAIL_DOMAINS
 const getEffectiveAdminEmails = () => (adminEmails.length ? adminEmails : DEFAULT_ADMIN_EMAILS);
 const getEffectiveInternalDomains = () => (internalDomains.length ? internalDomains : DEFAULT_INTERNAL_DOMAINS);
 
-const inferRole = (appwriteUser) => {
-  if (!appwriteUser) return null;
+const buildResolvedAuthState = (appwriteUser) => {
+  const roleResult = getRoleFromAuthData(appwriteUser, {
+    adminEmails: getEffectiveAdminEmails(),
+    internalDomains: getEffectiveInternalDomains(),
+  });
 
-  const email = String(appwriteUser.email || '').toLowerCase();
-  const labels = Array.isArray(appwriteUser.labels)
-    ? appwriteUser.labels.map((l) => String(l).toLowerCase())
-    : [];
+  const permissions = [
+    ...new Set([...(getRolePermissions(roleResult.role) || []), ...(roleResult.inputs?.prefsPermissions || [])]),
+  ];
 
-  // 1) Prefer explicit Appwrite labels (if present)
-  if (labels.includes('admin')) return 'admin';
-  if (labels.includes('staff')) return 'staff';
-  if (labels.includes('client')) return 'client';
+  return {
+    user: appwriteUser ? { ...appwriteUser, role: roleResult.role } : null,
+    role: roleResult.role,
+    permissions,
+    authDebug: {
+      roleSource: roleResult.source,
+      resolvedRole: roleResult.role,
+      raw: appwriteUser || null,
+      inputs: roleResult.inputs,
+      allowlists: {
+        adminEmails: getEffectiveAdminEmails(),
+        internalDomains: getEffectiveInternalDomains(),
+      },
+    },
+  };
+};
 
-  // 2) Allowlist admin emails
-  if (getEffectiveAdminEmails().includes(email)) return 'admin';
-
-  // 3) Internal domains => staff
-  const domain = email.split('@')[1] || '';
-  if (getEffectiveInternalDomains().includes(domain)) return 'staff';
-
-  // 4) Default
-  return 'client';
+const clearAuthState = (setters, roleSource) => {
+  const { setUser, setRole, setPermissions, setAuthDebug } = setters;
+  setUser(null);
+  setRole(null);
+  setPermissions([]);
+  setAuthDebug({ roleSource, resolvedRole: null, raw: null, inputs: {} });
 };
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
+  const [permissions, setPermissions] = useState([]);
+  const [authDebug, setAuthDebug] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUser = useCallback(async () => {
     try {
-      // Skip auth if in demo mode or Appwrite not configured
       if (config.isDemoMode || !account) {
-        console.log('Running in demo mode - no authentication required');
-        setUser(null);
+        clearAuthState({ setUser, setRole, setPermissions, setAuthDebug }, 'demo_mode');
         setLoading(false);
         return;
       }
 
-      // Only attempt to fetch user if Appwrite is properly configured
-      if (
+      const misconfigured =
         !config.endpoint ||
         !config.projectId ||
         config.projectId === 'demo-project' ||
-        config.projectId === 'your_project_id'
-      ) {
-        setUser(null);
+        config.projectId === 'your_project_id';
+
+      if (misconfigured) {
+        clearAuthState({ setUser, setRole, setPermissions, setAuthDebug }, 'misconfigured');
         setLoading(false);
         return;
       }
 
-      // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout')), 5000)
       );
 
       const result = await Promise.race([account.get(), timeoutPromise]);
-      const role = inferRole(result);
-      setUser({ ...result, role });
+      const resolved = buildResolvedAuthState(result);
+      setUser(resolved.user);
+      setRole(resolved.role);
+      setPermissions(resolved.permissions);
+      setAuthDebug(resolved.authDebug);
     } catch (error) {
-      // Silently fail in demo mode
       if (!config.isDemoMode) {
         console.error('Auth fetch error:', error);
       }
-      setUser(null);
+      clearAuthState({ setUser, setRole, setPermissions, setAuthDebug }, 'fetch_error');
     } finally {
       setLoading(false);
     }
@@ -101,7 +119,6 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(
     async ({ email, password }) => {
-      // Prevent silent failures when auth is disabled or misconfigured
       const misconfigured =
         !config.endpoint ||
         !config.projectId ||
@@ -117,8 +134,6 @@ export const AuthProvider = ({ children }) => {
 
       await account.createEmailSession(email, password);
       await fetchUser();
-
-      // Track login event
       trackEvent(EVENT_CATEGORIES.USER, EVENT_TYPES.LOGIN, { email });
     },
     [fetchUser]
@@ -129,15 +144,21 @@ export const AuthProvider = ({ children }) => {
       if (account && !config.isDemoMode) {
         await account.deleteSession('current');
       }
-
-      // Track logout event
       trackEvent(EVENT_CATEGORIES.USER, EVENT_TYPES.LOGOUT, { userId: user?.$id });
     } finally {
-      setUser(null);
+      clearAuthState({ setUser, setRole, setPermissions, setAuthDebug }, 'logged_out');
     }
   }, [user]);
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
+  const canAccess = useCallback((action) => can(role, action), [role]);
+
+  return (
+    <AuthContext.Provider
+      value={{ user, role, permissions, authDebug, loading, can: canAccess, login, logout }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => useContext(AuthContext);

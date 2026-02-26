@@ -7,12 +7,7 @@ import AccessDenied from './components/AccessDenied.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { initializeWebVitalsMonitoring, detectPerformanceIssues } from './lib/performance.js';
 import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from './lib/analyticsUtils.js';
-
-const ROLES = {
-  ADMIN: 'admin',
-  STAFF: 'staff',
-  CLIENT: 'client',
-};
+import { ACTIONS } from './lib/authz.js';
 
 // Eager load critical components
 import PublicSite from './pages/PublicSite.jsx';
@@ -74,6 +69,7 @@ const DriveSyncStatus = lazy(() => import('./pages/portal/DriveSyncStatus.jsx'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const PasswordReset = lazy(() => import('./pages/PasswordReset.jsx'));
+const DebugAuth = lazy(() => import('./pages/portal/DebugAuth.jsx'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -89,8 +85,8 @@ const LoadingFallback = () => (
  * FeatureRoute wrapper: renders component if feature enabled, else shows FeatureDisabled.
  * Also enforces a basic role gate so staff/client users don't see admin-only screens.
  */
-const FeatureRoute = ({ feature, name, element, roles }) => {
-  const { user, loading } = useAuth();
+const FeatureRoute = ({ feature, name, element, action }) => {
+  const { loading, can } = useAuth();
 
   if (!isFeatureEnabled(feature)) {
     return <FeatureDisabled featureName={name} />;
@@ -100,7 +96,7 @@ const FeatureRoute = ({ feature, name, element, roles }) => {
     return <LoadingFallback />;
   }
 
-  if (roles && roles.length > 0 && user && !roles.includes(user.role)) {
+  if (action && !can(action)) {
     return <AccessDenied title="Access denied" message={`Your account role does not have access to ${name}.`} />;
   }
 
@@ -151,7 +147,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="DASHBOARD"
                 name="Dashboard"
-                roles={[ROLES.ADMIN, ROLES.STAFF, ROLES.CLIENT]}
+                action={ACTIONS.DASHBOARD_VIEW}
                 element={<Dashboard />}
               />
             }
@@ -162,7 +158,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="PROFILE"
                 name="My Profile"
-                roles={[ROLES.ADMIN, ROLES.STAFF, ROLES.CLIENT]}
+                action={ACTIONS.PROFILE_VIEW}
                 element={<Profile />}
               />
             }
@@ -175,7 +171,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SCHEDULING"
                 name="Scheduling"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.SCHEDULING_VIEW}
                 element={<Scheduling />}
               />
             }
@@ -186,7 +182,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SCHEDULING"
                 name="Scheduling"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.SCHEDULING_VIEW}
                 element={<SchedulingWithDragDrop />}
               />
             }
@@ -197,7 +193,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SCHEDULING"
                 name="Scheduling Board"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.SCHEDULING_VIEW}
                 element={<SchedulingBoard />}
               />
             }
@@ -208,7 +204,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SCHEDULING"
                 name="New Shift"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.SCHEDULING_VIEW}
                 element={<NewShift />}
               />
             }
@@ -219,7 +215,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="RECURRING_PATTERNS"
                 name="Recurring Patterns"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.SCHEDULING_VIEW}
                 element={<RecurringPatterns />}
               />
             }
@@ -230,7 +226,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="MY_SCHEDULE"
                 name="My Schedule"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.SCHEDULING_VIEW}
                 element={<MySchedule />}
               />
             }
@@ -241,7 +237,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="MY_SCHEDULE"
                 name="My Schedule"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.SCHEDULING_VIEW}
                 element={<StaffScheduleView />}
               />
             }
@@ -252,7 +248,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="OPEN_SHIFTS"
                 name="Open Shifts"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.SCHEDULING_VIEW}
                 element={<OpenShifts />}
               />
             }
@@ -263,7 +259,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SHIFT_APPLICATIONS"
                 name="Shift Applications"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.SCHEDULING_VIEW}
                 element={<ShiftApplications />}
               />
             }
@@ -276,7 +272,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="COMPLIANCE"
                 name="HR & Compliance"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.COMPLIANCE_VIEW}
                 element={<HR />}
               />
             }
@@ -287,7 +283,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="COMPLIANCE"
                 name="Compliance Wizard"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                action={ACTIONS.COMPLIANCE_VIEW}
                 element={<ComplianceWizard />}
               />
             }
@@ -298,7 +294,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="COMPLIANCE"
                 name="Admin Grading"
-                roles={[ROLES.ADMIN]}
+                action={ACTIONS.ADMIN_GRADING_VIEW}
                 element={<AdminGrading />}
               />
             }
@@ -309,7 +305,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="COMPLIANCE"
                 name="Invite Management"
-                roles={[ROLES.ADMIN]}
+                action={ACTIONS.INVITE_MANAGEMENT_VIEW}
                 element={<InviteManagement />}
               />
             }
@@ -320,7 +316,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="COMPLIANCE"
                 name="Drive Sync Status"
-                roles={[ROLES.ADMIN]}
+                action={ACTIONS.DRIVE_SYNC_VIEW}
                 element={<DriveSyncStatus />}
               />
             }
@@ -331,7 +327,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="AUDIT_LOG"
                 name="Audit Log"
-                roles={[ROLES.ADMIN]}
+                action={ACTIONS.AUDIT_LOG_VIEW}
                 element={<AuditLog />}
               />
             }
@@ -340,75 +336,79 @@ const AppContent = () => {
           {/* Other modules */}
           <Route
             path="clients"
-            element={<FeatureRoute feature="CRM" name="Clients / CRM" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Clients />} />}
+            element={<FeatureRoute feature="CRM" name="Clients / CRM" action={ACTIONS.CLIENTS_VIEW} element={<Clients />} />}
           />
           <Route
             path="clients/:id"
-            element={<FeatureRoute feature="CRM" name="Client Details" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<ClientDetail />} />}
+            element={<FeatureRoute feature="CRM" name="Client Details" action={ACTIONS.CLIENTS_VIEW} element={<ClientDetail />} />}
           />
           <Route
             path="sites"
-            element={<FeatureRoute feature="SITES" name="Sites" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Sites />} />}
+            element={<FeatureRoute feature="SITES" name="Sites" action={ACTIONS.SCHEDULING_VIEW} element={<Sites />} />}
           />
           <Route
             path="posts"
-            element={<FeatureRoute feature="POSTS" name="Posts" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Posts />} />}
+            element={<FeatureRoute feature="POSTS" name="Posts" action={ACTIONS.SCHEDULING_VIEW} element={<Posts />} />}
           />
           <Route
             path="guards"
-            element={<FeatureRoute feature="GUARDS" name="Guards" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Guards />} />}
+            element={<FeatureRoute feature="GUARDS" name="Guards" action={ACTIONS.SCHEDULING_VIEW} element={<Guards />} />}
           />
           <Route
             path="time"
-            element={<FeatureRoute feature="TIME_TRACKING" name="Time Tracking" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<TimeTracking />} />}
+            element={<FeatureRoute feature="TIME_TRACKING" name="Time Tracking" action={ACTIONS.SCHEDULING_VIEW} element={<TimeTracking />} />}
           />
           <Route
             path="tasks"
-            element={<FeatureRoute feature="TASKS" name="Tasks" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Tasks />} />}
+            element={<FeatureRoute feature="TASKS" name="Tasks" action={ACTIONS.SCHEDULING_VIEW} element={<Tasks />} />}
           />
           <Route
             path="incidents"
-            element={<FeatureRoute feature="INCIDENTS" name="Incidents" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Incidents />} />}
+            element={<FeatureRoute feature="INCIDENTS" name="Incidents" action={ACTIONS.SCHEDULING_VIEW} element={<Incidents />} />}
           />
           <Route
             path="assets"
-            element={<FeatureRoute feature="ASSETS" name="Assets" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Assets />} />}
+            element={<FeatureRoute feature="ASSETS" name="Assets" action={ACTIONS.SCHEDULING_VIEW} element={<Assets />} />}
           />
           <Route
             path="messages"
-            element={<FeatureRoute feature="MESSAGES" name="Messages" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Messages />} />}
+            element={<FeatureRoute feature="MESSAGES" name="Messages" action={ACTIONS.SCHEDULING_VIEW} element={<Messages />} />}
           />
           <Route
             path="finance"
-            element={<FeatureRoute feature="FINANCE" name="Finance" roles={[ROLES.ADMIN]} element={<Finance />} />}
+            element={<FeatureRoute feature="FINANCE" name="Finance" action={ACTIONS.FINANCE_VIEW} element={<Finance />} />}
           />
           <Route
             path="ai"
-            element={<FeatureRoute feature="AI_ASSISTANT" name="AI Assistant" roles={[ROLES.ADMIN]} element={<AIAssistant />} />}
+            element={<FeatureRoute feature="AI_ASSISTANT" name="AI Assistant" action={ACTIONS.AI_ASSISTANT_VIEW} element={<AIAssistant />} />}
           />
           <Route
             path="users"
-            element={<FeatureRoute feature="USER_MANAGEMENT" name="User Management" roles={[ROLES.ADMIN]} element={<UserManagement />} />}
+            element={<FeatureRoute feature="USER_MANAGEMENT" name="User Management" action={ACTIONS.USER_MANAGEMENT_VIEW} element={<UserManagement />} />}
           />
           <Route
             path="payroll"
-            element={<FeatureRoute feature="PAYROLL" name="Payroll" roles={[ROLES.ADMIN]} element={<Payroll />} />}
+            element={<FeatureRoute feature="PAYROLL" name="Payroll" action={ACTIONS.PAYROLL_VIEW} element={<Payroll />} />}
           />
           <Route
             path="reports"
-            element={<FeatureRoute feature="REPORTS" name="Reports" roles={[ROLES.ADMIN]} element={<Reports />} />}
+            element={<FeatureRoute feature="REPORTS" name="Reports" action={ACTIONS.REPORTS_VIEW} element={<Reports />} />}
           />
           <Route
             path="analytics"
-            element={<FeatureRoute feature="ANALYTICS" name="Analytics" roles={[ROLES.ADMIN]} element={<Analytics />} />}
+            element={<FeatureRoute feature="ANALYTICS" name="Analytics" action={ACTIONS.ANALYTICS_VIEW} element={<Analytics />} />}
           />
           <Route
             path="client-portal"
-            element={<FeatureRoute feature="CRM" name="Client Portal" roles={[ROLES.CLIENT, ROLES.ADMIN]} element={<ClientPortal />} />}
+            element={<FeatureRoute feature="CRM" name="Client Portal" action={ACTIONS.CLIENT_PORTAL_VIEW} element={<ClientPortal />} />}
+          />
+          <Route
+            path="admin/debug-auth"
+            element={<FeatureRoute feature="USER_MANAGEMENT" name="Auth Debug" action={ACTIONS.DEBUG_AUTH_VIEW} element={<DebugAuth />} />}
           />
           <Route
             path="settings"
-            element={<FeatureRoute feature="SETTINGS" name="Settings" roles={[ROLES.ADMIN]} element={<Settings />} />}
+            element={<FeatureRoute feature="SETTINGS" name="Settings" action={ACTIONS.SETTINGS_VIEW} element={<Settings />} />}
           />
         </Route>
 

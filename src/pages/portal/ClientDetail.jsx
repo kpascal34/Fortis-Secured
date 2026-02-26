@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { databases, config } from '../../lib/appwrite';
 import { useAuth } from '../../context/AuthContext';
+import { ACTIONS } from '../../lib/authz.js';
 import ClientFormModal from '../../components/ClientFormModal';
 import {
   AiOutlineArrowLeft,
@@ -21,13 +22,13 @@ import {
 const ClientDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isAdmin = user?.labels?.includes('admin') || user?.prefs?.role === 'admin';
+  const canManageClients = can(ACTIONS.CLIENTS_MANAGE);
 
   useEffect(() => {
     fetchClient();
@@ -114,7 +115,7 @@ const ClientDetail = () => {
             <AiOutlineArrowLeft className="h-4 w-4" />
             Back to Clients
           </Link>
-          {isAdmin && (
+          {canManageClients && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsModalOpen(true)}

@@ -1,13 +1,14 @@
 import React from 'react';
 import { Outlet, Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ACTIONS } from '../lib/authz.js';
 import PortalNav from '../components/PortalNav';
 import LoginForm from '../components/LoginForm';
 import Breadcrumb from '../components/Breadcrumb';
 import { useSEO } from '../lib/seo.js';
 
 const PortalLayout = () => {
-  const { user, loading, logout } = useAuth();
+  const { user, role, loading, logout, can } = useAuth();
   const location = useLocation();
 
   const title = loading
@@ -52,7 +53,7 @@ const PortalLayout = () => {
   }
 
   // Convenience redirect for client users
-  if (user.role === 'client' && (location.pathname === '/portal' || location.pathname === '/portal/')) {
+  if (can(ACTIONS.CLIENT_PORTAL_VIEW) && role === 'client' && (location.pathname === '/portal' || location.pathname === '/portal/')) {
     return <Navigate to="/portal/client-portal" replace />;
   }
 
