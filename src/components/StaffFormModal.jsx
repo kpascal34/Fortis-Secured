@@ -4,7 +4,7 @@ import { ID, Query } from 'appwrite';
 import { AiOutlineClose, AiOutlineLoading3Quarters } from 'react-icons/ai';
 
 const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
-  const [formData, setFormData] = useState({
+  const getInitialFormData = () => ({
     firstName: '',
     lastName: '',
     email: '',
@@ -13,19 +13,24 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
     department: '',
     licenseNumber: '',
     licenseExpiry: '',
-    status: 'active',
+    status: '',
     address: '',
     startDate: '',
-    dBSStatus: 'pending',
-    rightToWork: 'pending',
+    dBSStatus: '',
+    rightToWork: '',
     emergencyContact: '',
     emergencyPhone: '',
+  });
+
+  const [formData, setFormData] = useState({
+    ...getInitialFormData(),
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [errors, setErrors] = useState({});
+  const [toast, setToast] = useState(null);
   
   // Roles and departments state with defaults
   const [roles, setRoles] = useState(['guard', 'supervisor', 'manager', 'admin']);
@@ -36,8 +41,18 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
   useEffect(() => {
     if (isOpen) {
       fetchRolesAndDepartments();
+      setFormData(getInitialFormData());
+      setErrors({});
+      setError('');
+      setSuccess('');
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timeoutId = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timeoutId);
+  }, [toast]);
 
   const fetchRolesAndDepartments = async () => {
     setLoadingOptions(true);
@@ -109,11 +124,23 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
     if (!formData.startDate) {
       newErrors.startDate = 'Start date is required';
     }
+    if (!formData.status) {
+      newErrors.status = 'Status is required';
+    }
+    if (!formData.dBSStatus) {
+      newErrors.dBSStatus = 'DBS status is required';
+    }
+    if (!formData.rightToWork) {
+      newErrors.rightToWork = 'Right to work status is required';
+    }
     if (formData.licenseNumber && !formData.licenseExpiry) {
       newErrors.licenseExpiry = 'License expiry is required if license number provided';
     }
 
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setToast({ type: 'error', message: 'Please resolve all validation errors before submitting.' });
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -180,34 +207,18 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
       }
 
       setSuccess('Staff member created successfully!');
+      setToast({ type: 'success', message: 'Staff member created successfully.' });
       
       // Reset form
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        role: '',
-        department: '',
-        licenseNumber: '',
-        licenseExpiry: '',
-        status: 'active',
-        address: '',
-        startDate: '',
-        dBSStatus: 'pending',
-        rightToWork: 'pending',
-        emergencyContact: '',
-        emergencyPhone: '',
-      });
-
-      setTimeout(() => {
-        onSuccess(response);
-        onClose();
-        setSuccess('');
-      }, 1500);
+      setFormData(getInitialFormData());
+      onSuccess?.(response);
+      onClose();
+      setSuccess('');
     } catch (err) {
       console.error('Error creating staff:', err);
-      setError(err.message || 'Failed to create staff member. Please check all fields and try again.');
+      const errorMessage = err.message || 'Failed to create staff member. Please check all fields and try again.';
+      setError(errorMessage);
+      setToast({ type: 'error', message: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -218,6 +229,17 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm overflow-y-auto">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/10 bg-gradient-to-br from-primary-dark to-night-sky p-8 shadow-2xl my-8">
+        {toast && (
+          <div
+            className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${
+              toast.type === 'success'
+                ? 'border-green-500/50 bg-green-500/10 text-green-300'
+                : 'border-red-500/50 bg-red-500/10 text-red-300'
+            }`}
+          >
+            {toast.message}
+          </div>
+        )}
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-semibold text-white">Add Staff Member</h2>
           <button
@@ -394,13 +416,17 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none transition-colors [&>option]:bg-night-sky"
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors [&>option]:bg-night-sky ${
+                    errors.status ? 'border-red-500 focus:border-red-400' : 'border-white/10 focus:border-accent'
+                  }`}
                 >
+                  <option value="">Select status...</option>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                   <option value="suspended">Suspended</option>
                   <option value="probation">Probation</option>
                 </select>
+                {errors.status && <p className="mt-1 text-sm text-red-400">{errors.status}</p>}
               </div>
             </div>
           </div>
@@ -441,13 +467,17 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   name="dBSStatus"
                   value={formData.dBSStatus}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none transition-colors [&>option]:bg-night-sky"
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors [&>option]:bg-night-sky ${
+                    errors.dBSStatus ? 'border-red-500 focus:border-red-400' : 'border-white/10 focus:border-accent'
+                  }`}
                 >
+                  <option value="">Select DBS status...</option>
                   <option value="pending">Pending</option>
                   <option value="verified">Verified</option>
                   <option value="failed">Failed</option>
                   <option value="expired">Expired</option>
                 </select>
+                {errors.dBSStatus && <p className="mt-1 text-sm text-red-400">{errors.dBSStatus}</p>}
               </div>
 
               <div>
@@ -456,12 +486,16 @@ const StaffFormModal = ({ isOpen, onClose, onSuccess }) => {
                   name="rightToWork"
                   value={formData.rightToWork}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-accent focus:outline-none transition-colors [&>option]:bg-night-sky"
+                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-white focus:outline-none transition-colors [&>option]:bg-night-sky ${
+                    errors.rightToWork ? 'border-red-500 focus:border-red-400' : 'border-white/10 focus:border-accent'
+                  }`}
                 >
+                  <option value="">Select right to work status...</option>
                   <option value="verified">Verified</option>
                   <option value="pending">Pending</option>
                   <option value="failed">Failed</option>
                 </select>
+                {errors.rightToWork && <p className="mt-1 text-sm text-red-400">{errors.rightToWork}</p>}
               </div>
             </div>
           </div>
