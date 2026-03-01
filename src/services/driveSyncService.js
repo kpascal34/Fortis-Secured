@@ -10,6 +10,94 @@ import * as auditService from './auditService.js';
 const dbId = config.databaseId;
 const complianceUploadsCol = config.complianceUploadsCollectionId || 'compliance_uploads';
 
+export const DRIVE_SYNC_REQUIRED_ATTRIBUTES = [
+  { key: 'staffId', type: 'string', required: true },
+  { key: 'fileName', type: 'string', required: true },
+  { key: 'fileType', type: 'string', required: true },
+  { key: 'driveSyncStatus', type: 'string', required: true, enum: ['pending', 'failed', 'success'] },
+  { key: 'appwriteFileId', type: 'string', required: false },
+  { key: 'googleDriveFileId', type: 'string', required: false },
+  { key: 'syncError', type: 'string', required: false },
+  { key: 'lastSyncAttempt', type: 'datetime', required: false },
+];
+
+let schemaValidationPromise;
+
+const buildSchemaError = (message, details = {}) => {
+  const err = new Error(message);
+  err.code = 'DRIVE_SYNC_SCHEMA_MISSING';
+  err.details = details;
+  return err;
+};
+
+async function getCollectionAttributes() {
+  const response = await databases.listAttributes(dbId, complianceUploadsCol);
+  return response?.attributes || [];
+}
+
+export async function validateDriveSyncSchema({ force = false } = {}) {
+  if (!dbId || !complianceUploadsCol) {
+    throw buildSchemaError('Drive Sync Status is not configured.', { missingConfig: true });
+  }
+
+  if (config.isDemoMode) {
+    return { ok: true, attributes: [] };
+  }
+
+  if (!schemaValidationPromise || force) {
+    schemaValidationPromise = (async () => {
+      const attributes = await getCollectionAttributes();
+      const byKey = new Map(attributes.map((attribute) => [attribute.key, attribute]));
+
+      const missing = [];
+      const mismatchedType = [];
+      const invalidEnums = [];
+
+      for (const requirement of DRIVE_SYNC_REQUIRED_ATTRIBUTES) {
+        const found = byKey.get(requirement.key);
+        if (!found) {
+          missing.push(requirement);
+          continue;
+        }
+
+        if (requirement.type && found.type !== requirement.type) {
+          mismatchedType.push({
+            key: requirement.key,
+            expected: requirement.type,
+            found: found.type,
+          });
+        }
+
+        if (requirement.enum?.length) {
+          const foundEnum = Array.isArray(found.elements) ? found.elements : [];
+          const missingEnumValues = requirement.enum.filter((value) => !foundEnum.includes(value));
+          if (missingEnumValues.length > 0) {
+            invalidEnums.push({ key: requirement.key, missingValues: missingEnumValues, foundValues: foundEnum });
+          }
+        }
+      }
+
+      return {
+        ok: missing.length === 0 && mismatchedType.length === 0 && invalidEnums.length === 0,
+        attributes,
+        missing,
+        mismatchedType,
+        invalidEnums,
+      };
+    })().catch((error) => {
+      schemaValidationPromise = undefined;
+      throw error;
+    });
+  }
+
+  const validation = await schemaValidationPromise;
+  if (!validation.ok) {
+    throw buildSchemaError('Drive Sync schema is incomplete in Appwrite.', validation);
+  }
+
+  return validation;
+}
+
 /**
  * Get all sync status records with filters
  * @param {object} filters - Query filters (status, staffId, dateRange, etc.)
@@ -25,6 +113,8 @@ export async function getSyncStatusRecords(filters = {}) {
   }
 
   try {
+    await validateDriveSyncSchema();
+
     const queries = [];
 
     // Filter by status if provided
@@ -54,6 +144,9 @@ export async function getSyncStatusRecords(filters = {}) {
     return response.documents || [];
   } catch (error) {
     console.error('Error fetching sync status records:', error);
+    if (error.code === 'DRIVE_SYNC_SCHEMA_MISSING') {
+      throw error;
+    }
     
     // Provide helpful error messages
     if (error.message && error.message.includes('driveSyncStatus')) {
@@ -117,6 +210,8 @@ export async function getSyncSummary() {
   }
 
   try {
+    await validateDriveSyncSchema();
+
     const [failed, pending, successful] = await Promise.all([
       getFailedSyncs(),
       getPendingSyncs(),
@@ -155,6 +250,8 @@ export async function getSyncRecordDetail(recordId) {
   }
 
   try {
+    await validateDriveSyncSchema();
+
     const record = await databases.getDocument(
       dbId,
       complianceUploadsCol,
@@ -180,6 +277,8 @@ export async function updateSyncStatus(recordId, status, updates = {}) {
   }
 
   try {
+    await validateDriveSyncSchema();
+
     const updateData = {
       ...updates,
       driveSyncStatus: status,
@@ -225,6 +324,8 @@ export async function logSyncAttempt(
   }
 
   try {
+    await validateDriveSyncSchema();
+
     const recordData = {
       staffId: staffId,
       fileName: fileName,
