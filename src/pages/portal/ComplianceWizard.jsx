@@ -1,315 +1,188 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
-import { useCurrentUser, useRole } from '../../hooks/useRBAC';
+import SignaturePad from '../../components/compliance/SignaturePad.jsx';
+import EmploymentHistoryStep, { employmentEmptyRow } from '../../components/compliance/EmploymentHistoryStep.jsx';
+import { useCurrentUser, useRole } from '../../hooks/useRBAC.js';
 import {
-  getComplianceProgress,
-  submitStep1Identity,
-  submitStep2Employment,
-  submitStep3Evidence,
-  submitStep4References,
-  submitStep5Criminal,
-  submitStep6SIALicence,
-  submitStep7Video,
-  submitComplianceReview,
-} from '../../services/complianceService.js';
-import { uploadComplianceFileWithMeta } from '../../services/fileUploadService.js';
-import { databases, config } from '../../lib/appwrite';
-import { ID } from 'appwrite';
+  createAuditLog,
+  getMySubmission,
+  getSubmissionInstances,
+  listAllSubmissions,
+  submitToComplianceFunction,
+  updateSubmissionStatus,
+  upsertDraftSubmission,
+} from '../../services/complianceWizardV1Service.js';
 
-const defaultAddress = { line1: '', postcode: '', months: 0 };
-const defaultJob = { employer: '', jobTitle: '', fromDate: '', toDate: '' };
-const defaultRef = { name: '', email: '', phone: '', type: 'employer', position: '' };
+const CONSENTS = [
+  { key: 'criminalChecks', label: 'I consent to criminal record checks.' },
+  { key: 'employmentChecks', label: 'I consent to employment and reference checks.' },
+  { key: 'identityChecks', label: 'I consent to identity and right-to-work checks.' },
+  { key: 'dataProcessing', label: 'I consent to processing personal data for vetting.' },
+];
+
+const initialState = {
+  personalDetails: { firstName: '', lastName: '', dob: '', address: '', phone: '', email: '' },
+  siaDbs: { siaNumber: '', siaExpiry: '', dbsNumber: '', dbsIssueDate: '' },
+  employmentHistory: [{ ...employmentEmptyRow }],
+  rightToWork: { declaration: false, documentType: '', expiryDate: '' },
+  consents: Object.fromEntries(CONSENTS.map((c) => [c.key, false])),
+  declarationAccepted: false,
+  declarationName: '',
+  signatureDataUrl: '',
+  signatureDate: new Date().toISOString().slice(0, 10),
+};
+
+const steps = [
+  'Personal Details',
+  'SIA Licence & DBS',
+  '5-Year Employment/Activity History',
+  'Right to Work',
+  'Vetting Consent',
+  'Declaration',
+  'Signature',
+];
 
 const ComplianceWizard = () => {
   const { user, loading: userLoading } = useCurrentUser();
   const { isStaff, isAdmin, loading: roleLoading } = useRole();
-  const [progress, setProgress] = useState(null);
-  const [step, setStep] = useState(1);
+  const [state, setState] = useState(initialState);
+  const [activeStep, setActiveStep] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  const [toast, setToast] = useState(null);
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+  const [submission, setSubmission] = useState(null);
+  const [instances, setInstances] = useState([]);
+  const [adminSubmissions, setAdminSubmissions] = useState([]);
+  const [adminNote, setAdminNote] = useState('');
 
-  const [step1, setStep1] = useState({
-    firstName: '',
-    lastName: '',
-    dateOfBirth: '',
-    nationalInsuranceNumber: '',
-    addresses: [defaultAddress],
-  });
-
-  const [step2, setStep2] = useState({ jobs: [defaultJob] });
-  const [evidenceFiles, setEvidenceFiles] = useState('');
-  const [refs, setRefs] = useState({ references: [defaultRef, { ...defaultRef, type: 'character' }] });
-  const [criminalFile, setCriminalFile] = useState('');
-  const [sia, setSia] = useState({ licenceNumber: '', expiryDate: '' });
-  const [videoFile, setVideoFile] = useState('');
-
-  const currentStep = useMemo(() => progress?.currentStep || step, [progress, step]);
-
-  useEffect(() => {
-    const loadProgress = async () => {
-      if (!user || userLoading) return;
+  React.useEffect(() => {
+    if (!user) return;
+    const load = async () => {
       try {
-        const data = await getComplianceProgress(user.$id);
-        setProgress(data);
-        if (data.currentStep) setStep(data.currentStep);
-      } catch (err) {
-        setError(err.message || 'Could not load compliance record');
+        if (isStaff) {
+          const existing = await getMySubmission(user.$id);
+          setSubmission(existing);
+          if (existing?.formDataJson) {
+            setState((prev) => ({ ...prev, ...JSON.parse(existing.formDataJson) }));
+          }
+          setInstances(await getSubmissionInstances(user.$id));
+        }
+        if (isAdmin) {
+          setAdminSubmissions(await listAllSubmissions());
+        }
+      } catch (loadError) {
+        setError(loadError.message || 'Failed to load compliance data.');
       }
     };
-    loadProgress();
-  }, [user, userLoading]);
+    load();
+  }, [user, isStaff, isAdmin]);
 
-  const saveStepToCollection = async (stepNumber, stepData) => {
-    if (!config.complianceWizardCollectionId) {
-      throw new Error('Compliance wizard collection not configured. Please contact administrator.');
-    }
-    
-    const docId = `${user.$id}_step_${stepNumber}`;
-    
-    try {
-      // Try to update existing document
-      await databases.updateDocument(
-        config.databaseId,
-        config.complianceWizardCollectionId,
-        docId,
-        {
-          staffId: user.$id,
-          stepNumber,
-          stepData: JSON.stringify(stepData),
-          updatedAt: new Date().toISOString(),
-        }
-      );
-    } catch (error) {
-      // If document doesn't exist, create it
-      if (error.code === 404) {
-        await databases.createDocument(
-          config.databaseId,
-          config.complianceWizardCollectionId,
-          docId,
-          {
-            staffId: user.$id,
-            stepNumber,
-            stepData: JSON.stringify(stepData),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }
-        );
-      } else {
-        throw error;
-      }
-    }
-  };
+  const coverage = useMemo(() => validateEmploymentCoverage(state.employmentHistory), [state.employmentHistory]);
 
-  const onSaveStep1 = async () => {
+  const saveDraft = async () => {
+    setBusy(true);
+    setError('');
     try {
-      setBusy(true);
-      await saveStepToCollection(1, step1);
-      await submitStep1Identity(user.$id, step1);
-      setToast('Step 1 saved');
-      setStep(2);
-    } catch (err) {
-      setError(err.message || 'Failed to save step 1');
+      const saved = await upsertDraftSubmission({ existingId: submission?.$id, staffId: user.$id, formData: state });
+      await createAuditLog({
+        actorUserId: user.$id,
+        action: 'compliance_draft_saved',
+        entityType: 'complianceSubmissions',
+        entityId: saved.$id,
+        metadata: { step: activeStep + 1 },
+      });
+      setSubmission(saved);
+      setToast('Draft saved.');
+    } catch (saveError) {
+      setError(saveError.message || 'Failed to save draft.');
     } finally {
       setBusy(false);
     }
   };
 
-  const onSaveStep2 = async () => {
+  const submit = async () => {
+    const validationError = validateBeforeSubmit(state, coverage);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setBusy(true);
+    setError('');
     try {
-      setBusy(true);
-      await saveStepToCollection(2, step2);
-      await submitStep2Employment(user.$id, step2);
-      setToast('Step 2 saved');
-      setStep(3);
-    } catch (err) {
-      setError(err.message || 'Failed to save step 2');
+      const saved = await upsertDraftSubmission({ existingId: submission?.$id, staffId: user.$id, formData: state });
+      const fullName = `${state.personalDetails.firstName} ${state.personalDetails.lastName}`.trim();
+      const result = await submitToComplianceFunction({
+        staffId: user.$id,
+        fullName,
+        submissionId: saved.$id,
+        formData: state,
+      });
+
+      await updateSubmissionStatus(saved.$id, 'submitted');
+      await createAuditLog({ actorUserId: user.$id, action: 'compliance_submitted', entityType: 'complianceSubmissions', entityId: saved.$id, metadata: result });
+      setToast('Submitted successfully. PDF generated and uploaded to Drive.');
+      setInstances(await getSubmissionInstances(user.$id));
+      setSubmission({ ...saved, status: 'submitted' });
+    } catch (submitError) {
+      setError(submitError.message || 'Submission failed.');
     } finally {
       setBusy(false);
     }
   };
 
-  const onSaveStep3 = async () => {
+  const adminDecision = async (doc, approved) => {
     try {
       setBusy(true);
-      const ids = evidenceFiles.split(',').map(s => s.trim()).filter(Boolean);
-      await saveStepToCollection(3, { evidenceFileIds: ids });
-      await submitStep3Evidence(user.$id, ids);
-      setToast('Step 3 saved');
-      setStep(4);
-    } catch (err) {
-      setError(err.message || 'Failed to save step 3');
+      await updateSubmissionStatus(doc.$id, approved ? 'approved' : 'rejected', adminNote);
+      await createAuditLog({
+        actorUserId: user.$id,
+        action: approved ? 'compliance_approved' : 'compliance_rejected',
+        entityType: 'complianceSubmissions',
+        entityId: doc.$id,
+        metadata: { notes: adminNote },
+      });
+      setToast(`Submission ${approved ? 'approved' : 'rejected'}.`);
+      setAdminSubmissions(await listAllSubmissions());
+    } catch (decisionError) {
+      setError(decisionError.message || 'Failed to update submission status.');
     } finally {
       setBusy(false);
     }
   };
 
-  // Upload handlers with automatic Drive sync
-  const handleUploadEvidence = async (e) => {
-    try {
-      const file = e.target.files?.[0];
-      if (!file || !user) return;
-      setBusy(true);
-      const { appwriteFileId, fileName } = await uploadComplianceFileWithMeta(file, file.name);
-      const updated = [
-        ...evidenceFiles.split(',').map(s => s.trim()).filter(Boolean),
-        appwriteFileId,
-      ].join(',');
-      setEvidenceFiles(updated);
-      // Trigger Drive sync via API
-      fetch('/api/drive-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId: user.$id, appwriteFileId, fileName, fileType: 'evidence' })
-      }).catch(console.error);
-      setToast('Evidence uploaded and syncing');
-      e.target.value = '';
-    } catch (err) {
-      setError(err.message || 'Upload failed');
-    } finally {
-      setBusy(false);
-    }
-  };
+  if (userLoading || roleLoading) return <div className="p-6 text-white">Loading...</div>;
+  if (!isStaff && !isAdmin) return <div className="p-6 text-white">Access denied.</div>;
 
-  const handleUploadCriminal = async (e) => {
-    try {
-      const file = e.target.files?.[0];
-      if (!file || !user) return;
-      setBusy(true);
-      const { appwriteFileId, fileName } = await uploadComplianceFileWithMeta(file, file.name);
-      setCriminalFile(appwriteFileId);
-      // Trigger Drive sync via API
-      fetch('/api/drive-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId: user.$id, appwriteFileId, fileName, fileType: 'criminal' })
-      }).catch(console.error);
-      setToast('Criminal record uploaded and syncing');
-      e.target.value = '';
-    } catch (err) {
-      setError(err.message || 'Upload failed');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleUploadVideo = async (e) => {
-    try {
-      const file = e.target.files?.[0];
-      if (!file || !user) return;
-      setBusy(true);
-      const { appwriteFileId, fileName } = await uploadComplianceFileWithMeta(file, file.name);
-      setVideoFile(appwriteFileId);
-      // Trigger Drive sync via API
-      fetch('/api/drive-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId: user.$id, appwriteFileId, fileName, fileType: 'video' })
-      }).catch(console.error);
-      setToast('Video uploaded and syncing');
-      e.target.value = '';
-    } catch (err) {
-      setError(err.message || 'Upload failed');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onSaveStep4 = async () => {
-    try {
-      setBusy(true);
-      await saveStepToCollection(4, refs);
-      await submitStep4References(user.$id, refs);
-      setToast('Step 4 saved');
-      setStep(5);
-    } catch (err) {
-      setError(err.message || 'Failed to save step 4');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onSaveStep5 = async () => {
-    try {
-      setBusy(true);
-      await saveStepToCollection(5, { criminalRecordFileId: criminalFile });
-      await submitStep5Criminal(user.$id, criminalFile);
-      setToast('Step 5 saved');
-      setStep(6);
-    } catch (err) {
-      setError(err.message || 'Failed to save step 5');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onSaveStep6 = async () => {
-    try {
-      setBusy(true);
-      await saveStepToCollection(6, sia);
-      await submitStep6SIALicence(user.$id, sia.licenceNumber, sia.expiryDate);
-      setToast('Step 6 saved');
-      setStep(7);
-    } catch (err) {
-      setError(err.message || 'Failed to save step 6');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onSaveStep7 = async () => {
-    try {
-      setBusy(true);
-      await saveStepToCollection(7, { videoFileId: videoFile });
-      await submitStep7Video(user.$id, videoFile);
-      setToast('Step 7 saved');
-    } catch (err) {
-      setError(err.message || 'Failed to save step 7');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const onSubmit = async () => {
-    try {
-      setBusy(true);
-      await submitComplianceReview(user.$id);
-      setToast('Submitted for review');
-    } catch (err) {
-      setError(err.message || 'Submission failed');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (userLoading || roleLoading) {
+  if (isAdmin) {
     return (
-      <div className="min-h-screen bg-night-sky p-6 text-white">
-        <GlassPanel className="bg-white/5 border-white/10">
-          <p className="text-white/70">Checking access…</p>
-        </GlassPanel>
-      </div>
-    );
-  }
-
-  if (!isStaff && !isAdmin) {
-    return (
-      <div className="min-h-screen bg-night-sky p-6 text-white">
-        <GlassPanel className="bg-white/5 border-white/10">
-          <p className="text-red-200">Only staff or admins can access the compliance wizard.</p>
-        </GlassPanel>
-      </div>
-    );
-  }
-
-  if (!config.complianceWizardCollectionId) {
-    return (
-      <div className="min-h-screen bg-night-sky p-6 text-white">
-        <GlassPanel className="bg-white/5 border-white/10">
-          <p className="text-red-200">Compliance wizard collection is not configured. Please contact your administrator.</p>
-          <p className="mt-2 text-sm text-white/60">Missing: VITE_APPWRITE_COMPLIANCE_WIZARD_COLLECTION_ID</p>
-        </GlassPanel>
+      <div className="min-h-screen bg-gradient-to-br from-primary-dark via-night-sky to-night-sky px-4 py-8 text-white">
+        <div className="mx-auto max-w-6xl">
+          <PortalHeader eyebrow="Compliance" title="Compliance Submissions" description="Review, approve or reject staff submissions." />
+          {error && <Alert tone="error" message={error} />}
+          {toast && <Alert tone="success" message={toast} />}
+          <div className="space-y-4">
+            {adminSubmissions.map((doc) => (
+              <GlassPanel key={doc.$id} className="border-white/10 bg-white/5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-white/70">Staff ID: {doc.staffId}</p>
+                    <p className="text-base font-semibold">Status: {doc.status}</p>
+                    {doc.webViewLink && <a className="text-accent underline" href={doc.webViewLink} target="_blank" rel="noreferrer">Open generated PDF</a>}
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="rounded bg-emerald-500 px-3 py-2 text-sm font-semibold text-black" onClick={() => adminDecision(doc, true)} disabled={busy}>Approve</button>
+                    <button className="rounded bg-rose-500 px-3 py-2 text-sm font-semibold text-black" onClick={() => adminDecision(doc, false)} disabled={busy}>Reject</button>
+                  </div>
+                </div>
+              </GlassPanel>
+            ))}
+          </div>
+          <label className="mt-5 block text-sm text-white/80">Review notes
+            <textarea value={adminNote} onChange={(e) => setAdminNote(e.target.value)} className="mt-1 w-full rounded border border-white/20 bg-white/5 p-3" />
+          </label>
+        </div>
       </div>
     );
   }
@@ -317,189 +190,168 @@ const ComplianceWizard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-dark via-night-sky to-night-sky px-4 py-8 text-white">
       <div className="mx-auto max-w-5xl">
-        <PortalHeader
-          eyebrow="Compliance"
-          title="BS7858 Compliance Wizard"
-          description="Complete all 7 steps. Gaps >31 days or <5 years coverage will fail validation."
-        />
+        <PortalHeader eyebrow="Compliance" title="Compliance Wizard v1" description="Complete your pre-employment declaration and vetting consent." />
+        {error && <Alert tone="error" message={error} />}
+        {toast && <Alert tone="success" message={toast} />}
 
-        {error && (
-          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</div>
+        <GlassPanel className="mb-4 border-white/10 bg-white/5">
+          <div className="grid gap-2 md:grid-cols-7">
+            {steps.map((name, index) => (
+              <button key={name} type="button" onClick={() => setActiveStep(index)} className={`rounded-lg px-2 py-2 text-xs ${index === activeStep ? 'bg-accent text-black' : 'bg-white/5 text-white/70'}`}>
+                {index + 1}. {name}
+              </button>
+            ))}
+          </div>
+        </GlassPanel>
+
+        <GlassPanel className="border-white/10 bg-white/5">
+          {activeStep === 0 && <PersonalDetails value={state.personalDetails} onChange={(v) => setState({ ...state, personalDetails: v })} />}
+          {activeStep === 1 && <SiaDbs value={state.siaDbs} onChange={(v) => setState({ ...state, siaDbs: v })} />}
+          {activeStep === 2 && (
+            <>
+              <EmploymentHistoryStep rows={state.employmentHistory} onChange={(v) => setState({ ...state, employmentHistory: v })} />
+              <p className={`mt-3 text-sm ${coverage.ok ? 'text-emerald-300' : 'text-amber-300'}`}>{coverage.message}</p>
+            </>
+          )}
+          {activeStep === 3 && <RightToWork value={state.rightToWork} onChange={(v) => setState({ ...state, rightToWork: v })} />}
+          {activeStep === 4 && <ConsentStep value={state.consents} onChange={(v) => setState({ ...state, consents: v })} />}
+          {activeStep === 5 && <DeclarationStep value={state} onChange={setState} />}
+          {activeStep === 6 && <SignatureStep value={state} onChange={setState} />}
+
+          <div className="mt-6 flex flex-wrap justify-between gap-3">
+            <button type="button" className="rounded border border-white/20 px-4 py-2 text-sm" onClick={saveDraft} disabled={busy}>Save Draft</button>
+            <div className="flex gap-2">
+              <button type="button" className="rounded border border-white/20 px-4 py-2 text-sm" onClick={() => setActiveStep((s) => Math.max(0, s - 1))}>Back</button>
+              <button type="button" className="rounded bg-accent px-4 py-2 text-sm font-semibold text-black" onClick={() => activeStep === 6 ? submit() : setActiveStep((s) => Math.min(6, s + 1))} disabled={busy}>
+                {activeStep === 6 ? 'Submit' : 'Next'}
+              </button>
+            </div>
+          </div>
+        </GlassPanel>
+
+        {instances.length > 0 && (
+          <GlassPanel className="mt-6 border-white/10 bg-white/5">
+            <h3 className="mb-2 text-lg font-semibold">Your completed PDFs</h3>
+            {instances.map((item) => (
+              <p key={item.$id} className="text-sm text-white/80">
+                <a href={item.webViewLink} target="_blank" rel="noreferrer" className="text-accent underline">Open PDF ({item.createdAt?.slice(0, 10)})</a>
+              </p>
+            ))}
+          </GlassPanel>
         )}
-        {toast && (
-          <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-200">{toast}</div>
-        )}
-
-        {/* Step 1 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Step 1: Identity & Right to Work</h3>
-            <span className="text-sm text-white/60">Must cover 5-year address history</span>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <Input label="First Name" value={step1.firstName} onChange={(v) => setStep1({ ...step1, firstName: v })} />
-            <Input label="Last Name" value={step1.lastName} onChange={(v) => setStep1({ ...step1, lastName: v })} />
-            <Input label="Date of Birth" type="date" value={step1.dateOfBirth} onChange={(v) => setStep1({ ...step1, dateOfBirth: v })} />
-            <Input label="NI Number" value={step1.nationalInsuranceNumber} onChange={(v) => setStep1({ ...step1, nationalInsuranceNumber: v })} />
-          </div>
-          <div className="mt-4 space-y-3">
-            <p className="text-sm text-white/70">Address history (total 60+ months)</p>
-            {step1.addresses.map((addr, idx) => (
-              <div key={idx} className="grid gap-2 md:grid-cols-3">
-                <Input label="Address line" value={addr.line1} onChange={(v) => updateAddress(idx, 'line1', v, step1, setStep1)} />
-                <Input label="Postcode" value={addr.postcode} onChange={(v) => updateAddress(idx, 'postcode', v, step1, setStep1)} />
-                <Input label="Months at address" type="number" value={addr.months} onChange={(v) => updateAddress(idx, 'months', Number(v), step1, setStep1)} />
-              </div>
-            ))}
-            <button className="text-sm text-accent" type="button" onClick={() => setStep1({ ...step1, addresses: [...step1.addresses, defaultAddress] })}>+ Add address</button>
-          </div>
-          <ActionRow onSave={onSaveStep1} disabled={busy} done={currentStep >= 1} />
-        </GlassPanel>
-
-        {/* Step 2 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Step 2: Employment History (5 years, no gaps &gt;31 days)</h3>
-          </div>
-          <div className="space-y-3">
-            {step2.jobs.map((job, idx) => (
-              <div key={idx} className="grid gap-2 md:grid-cols-4">
-                <Input label="Employer" value={job.employer} onChange={(v) => updateJob(idx, 'employer', v, step2, setStep2)} />
-                <Input label="Job Title" value={job.jobTitle} onChange={(v) => updateJob(idx, 'jobTitle', v, step2, setStep2)} />
-                <Input label="From" type="date" value={job.fromDate} onChange={(v) => updateJob(idx, 'fromDate', v, step2, setStep2)} />
-                <Input label="To" type="date" value={job.toDate} onChange={(v) => updateJob(idx, 'toDate', v, step2, setStep2)} />
-              </div>
-            ))}
-            <button className="text-sm text-accent" type="button" onClick={() => setStep2({ jobs: [...step2.jobs, defaultJob] })}>+ Add job</button>
-          </div>
-          <ActionRow onSave={onSaveStep2} disabled={busy || currentStep < 1} done={currentStep >= 2} />
-        </GlassPanel>
-
-        {/* Step 3 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Step 3: Evidence Uploads</h3>
-            <span className="text-sm text-white/60">Enter Appwrite file IDs (comma separated)</span>
-          </div>
-          <Input label="Evidence file IDs" value={evidenceFiles} onChange={setEvidenceFiles} placeholder="file1,file2" />
-          <div className="mt-2">
-            <label className="mb-2 block text-sm text-white/80">Or upload evidence</label>
-            <input type="file" accept="application/pdf,image/*" onChange={handleUploadEvidence} className="block w-full text-sm text-white/80" />
-          </div>
-          <ActionRow onSave={onSaveStep3} disabled={busy || currentStep < 2} done={currentStep >= 3} />
-        </GlassPanel>
-
-        {/* Step 4 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Step 4: References (1 employer + 1 character)</h3>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {refs.references.map((ref, idx) => (
-              <div key={idx} className="space-y-2 rounded-lg border border-white/10 bg-white/5 p-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/50">{ref.type}</p>
-                <Input label="Name" value={ref.name} onChange={(v) => updateRef(idx, 'name', v, refs, setRefs)} />
-                <Input label="Email" value={ref.email} onChange={(v) => updateRef(idx, 'email', v, refs, setRefs)} />
-                <Input label="Phone" value={ref.phone} onChange={(v) => updateRef(idx, 'phone', v, refs, setRefs)} />
-                <Input label="Position" value={ref.position} onChange={(v) => updateRef(idx, 'position', v, refs, setRefs)} />
-              </div>
-            ))}
-          </div>
-          <ActionRow onSave={onSaveStep4} disabled={busy || currentStep < 3} done={currentStep >= 4} />
-        </GlassPanel>
-
-        {/* Step 5 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Step 5: Criminal Record (Basic Disclosure upload)</h3>
-          </div>
-          <Input label="Criminal record file ID" value={criminalFile} onChange={setCriminalFile} placeholder="file id" />
-          <div className="mt-2">
-            <label className="mb-2 block text-sm text-white/80">Or upload criminal record</label>
-            <input type="file" accept="application/pdf,image/*" onChange={handleUploadCriminal} className="block w-full text-sm text-white/80" />
-          </div>
-          <ActionRow onSave={onSaveStep5} disabled={busy || currentStep < 4} done={currentStep >= 5} />
-        </GlassPanel>
-
-        {/* Step 6 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Step 6: SIA Licence</h3>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Input label="Licence number" value={sia.licenceNumber} onChange={(v) => setSia({ ...sia, licenceNumber: v })} />
-            <Input label="Expiry date" type="date" value={sia.expiryDate} onChange={(v) => setSia({ ...sia, expiryDate: v })} />
-          </div>
-          <ActionRow onSave={onSaveStep6} disabled={busy || currentStep < 5} done={currentStep >= 6} />
-        </GlassPanel>
-
-        {/* Step 7 */}
-        <GlassPanel className="mb-6 border-white/10 bg-white/5">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Step 7: Intro Video</h3>
-          </div>
-          <Input label="Video file ID" value={videoFile} onChange={setVideoFile} placeholder="file id" />
-          <div className="mt-2">
-            <label className="mb-2 block text-sm text-white/80">Or upload intro video</label>
-            <input type="file" accept="video/*" onChange={handleUploadVideo} className="block w-full text-sm text-white/80" />
-          </div>
-          <ActionRow onSave={onSaveStep7} disabled={busy || currentStep < 6} done={currentStep >= 7} />
-        </GlassPanel>
-
-        <div className="flex justify-end">
-          <button
-            onClick={onSubmit}
-            disabled={busy || currentStep < 7}
-            className="rounded-lg bg-accent px-5 py-3 font-semibold text-night-sky disabled:cursor-not-allowed disabled:bg-white/20"
-          >
-            Submit for Review
-          </button>
-        </div>
       </div>
     </div>
   );
 };
 
-const Input = ({ label, value, onChange, type = 'text', placeholder = '' }) => (
-  <label className="block text-sm text-white/80">
-    {label}
-    <input
-      type={type}
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ring-white/10 focus:ring-accent"
-    />
-  </label>
-);
+const Alert = ({ tone, message }) => <div className={`mb-4 rounded-lg border p-3 text-sm ${tone === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>{message}</div>;
+const Input = ({ label, value, onChange, type = 'text', placeholder = '' }) => <label className="text-sm text-white/80">{label}<input type={type} value={value || ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white" /></label>;
 
-const ActionRow = ({ onSave, disabled, done }) => (
-  <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3">
-    <div className="text-xs text-white/60">{done ? 'Saved' : 'Not saved'}</div>
-    <button
-      type="button"
-      onClick={onSave}
-      disabled={disabled}
-      className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-night-sky disabled:cursor-not-allowed disabled:bg-white/20"
-    >
-      Save Step
-    </button>
+const PersonalDetails = ({ value, onChange }) => (
+  <div className="grid gap-3 md:grid-cols-2">
+    <Input label="First Name" value={value.firstName} onChange={(v) => onChange({ ...value, firstName: v })} />
+    <Input label="Last Name" value={value.lastName} onChange={(v) => onChange({ ...value, lastName: v })} />
+    <Input label="Date of birth" type="date" value={value.dob} onChange={(v) => onChange({ ...value, dob: v })} />
+    <Input label="Phone" value={value.phone} onChange={(v) => onChange({ ...value, phone: v })} />
+    <Input label="Email" value={value.email} onChange={(v) => onChange({ ...value, email: v })} />
+    <Input label="Address" value={value.address} onChange={(v) => onChange({ ...value, address: v })} />
   </div>
 );
 
-function updateAddress(idx, key, value, state, setter) {
-  const addresses = state.addresses.map((a, i) => (i === idx ? { ...a, [key]: value } : a));
-  setter({ ...state, addresses });
+const SiaDbs = ({ value, onChange }) => (
+  <div className="grid gap-3 md:grid-cols-2">
+    <Input label="SIA licence number" value={value.siaNumber} onChange={(v) => onChange({ ...value, siaNumber: v })} />
+    <Input label="SIA expiry" type="date" value={value.siaExpiry} onChange={(v) => onChange({ ...value, siaExpiry: v })} />
+    <Input label="DBS certificate number" value={value.dbsNumber} onChange={(v) => onChange({ ...value, dbsNumber: v })} />
+    <Input label="DBS issue date" type="date" value={value.dbsIssueDate} onChange={(v) => onChange({ ...value, dbsIssueDate: v })} />
+  </div>
+);
+
+const RightToWork = ({ value, onChange }) => (
+  <div className="space-y-3">
+    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={value.declaration} onChange={(e) => onChange({ ...value, declaration: e.target.checked })} /> I confirm I have the legal right to work in the UK.</label>
+    <Input label="RTW document type" value={value.documentType} onChange={(v) => onChange({ ...value, documentType: v })} />
+    <Input label="Document expiry" type="date" value={value.expiryDate} onChange={(v) => onChange({ ...value, expiryDate: v })} />
+  </div>
+);
+
+const ConsentStep = ({ value, onChange }) => (
+  <div className="space-y-3">
+    {CONSENTS.map((consent) => (
+      <label key={consent.key} className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={value[consent.key]} onChange={(e) => onChange({ ...value, [consent.key]: e.target.checked })} />
+        {consent.label}
+      </label>
+    ))}
+  </div>
+);
+
+const DeclarationStep = ({ value, onChange }) => (
+  <div className="space-y-3">
+    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={value.declarationAccepted} onChange={(e) => onChange({ ...value, declarationAccepted: e.target.checked })} /> I declare the information provided is accurate and complete.</label>
+    <Input label="Declared full name" value={value.declarationName} onChange={(v) => onChange({ ...value, declarationName: v })} />
+  </div>
+);
+
+const SignatureStep = ({ value, onChange }) => (
+  <div className="space-y-3">
+    <p className="text-sm text-white/70">Please sign in the box below.</p>
+    <SignaturePad value={value.signatureDataUrl} onChange={(v) => onChange({ ...value, signatureDataUrl: v })} />
+    <Input label="Signature date" type="date" value={value.signatureDate} onChange={(v) => onChange({ ...value, signatureDate: v })} />
+  </div>
+);
+
+function validateEmploymentCoverage(rows) {
+  if (!rows.length) return { ok: false, message: 'At least one employment/activity row is required.' };
+  const normalized = [...rows].filter((r) => r.fromDate).sort((a, b) => new Date(b.toDate || Date.now()) - new Date(a.toDate || Date.now()));
+  if (!normalized.length) return { ok: false, message: 'Employment dates are required.' };
+
+  const now = new Date();
+  const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
+  let cursor = now;
+
+  for (const row of normalized) {
+    const from = new Date(row.fromDate);
+    const to = new Date(row.toDate || now);
+    const gapDays = Math.floor((cursor - to) / 86400000);
+    if (gapDays > 31 && !row.gapExplanation?.trim()) {
+      return { ok: false, message: `Gap of ${gapDays} days detected. Add a gap explanation.` };
+    }
+    cursor = from;
+  }
+
+  if (cursor > fiveYearsAgo) {
+    return { ok: false, message: 'Employment/activity history must cover the full previous 5 years.' };
+  }
+
+  return { ok: true, message: '5-year history coverage looks valid.' };
 }
 
-function updateJob(idx, key, value, state, setter) {
-  const jobs = state.jobs.map((j, i) => (i === idx ? { ...j, [key]: value } : j));
-  setter({ ...state, jobs });
-}
+function validateBeforeSubmit(state, coverage) {
+  const requiredPaths = [
+    state.personalDetails.firstName,
+    state.personalDetails.lastName,
+    state.personalDetails.dob,
+    state.personalDetails.address,
+    state.personalDetails.email,
+    state.siaDbs.siaNumber,
+    state.siaDbs.siaExpiry,
+    state.siaDbs.dbsNumber,
+    state.rightToWork.declaration,
+    state.rightToWork.documentType,
+    state.declarationAccepted,
+    state.declarationName,
+    state.signatureDataUrl,
+    state.signatureDate,
+  ];
 
-function updateRef(idx, key, value, state, setter) {
-  const references = state.references.map((r, i) => (i === idx ? { ...r, [key]: value } : r));
-  setter({ ...state, references });
+  if (requiredPaths.some((value) => !value)) return 'Please complete all required fields before submitting.';
+  if (!coverage.ok) return coverage.message;
+
+  const missingConsent = CONSENTS.find((consent) => !state.consents[consent.key]);
+  if (missingConsent) return `Consent required: ${missingConsent.label}`;
+
+  return '';
 }
 
 export default ComplianceWizard;
