@@ -24,15 +24,17 @@ export async function createShift(createdBy, clientId, shiftData) {
     clientId: clientId,
     siteId: shiftData.siteId,
     positionTitle: shiftData.positionTitle,
-    date: shiftData.date, // ISO string
-    startTime: shiftData.startTime, // HH:MM
-    endTime: shiftData.endTime,
+    shiftId: shiftData.shiftId || ID.unique(),
+    startTime: shiftData.startTime, // ISO string
+    endTime: shiftData.endTime, // ISO string
     minimumGradeRequired: shiftData.minimumGradeRequired || null,
     positionsOpen: shiftData.positionsOpen || 1,
     assignments: JSON.stringify([]),
     status: 'open',
     createdBy: createdBy,
-    special_requirements: shiftData.specialRequirements || null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    specialRequirements: shiftData.specialRequirements || null,
   });
 
   await logAudit({
@@ -43,7 +45,8 @@ export async function createShift(createdBy, clientId, shiftData) {
     entityId: shift.$id,
     diff: JSON.stringify({
       clientId,
-      date: shiftData.date,
+      startTime: shiftData.startTime,
+      endTime: shiftData.endTime,
       positions: shiftData.positionsOpen,
       minGrade: shiftData.minimumGradeRequired,
     }),
@@ -53,20 +56,24 @@ export async function createShift(createdBy, clientId, shiftData) {
 }
 
 function validateShiftData(data) {
-  const required = ['siteId', 'positionTitle', 'date', 'startTime', 'endTime', 'positionsOpen'];
+  const required = ['siteId', 'positionTitle', 'startTime', 'endTime', 'positionsOpen'];
   for (const field of required) {
     if (!data[field]) throw new Error(`Missing required field: ${field}`);
   }
 
-  // Validate time format (HH:MM)
-  if (!/^\d{2}:\d{2}$/.test(data.startTime) || !/^\d{2}:\d{2}$/.test(data.endTime)) {
-    throw new Error('Time must be in HH:MM format');
+  const shiftStart = new Date(data.startTime);
+  const shiftEnd = new Date(data.endTime);
+
+  if (Number.isNaN(shiftStart.getTime()) || Number.isNaN(shiftEnd.getTime())) {
+    throw new Error('Shift startTime and endTime must be valid ISO strings');
   }
 
-  // Validate date is in future
-  const shiftDate = new Date(data.date);
-  if (shiftDate < new Date()) {
-    throw new Error('Shift date must be in the future');
+  if (shiftStart < new Date()) {
+    throw new Error('Shift start time must be in the future');
+  }
+
+  if (shiftEnd <= shiftStart) {
+    throw new Error('Shift end time must be after start time');
   }
 
   if (data.minimumGradeRequired && (data.minimumGradeRequired < 1 || data.minimumGradeRequired > 5)) {
@@ -97,8 +104,8 @@ export async function getShifts(userId, userRole, userClientId = null) {
     queries.push(Query.equal('status', 'open'));
   }
 
-  // Default sort: by date
-  queries.push(Query.orderAsc('date'));
+  // Default sort: by start time
+  queries.push(Query.orderAsc('startTime'));
 
   const result = await databases.listDocuments(dbId, shiftsCol, queries);
   return result.documents;
@@ -155,16 +162,16 @@ export async function applyForShift(staffId, shiftId) {
   // Check eligibility
   const eligibility = await checkEligibility(staffId, shift);
 
-  if (!eligibility.license_eligible) {
+  if (!eligibility.licenseEligible) {
     throw new Error(`Licence invalid or expiring within ${LICENSE_EXPIRY_THRESHOLD_DAYS} days`);
   }
 
   const application = await databases.createDocument(dbId, applicationsCol, ID.unique(), {
     shiftId: shiftId,
     staffId: staffId,
-    applied_at: new Date().toISOString(),
+    appliedAt: new Date().toISOString(),
     status: 'pending',
-    eligibility_check: JSON.stringify(eligibility),
+    eligibilityCheck: JSON.stringify(eligibility),
   });
 
   await logAudit({
@@ -175,7 +182,7 @@ export async function applyForShift(staffId, shiftId) {
     entityId: application.$id,
     diff: JSON.stringify({
       shiftId,
-      eligible: eligibility.compliant && eligibility.grade_eligible,
+      eligible: eligibility.compliant && eligibility.gradeEligible,
     }),
   });
 
@@ -255,8 +262,8 @@ async function checkEligibility(staffId, shift) {
 
   return {
     compliant,
-    grade_eligible: gradeEligible,
-    license_eligible: licenseEligible,
+    gradeEligible: gradeEligible,
+    licenseEligible: licenseEligible,
     reasons,
   };
 }
@@ -285,7 +292,7 @@ export async function reviewApplication(adminId, applicationId, accepted) {
     shift.assignments.push({
       staffId: app.staffId,
       status: 'accepted',
-      accepted_at: new Date().toISOString(),
+      acceptedAt: new Date().toISOString(),
     });
 
     // Check if now full
@@ -294,6 +301,7 @@ export async function reviewApplication(adminId, applicationId, accepted) {
     await databases.updateDocument(dbId, shiftsCol, app.shiftId, {
       assignments: JSON.stringify(shift.assignments),
       status: newStatus,
+      updatedAt: new Date().toISOString(),
     });
   }
 
@@ -320,9 +328,9 @@ export async function getShiftApplications(shiftId, adminId) {
   // Parse eligibility checks
   return apps.documents.map(app => {
     try {
-      app.eligibility_check = JSON.parse(app.eligibility_check);
+      app.eligibilityCheck = JSON.parse(app.eligibilityCheck);
     } catch (e) {
-      app.eligibility_check = {};
+      app.eligibilityCheck = {};
     }
     return app;
   });
@@ -338,9 +346,9 @@ export async function getMyApplications(staffId) {
 
   return apps.documents.map(app => {
     try {
-      app.eligibility_check = JSON.parse(app.eligibility_check);
+      app.eligibilityCheck = JSON.parse(app.eligibilityCheck);
     } catch (e) {
-      app.eligibility_check = {};
+      app.eligibilityCheck = {};
     }
     return app;
   });
@@ -354,6 +362,7 @@ export async function cancelShift(adminId, shiftId, reason) {
 
   const updated = await databases.updateDocument(dbId, shiftsCol, shiftId, {
     status: 'cancelled',
+    updatedAt: new Date().toISOString(),
   });
 
   // Notify all applicants (TBD: email)
@@ -362,6 +371,7 @@ export async function cancelShift(adminId, shiftId, reason) {
     if (app.status === 'pending') {
       await databases.updateDocument(dbId, applicationsCol, app.$id, {
         status: 'cancelled',
+    updatedAt: new Date().toISOString(),
       });
     }
   }

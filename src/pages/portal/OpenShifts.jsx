@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
 import { useAuth } from '../../context/AuthContext';
+import { formatForDisplay } from '../../lib/date';
 import { parseNumber, formatCurrency } from '../../lib/validation';
 import {
   SHIFT_STATUS,
@@ -85,7 +86,7 @@ const OpenShifts = () => {
           Query.equal('published', 'true'),
           // Guard assignment field used here is `guardId`
           Query.isNull('guardId'),
-          Query.orderAsc('date'),
+          Query.orderAsc('startTime'),
           Query.limit(100),
         ]);
         setOpenShifts(shiftsRes.documents);
@@ -155,7 +156,7 @@ const OpenShifts = () => {
         shiftId: shift.$id,
         shiftDetails: {
           siteName: shift.siteName,
-          date: shift.date,
+          date: shift.startTime,
           startTime: shift.startTime,
           endTime: shift.endTime,
           hourlyRate: shift.hourlyRate,
@@ -191,7 +192,7 @@ const OpenShifts = () => {
   };
 
   const filteredShifts = openShifts.filter(shift => {
-    const shiftDate = new Date(shift.date);
+    const shiftDate = new Date(shift.startTime);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -211,7 +212,7 @@ const OpenShifts = () => {
     return true;
   }).sort((a, b) => {
     if (sortBy === 'date') {
-      return new Date(a.date) - new Date(b.date);
+      return new Date(a.startTime) - new Date(b.startTime);
     } else if (sortBy === 'pay') {
       return (b.payRate || 0) - (a.payRate || 0);
     }
@@ -231,10 +232,11 @@ const OpenShifts = () => {
   };
 
   const calculateDuration = (startTime, endTime) => {
-    const [startH, startM] = startTime.split(':').map(Number);
-    const [endH, endM] = endTime.split(':').map(Number);
-    let hours = endH - startH;
-    if (hours < 0) hours += 24;
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return '0h';
+    const diffMs = Math.max(0, end - start);
+    const hours = Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10;
     return `${hours}h`;
   };
 
@@ -404,12 +406,12 @@ const OpenShifts = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-white/70">
                       <AiOutlineCalendar className="text-accent" />
-                      <span className="text-sm">{formatDate(shift.date)}</span>
+                      <span className="text-sm">{formatDate(shift.startTime)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-white/70">
                       <AiOutlineClockCircle className="text-accent" />
                       <span className="text-sm">
-                        {shift.startTime} - {shift.endTime} ({calculateDuration(shift.startTime, shift.endTime)})
+                        {formatForDisplay(shift.startTime)} - {formatForDisplay(shift.endTime)} ({calculateDuration(shift.startTime, shift.endTime)})
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-white/70">
