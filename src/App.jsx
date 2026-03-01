@@ -7,6 +7,8 @@ import AccessDenied from './components/AccessDenied.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { initializeWebVitalsMonitoring, detectPerformanceIssues } from './lib/performance.js';
 import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from './lib/analyticsUtils.js';
+import { can } from './lib/rbac.ts';
+import RequirePermission from './components/auth/RequirePermission.tsx';
 
 const ROLES = {
   ADMIN: 'admin',
@@ -76,6 +78,7 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const PasswordReset = lazy(() => import('./pages/PasswordReset.jsx'));
 const UIAudit = lazy(() => import('./pages/portal/UIAudit.jsx'));
+const AdminDebug = lazy(() => import('./pages/portal/AdminDebug.jsx'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -123,7 +126,7 @@ const PortalRouteErrorFallback = ({ errorCode, onReset }) => (
  * Also enforces a basic role gate so staff/client users don't see admin-only screens.
  */
 const FeatureRoute = ({ feature, name, element, roles }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, resolvedRole, permissions } = useAuth();
 
   if (!isFeatureEnabled(feature)) {
     return <FeatureDisabled featureName={name} />;
@@ -133,8 +136,26 @@ const FeatureRoute = ({ feature, name, element, roles }) => {
     return <LoadingFallback />;
   }
 
-  if (roles && roles.length > 0 && user && !roles.includes(user.role)) {
-    return <AccessDenied title="Access denied" message={`Your account role does not have access to ${name}.`} />;
+  if (roles && roles.length > 0 && user) {
+    const allowed = roles.some((role) => {
+      if (role === ROLES.ADMIN) {
+        return can('manageUsers', { role: user?.role, resolvedRole, permissions });
+      }
+
+      if (role === ROLES.CLIENT) {
+        return can('viewCustomerPortal', { role: user?.role, resolvedRole, permissions });
+      }
+
+      if (role === ROLES.STAFF) {
+        return !can('viewCustomerPortal', { role: user?.role, resolvedRole, permissions });
+      }
+
+      return false;
+    });
+
+    if (!allowed) {
+      return <AccessDenied title="Access denied" message={`Your account role does not have access to ${name}.`} />;
+    }
   }
 
   return element;
@@ -454,6 +475,14 @@ const AppContent = () => {
           <Route
             path="users"
             element={<FeatureRoute feature="USER_MANAGEMENT" name="User Management" roles={[ROLES.ADMIN]} element={<UserManagement />} />}
+          />
+          <Route
+            path="admin-debug"
+            element={
+              <RequirePermission permission="manageUsers">
+                <AdminDebug />
+              </RequirePermission>
+            }
           />
           <Route
             path="payroll"

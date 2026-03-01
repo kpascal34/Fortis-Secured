@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import DragDropScheduleIntegration from '../../components/DragDropScheduleIntegration';
 import PortalHeader from '../../components/PortalHeader';
+import { useRole } from '../../hooks/useRBAC';
 
 /**
  * Example: Scheduling Page with Drag-Drop
@@ -13,6 +14,8 @@ import PortalHeader from '../../components/PortalHeader';
  */
 const SchedulingWithDragDrop = () => {
   const [selectedSite, setSelectedSite] = useState(null);
+  const { isAdmin, isManager } = useRole();
+  const canModifySchedule = isAdmin || isManager;
 
   const handleScheduleChange = (updatedShifts) => {
     console.log('Schedule updated:', updatedShifts);
@@ -34,6 +37,8 @@ const SchedulingWithDragDrop = () => {
           showMultiDay={true}
           defaultView="single"
           siteId={selectedSite}
+          canModifySchedule={canModifySchedule}
+          disabledReason="You do not have permission to modify shifts."
         />
       </div>
     </div>
