@@ -311,7 +311,7 @@ export async function submitComplianceReview(staffId) {
 
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
     status: 'submitted',
-    submitted_at: new Date().toISOString(),
+    submittedAt: new Date().toISOString(),
   });
 
   await logAudit({
@@ -340,9 +340,9 @@ export async function adminReviewCompliance(adminId, staffId, approved, rejectio
 
   const updated = await databases.updateDocument(dbId, compCol, comp.$id, {
     status: newStatus,
-    rejection_reason: rejectionReason,
-    reviewedAt: new Date().toISOString(),
-    reviewedBy: adminId,
+    rejectionReason: rejectionReason,
+    approvedAt: approved ? new Date().toISOString() : null,
+    approvedBy: approved ? adminId : null,
   });
 
   // Update staff status if approved

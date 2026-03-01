@@ -35,13 +35,13 @@ export async function upsertDraftSubmission({ existingId, staffId, formData }) {
     staffId,
     templateKey: 'pre_employment_declaration_v1',
     status: 'draft',
-    formDataJson: JSON.stringify(formData),
+    formData: JSON.stringify(formData),
     createdAt: new Date().toISOString(),
   };
 
   if (existingId) {
     return databases.updateDocument(config.databaseId, collectionIds.submissions, existingId, {
-      formDataJson: payload.formDataJson,
+      formData: payload.formData,
       status: 'draft',
     });
   }
@@ -79,9 +79,14 @@ export async function submitToComplianceFunction({ staffId, fullName, submission
   return response.json();
 }
 
-export async function updateSubmissionStatus(submissionId, status, notes = '') {
+export async function updateSubmissionStatus(submissionId, status, notes = '', reviewedBy = null) {
   const payload = { status, adminNotes: notes };
   if (status === 'submitted') payload.submittedAt = new Date().toISOString();
+  if (status === 'approved') {
+    payload.approvedAt = new Date().toISOString();
+    payload.approvedBy = reviewedBy;
+  }
+  if (status === 'rejected') payload.rejectionReason = notes;
   return databases.updateDocument(config.databaseId, collectionIds.submissions, submissionId, payload);
 }
 

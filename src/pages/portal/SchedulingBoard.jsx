@@ -5,7 +5,7 @@ import PortalHeader from '../../components/PortalHeader.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
-import Button from '../../components/ui/Button.jsx';
+import { toISO, formatForDisplay } from '../../lib/date';
 
 const SchedulingBoard = () => {
   const { user, profile } = useCurrentUser();
@@ -109,7 +109,7 @@ const SchedulingBoard = () => {
       }
       
       // Default sort by date
-      queries.push(Query.orderAsc('date'));
+      queries.push(Query.orderAsc('startTime'));
       
       const shiftsRes = await databases.listDocuments(
         config.databaseId,
@@ -257,7 +257,8 @@ const SchedulingBoard = () => {
 
       // Create shift document (match Appwrite schema for the `shifts` collection)
       // NOTE: In this project, `shifts.date` is a *datetime* attribute, so we must store an ISO string.
-      const dateISO = new Date(form.date).toISOString();
+      const startISO = toISO(new Date(`${form.date}T${form.startTime}:00.000Z`));
+      const endISO = toISO(new Date(`${form.date}T${form.endTime}:00.000Z`));
 
       await databases.createDocument(
         config.databaseId,
@@ -266,9 +267,11 @@ const SchedulingBoard = () => {
         {
           clientId: form.clientId || profile?.clientId || null,
           siteId: form.siteId,
-          date: dateISO,
-          startTime: form.startTime,
-          endTime: form.endTime,
+          shiftId: `shift_${Date.now()}` ,
+          startTime: startISO,
+          endTime: endISO,
+          createdAt: toISO(new Date()),
+          updatedAt: toISO(new Date()),
 
           // Schema fields
           position: form.positionTitle,
@@ -393,7 +396,7 @@ const SchedulingBoard = () => {
                   <div>
                     <p className="text-sm text-text-2">{shift.siteId}</p>
                     <p className="text-lg font-semibold text-text">{shift.position || shift.positionTitle}</p>
-                    <p className="text-sm text-text-2">{shift.date} · {shift.startTime} - {shift.endTime}</p>
+                    <p className="text-sm text-text-2">{formatForDisplay(shift.startTime)} - {formatForDisplay(shift.endTime)}</p>
                     {shift.minimumGradeRequired && (
                       <p className="text-xs text-text-3">Min grade: {shift.minimumGradeRequired}</p>
                     )}

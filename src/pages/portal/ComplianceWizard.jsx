@@ -64,8 +64,8 @@ const ComplianceWizard = () => {
         if (isStaff) {
           const existing = await getMySubmission(user.$id);
           setSubmission(existing);
-          if (existing?.formDataJson) {
-            setState((prev) => ({ ...prev, ...JSON.parse(existing.formDataJson) }));
+          if (existing?.formData) {
+            setState((prev) => ({ ...prev, ...JSON.parse(existing.formData) }));
           }
           setInstances(await getSubmissionInstances(user.$id));
         }
@@ -139,7 +139,7 @@ const ComplianceWizard = () => {
   const adminDecision = async (doc, approved) => {
     try {
       setBusy(true);
-      await updateSubmissionStatus(doc.$id, approved ? 'approved' : 'rejected', adminNote);
+      await updateSubmissionStatus(doc.$id, approved ? 'approved' : 'rejected', adminNote, user.$id);
       await createAuditLog({
         actorUserId: user.$id,
         action: approved ? 'compliance_approved' : 'compliance_rejected',
