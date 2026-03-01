@@ -29,6 +29,18 @@ const TrainingScheduleModal = ({ isOpen, onClose, onSuccess, editingTraining = n
     if (isOpen) {
       fetchStaffList();
       if (editingTraining) {
+        const parsedParticipants = (() => {
+          if (!editingTraining.participants) return [];
+          if (Array.isArray(editingTraining.participants)) return editingTraining.participants;
+
+          try {
+            const parsed = JSON.parse(editingTraining.participants);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })();
+
         setFormData({
           trainingName: editingTraining.trainingName || '',
           description: editingTraining.description || '',
@@ -40,9 +52,24 @@ const TrainingScheduleModal = ({ isOpen, onClose, onSuccess, editingTraining = n
           category: editingTraining.category || 'security',
           status: editingTraining.status || 'scheduled',
           maxParticipants: editingTraining.maxParticipants || '',
-          participants: editingTraining.participants || [],
+          participants: parsedParticipants,
         });
-        setSelectedStaff(editingTraining.participants || []);
+        setSelectedStaff(parsedParticipants);
+      } else {
+        setFormData({
+          trainingName: '',
+          description: '',
+          startDate: '',
+          endDate: '',
+          duration: '',
+          location: '',
+          trainer: '',
+          category: 'security',
+          status: 'scheduled',
+          maxParticipants: '',
+          participants: [],
+        });
+        setSelectedStaff([]);
       }
     }
   }, [isOpen, editingTraining]);
