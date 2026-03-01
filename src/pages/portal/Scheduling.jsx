@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
 import {
@@ -41,6 +42,7 @@ import {
 } from 'react-icons/ai';
 
 const Scheduling = () => {
+  const navigate = useNavigate();
   const [view, setView] = useState('list'); // 'list', 'calendar', 'week', 'day'
   const [calendarView, setCalendarView] = useState('week'); // 'week', 'month', 'day'
   const [shifts, setShifts] = useState([]);
@@ -123,8 +125,7 @@ const Scheduling = () => {
   };
 
   const handleAddShift = () => {
-    setEditingShift(null);
-    setIsModalOpen(true);
+    navigate('/portal/new-shift');
   };
 
   const handleEditShift = (shift) => {

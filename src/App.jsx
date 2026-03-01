@@ -85,6 +85,37 @@ const LoadingFallback = () => (
   </div>
 );
 
+const PortalRouteErrorFallback = ({ errorCode, onReset }) => (
+  <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-dark via-night-sky to-night-sky px-4">
+    <div className="max-w-lg rounded-3xl border border-red-500/30 bg-red-500/5 p-8 text-white backdrop-blur-md">
+      <h1 className="text-2xl font-bold">Portal error</h1>
+      <p className="mt-3 text-white/80">
+        The portal failed to render this page. Please retry, then contact support if it persists.
+      </p>
+      <div className="mt-4 rounded-lg border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-200">
+        <p className="font-semibold">Error code: {errorCode || 'PORTAL-ROUTE-UNKNOWN'}</p>
+        <p>Check browser console and backend logs for this code.</p>
+      </div>
+      <div className="mt-6 flex gap-3">
+        <button
+          type="button"
+          onClick={onReset}
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-night-sky hover:bg-accent/90"
+        >
+          Try again
+        </button>
+        <button
+          type="button"
+          onClick={() => window.location.assign('/portal')}
+          className="rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+        >
+          Go to portal home
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 /**
  * FeatureRoute wrapper: renders component if feature enabled, else shows FeatureDisabled.
  * Also enforces a basic role gate so staff/client users don't see admin-only screens.
@@ -116,6 +147,10 @@ const AppContent = () => {
       path: location.pathname,
       search: location.search,
     });
+
+    if (import.meta.env.DEV) {
+      console.debug('[Portal Routing]', location.pathname, location.search);
+    }
   }, [location]);
 
   return (
@@ -144,7 +179,18 @@ const AppContent = () => {
         <Route path="/cookie-policy" element={<CookiePolicy />} />
 
         {/* Portal Routes */}
-        <Route path="/portal" element={<PortalLayout />}>
+        <Route
+          path="/portal"
+          element={
+            <ErrorBoundary
+              area="portal-routes"
+              errorCodePrefix="PORTAL-ROUTE"
+              renderFallback={PortalRouteErrorFallback}
+            >
+              <PortalLayout />
+            </ErrorBoundary>
+          }
+        >
           <Route
             index
             element={
@@ -204,6 +250,17 @@ const AppContent = () => {
           />
           <Route
             path="scheduling/new"
+            element={
+              <FeatureRoute
+                feature="SCHEDULING"
+                name="New Shift"
+                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                element={<NewShift />}
+              />
+            }
+          />
+          <Route
+            path="new-shift"
             element={
               <FeatureRoute
                 feature="SCHEDULING"
