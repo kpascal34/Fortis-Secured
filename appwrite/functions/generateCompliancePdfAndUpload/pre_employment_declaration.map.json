@@ -1,0 +1,46 @@
+{
+  "templateKey": "pre_employment_declaration_v1",
+  "templateName": "Fortis Staff Declaration (Pre-Employment + Vetting Consent)",
+  "templateSource": "/mnt/data/Fortis_Staff_Declaration_Fillable.pdf",
+  "notes": "Populate `pdfFieldName` values using appwrite/functions/generateCompliancePdfAndUpload/extractPdfFields.js output if template revisions change.",
+  "fieldMap": {
+    "personalDetails.firstName": { "pdfFieldName": "FirstName" },
+    "personalDetails.lastName": { "pdfFieldName": "LastName" },
+    "personalDetails.dob": { "pdfFieldName": "DateOfBirth" },
+    "personalDetails.address": { "pdfFieldName": "HomeAddress" },
+    "personalDetails.phone": { "pdfFieldName": "Telephone" },
+    "personalDetails.email": { "pdfFieldName": "EmailAddress" },
+    "siaDbs.siaNumber": { "pdfFieldName": "SIALicenceNumber" },
+    "siaDbs.siaExpiry": { "pdfFieldName": "SIAExpiryDate" },
+    "siaDbs.dbsNumber": { "pdfFieldName": "DBSNumber" },
+    "siaDbs.dbsIssueDate": { "pdfFieldName": "DBSIssueDate" },
+    "rightToWork.declaration": { "pdfFieldName": "RightToWorkDeclaration", "type": "checkbox" },
+    "rightToWork.documentType": { "pdfFieldName": "RightToWorkDocumentType" },
+    "rightToWork.expiryDate": { "pdfFieldName": "RightToWorkExpiryDate" },
+    "consents.criminalChecks": { "pdfFieldName": "ConsentCriminalChecks", "type": "checkbox" },
+    "consents.employmentChecks": { "pdfFieldName": "ConsentEmploymentChecks", "type": "checkbox" },
+    "consents.identityChecks": { "pdfFieldName": "ConsentIdentityChecks", "type": "checkbox" },
+    "consents.dataProcessing": { "pdfFieldName": "ConsentDataProcessing", "type": "checkbox" },
+    "declarationAccepted": { "pdfFieldName": "DeclarationAccepted", "type": "checkbox" },
+    "declarationName": { "pdfFieldName": "DeclarationName" },
+    "signatureDate": { "pdfFieldName": "SignatureDate" }
+  },
+  "employmentHistory": {
+    "strategy": "template_rows_plus_continuation_sheet",
+    "rowFields": [
+      { "path": "activityType", "pdfPattern": "History{index}_ActivityType" },
+      { "path": "employer", "pdfPattern": "History{index}_Employer" },
+      { "path": "role", "pdfPattern": "History{index}_Role" },
+      { "path": "fromDate", "pdfPattern": "History{index}_From" },
+      { "path": "toDate", "pdfPattern": "History{index}_To" },
+      { "path": "gapExplanation", "pdfPattern": "History{index}_GapExplanation" }
+    ]
+  },
+  "signature": {
+    "pageIndex": 0,
+    "x": 330,
+    "y": 126,
+    "width": 180,
+    "height": 48
+  }
+}
