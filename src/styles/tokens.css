@@ -1,0 +1,40 @@
+:root {
+  color-scheme: dark;
+
+  /* Semantic tokens */
+  --bg-color: #0b1220;
+  --surface-color: #121a2b;
+  --surface-elevated-color: #192338;
+  --text-color: #f3f7ff;
+  --muted-color: #a9b6cd;
+  --border-color: #2a3954;
+  --primary-color: #36d2c4;
+  --primary-foreground-color: #051018;
+  --danger-color: #ff6f6f;
+
+  --overlay: rgba(5, 10, 20, 0.72);
+  --disabled-bg: #283247;
+  --disabled-text: #95a1b6;
+  --focus-ring: #64e1d6;
+
+  /* Tailwind compatibility tokens (RGB channels) */
+  --brand: 54 210 196;
+  --brand-dark: 23 162 149;
+  --brand-foreground: 5 16 24;
+
+  --bg: 11 18 32;
+  --bg-2: 18 26 43;
+  --surface: 18 26 43;
+  --surface-2: 25 35 56;
+  --border: 42 57 84;
+
+  --text: 243 247 255;
+  --text-2: 197 208 227;
+  --text-3: 169 182 205;
+  --text-disabled: 149 161 182;
+
+  --success: 74 222 128;
+  --warning: 245 158 11;
+  --error: 255 111 111;
+  --info: 96 165 250;
+}
