@@ -1,9 +1,13 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { account, config } from '../lib/appwrite.js';
 import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from '../lib/analyticsUtils.js';
+import { resolveUserRole, getPermissions } from '../lib/rbac.ts';
 
 const AuthContext = createContext({
   user: null,
+  resolvedRole: null,
+  permissions: {},
+  memberships: [],
   loading: true,
   login: async () => {},
   logout: async () => {},
@@ -26,32 +30,11 @@ const internalDomains = normalizeCsv(import.meta.env.VITE_INTERNAL_EMAIL_DOMAINS
 const getEffectiveAdminEmails = () => (adminEmails.length ? adminEmails : DEFAULT_ADMIN_EMAILS);
 const getEffectiveInternalDomains = () => (internalDomains.length ? internalDomains : DEFAULT_INTERNAL_DOMAINS);
 
-const inferRole = (appwriteUser) => {
-  if (!appwriteUser) return null;
-
-  const email = String(appwriteUser.email || '').toLowerCase();
-  const labels = Array.isArray(appwriteUser.labels)
-    ? appwriteUser.labels.map((l) => String(l).toLowerCase())
-    : [];
-
-  // 1) Prefer explicit Appwrite labels (if present)
-  if (labels.includes('admin')) return 'admin';
-  if (labels.includes('staff')) return 'staff';
-  if (labels.includes('client')) return 'client';
-
-  // 2) Allowlist admin emails
-  if (getEffectiveAdminEmails().includes(email)) return 'admin';
-
-  // 3) Internal domains => staff
-  const domain = email.split('@')[1] || '';
-  if (getEffectiveInternalDomains().includes(domain)) return 'staff';
-
-  // 4) Default
-  return 'client';
-};
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [resolvedRole, setResolvedRole] = useState(null);
+  const [permissions, setPermissions] = useState({});
+  const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchUser = useCallback(async () => {
@@ -60,6 +43,9 @@ export const AuthProvider = ({ children }) => {
       if (config.isDemoMode || !account) {
         console.log('Running in demo mode - no authentication required');
         setUser(null);
+        setResolvedRole(null);
+        setPermissions({});
+        setMemberships([]);
         setLoading(false);
         return;
       }
@@ -72,6 +58,9 @@ export const AuthProvider = ({ children }) => {
         config.projectId === 'your_project_id'
       ) {
         setUser(null);
+        setResolvedRole(null);
+        setPermissions({});
+        setMemberships([]);
         setLoading(false);
         return;
       }
@@ -82,14 +71,32 @@ export const AuthProvider = ({ children }) => {
       );
 
       const result = await Promise.race([account.get(), timeoutPromise]);
-      const role = inferRole(result);
+      const membershipsResult = await account.listMemberships().catch((error) => {
+        console.error('Membership fetch error:', error);
+        return { memberships: [] };
+      });
+      const userMemberships = membershipsResult?.memberships || [];
+
+      const roleFromAccessControls = resolveUserRole(result, userMemberships);
+      const email = String(result.email || '').toLowerCase();
+      const domain = email.split('@')[1] || '';
+      const role = getEffectiveAdminEmails().includes(email)
+        ? 'admin'
+        : roleFromAccessControls === 'customer' && getEffectiveInternalDomains().includes(domain)
+        ? 'staff'
+        : roleFromAccessControls;
+
+      const computedPermissions = getPermissions(role);
       setUser({ ...result, role });
+      setResolvedRole(role);
+      setPermissions(computedPermissions);
+      setMemberships(userMemberships);
     } catch (error) {
-      // Silently fail in demo mode
-      if (!config.isDemoMode) {
-        console.error('Auth fetch error:', error);
-      }
+      console.error('Auth fetch error:', error);
       setUser(null);
+      setResolvedRole(null);
+      setPermissions({});
+      setMemberships([]);
     } finally {
       setLoading(false);
     }
@@ -134,10 +141,17 @@ export const AuthProvider = ({ children }) => {
       trackEvent(EVENT_CATEGORIES.USER, EVENT_TYPES.LOGOUT, { userId: user?.$id });
     } finally {
       setUser(null);
+      setResolvedRole(null);
+      setPermissions({});
+      setMemberships([]);
     }
   }, [user]);
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, resolvedRole, permissions, memberships, loading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => useContext(AuthContext);
