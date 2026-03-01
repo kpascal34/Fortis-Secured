@@ -5,6 +5,7 @@ import ClientFormModal from '../../components/ClientFormModal';
 import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
 import { useAuth } from '../../context/AuthContext';
+import { can } from '../../lib/rbac.ts';
 import {
   AiOutlineSearch,
   AiOutlinePlus,
@@ -20,7 +21,7 @@ import {
 } from 'react-icons/ai';
 
 const Clients = () => {
-  const { user } = useAuth();
+  const { user, resolvedRole, permissions } = useAuth();
   const [clients, setClients] = useState([]);
   const [filteredClients, setFilteredClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,8 +31,7 @@ const Clients = () => {
   const [editingClient, setEditingClient] = useState(null);
   const [isDeleting, setIsDeleting] = useState(null);
 
-  // Check if user is admin (you'll need to implement this based on your user roles)
-  const isAdmin = user?.labels?.includes('admin') || user?.prefs?.role === 'admin';
+  const canManageUsers = can('manageUsers', { role: user?.role, resolvedRole, permissions });
 
   useEffect(() => {
     fetchClients();
@@ -51,7 +51,7 @@ const Clients = () => {
       );
       
       // If not admin, filter to show only their own client data
-      const clientData = isAdmin 
+      const clientData = canManageUsers
         ? response.documents 
         : response.documents.filter(doc => doc.userId === user.$id);
       
@@ -161,7 +161,7 @@ const Clients = () => {
           description="Manage client relationships, contracts, and site information"
           eyebrow="Client Management"
         >
-          {isAdmin && (
+          {canManageUsers && (
             <button
               onClick={handleAddClient}
               className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-night-sky shadow-lg shadow-accent/40 transition-all hover:bg-accent/90"
@@ -292,7 +292,7 @@ const Clients = () => {
                       >
                         <AiOutlineEye className="h-5 w-5" />
                       </Link>
-                      {isAdmin && (
+                      {canManageUsers && (
                         <>
                           <button
                             onClick={() => handleEditClient(client)}

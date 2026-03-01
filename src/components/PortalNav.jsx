@@ -20,6 +20,7 @@ import {
   AiOutlineReload,
   AiOutlineFileDone,
 } from 'react-icons/ai';
+import { can } from '../lib/rbac.ts';
 
 const ROLES = {
   ADMIN: 'admin',
@@ -63,6 +64,7 @@ const allNavigation = [
   { name: 'Audit Log', href: '/portal/audit', icon: AiOutlineAudit, feature: 'AUDIT_LOG', roles: [ROLES.ADMIN] },
   { name: 'AI Assistant', href: '/portal/ai', icon: AiOutlineRobot, feature: 'AI_ASSISTANT', roles: [ROLES.ADMIN] },
   { name: 'User Management', href: '/portal/users', icon: AiOutlineTeam, feature: 'USER_MANAGEMENT', roles: [ROLES.ADMIN] },
+  { name: 'Admin Debug', href: '/portal/admin-debug', icon: AiOutlineAudit, feature: 'SETTINGS', roles: [ROLES.ADMIN] },
   { name: 'Manage Departments', href: '/portal/departments', icon: AiOutlineSetting, feature: 'SETTINGS', roles: [ROLES.ADMIN] },
   { name: 'Settings', href: '/portal/settings', icon: AiOutlineSetting, feature: 'SETTINGS', roles: [ROLES.ADMIN] },
 
@@ -93,10 +95,14 @@ const NavItem = ({ item, isActive }) => {
   );
 };
 
-export const PortalNav = ({ user, onSignOut }) => {
+export const PortalNav = ({ user, onSignOut, resolvedRole, permissions }) => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const role = user?.role || ROLES.CLIENT;
+  const role = can('manageUsers', { role: user?.role, resolvedRole, permissions })
+    ? ROLES.ADMIN
+    : can('viewCustomerPortal', { role: user?.role, resolvedRole, permissions })
+    ? ROLES.CLIENT
+    : ROLES.STAFF;
 
   return (
     <>
