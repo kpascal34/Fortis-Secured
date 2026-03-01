@@ -371,14 +371,14 @@ const SchedulingBoard = () => {
                     Create your first client
                   </Link>
                 )}
-                <button
+                <Button
                   type="submit"
                   data-action="create-shift"
                   disabled={!canSubmit}
-                  className="fs-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabledReason="Complete all required fields before creating a shift."
                 >
                   {creating ? 'Saving…' : 'Create Shift'}
-                </button>
+                </Button>
               </div>
             </form>
           </GlassPanel>
@@ -404,13 +404,14 @@ const SchedulingBoard = () => {
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-text-2">Open spots: {shift.positionsOpen - (shift.assignments?.length || 0)}</span>
                     {isStaff && (
-                      <button
+                      <Button
                         onClick={() => handleApply(shift.$id)}
-                        className="fs-btn-primary text-sm"
+                        className="text-sm"
                         disabled={loading}
+                        disabledReason="Please wait while the current request finishes."
                       >
                         Apply
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -441,7 +442,8 @@ const Input = ({ label, value, onChange, type = 'text', required = false, min, m
       disabled={disabled}
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
-      className={`mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ${
+      tabIndex={disabled ? -1 : undefined}
+      className={`mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/50 ${
         error ? 'ring-red-500/50' : 'ring-white/10'
       } focus:ring-accent`}
     />
@@ -460,7 +462,8 @@ const Select = ({ label, value, onChange, required = false, disabled = false, er
       disabled={disabled}
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
-      className={`mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 ${
+      tabIndex={disabled ? -1 : undefined}
+      className={`mt-1 w-full rounded-lg bg-white/5 px-3 py-3 text-white outline-none ring-1 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/50 ${
         error ? 'ring-red-500/50' : 'ring-white/10'
       } focus:ring-accent`}
     >

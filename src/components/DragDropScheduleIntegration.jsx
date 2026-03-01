@@ -18,6 +18,8 @@ import {
   validateShiftForSave,
 } from '../lib/dragDropShiftService';
 import { Calendar, Grid3X3, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import Button from './ui/Button';
+import DisabledWrapper from './ui/DisabledWrapper';
 
 /**
  * DragDropScheduleIntegration
@@ -28,6 +30,8 @@ const DragDropScheduleIntegration = ({
   showMultiDay = true,
   defaultView = 'single',
   siteId = null,
+  canModifySchedule = true,
+  disabledReason = '',
 }) => {
   const [view, setView] = useState(defaultView); // 'single' or 'multi'
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -225,9 +229,9 @@ const DragDropScheduleIntegration = ({
         <div className="flex items-center gap-2">
           {showMultiDay && (
             <>
-              <button
+              <Button
                 onClick={() => setView('single')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${
                   view === 'single'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -235,10 +239,10 @@ const DragDropScheduleIntegration = ({
               >
                 <Grid3X3 size={18} />
                 Day
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setView('multi')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${
                   view === 'multi'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -246,17 +250,17 @@ const DragDropScheduleIntegration = ({
               >
                 <Calendar size={18} />
                 Week
-              </button>
+              </Button>
             </>
           )}
 
-          <button
+          <Button
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition font-medium"
           >
             <Download size={18} />
             Export
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -328,28 +332,32 @@ const DragDropScheduleIntegration = ({
             </div>
 
             {/* Single-Day Schedule */}
-            <DragDropSchedule
-              shifts={shifts}
-              onShiftsChange={handleShiftsChange}
-              date={selectedDate}
-              dayStartHour={8}
-              dayEndHour={22}
-              siteId={siteId}
-              readonly={saving}
-            />
+            <DisabledWrapper disabled={!canModifySchedule} reason={disabledReason}>
+              <DragDropSchedule
+                shifts={shifts}
+                onShiftsChange={handleShiftsChange}
+                date={selectedDate}
+                dayStartHour={8}
+                dayEndHour={22}
+                siteId={siteId}
+                readonly={saving || !canModifySchedule}
+              />
+            </DisabledWrapper>
           </>
         ) : (
           <>
             {/* Multi-Day Schedule */}
-            <MultiDaySchedule
-              shifts={shifts}
-              onShiftsChange={handleShiftsChange}
-              startDate={new Date()}
-              numDays={7}
-              dayStartHour={8}
-              dayEndHour={22}
-              readonly={saving}
-            />
+            <DisabledWrapper disabled={!canModifySchedule} reason={disabledReason}>
+              <MultiDaySchedule
+                shifts={shifts}
+                onShiftsChange={handleShiftsChange}
+                startDate={new Date()}
+                numDays={7}
+                dayStartHour={8}
+                dayEndHour={22}
+                readonly={saving || !canModifySchedule}
+              />
+            </DisabledWrapper>
 
             {/* Statistics */}
             {stats && (

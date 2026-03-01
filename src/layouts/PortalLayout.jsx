@@ -5,9 +5,10 @@ import PortalNav from '../components/PortalNav';
 import LoginForm from '../components/LoginForm';
 import Breadcrumb from '../components/Breadcrumb';
 import { useSEO } from '../lib/seo.js';
+import { can } from '../lib/rbac.ts';
 
 const PortalLayout = () => {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, resolvedRole, permissions } = useAuth();
   const location = useLocation();
 
   const title = loading
@@ -52,13 +53,16 @@ const PortalLayout = () => {
   }
 
   // Convenience redirect for client users
-  if (user.role === 'client' && (location.pathname === '/portal' || location.pathname === '/portal/')) {
+  if (
+    can('viewCustomerPortal', { role: user?.role, resolvedRole, permissions }) &&
+    (location.pathname === '/portal' || location.pathname === '/portal/')
+  ) {
     return <Navigate to="/portal/client-portal" replace />;
   }
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
-      <PortalNav user={user} onSignOut={logout} />
+      <PortalNav user={user} onSignOut={logout} resolvedRole={resolvedRole} permissions={permissions} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 lg:p-8">

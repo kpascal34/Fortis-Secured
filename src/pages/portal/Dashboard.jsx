@@ -19,7 +19,7 @@ const statusColours = {
 };
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, resolvedRole } = useAuth();
   const baseStats = React.useMemo(
     () => [
       { label: 'Total Clients', value: 0, helper: '' },
@@ -149,7 +149,7 @@ const Dashboard = () => {
         <PortalHeader
           title="Dashboard"
           description="Security Management Overview"
-          eyebrow={user?.role || 'Operations'}
+          eyebrow={resolvedRole || 'Operations'}
         />
 
         {error && (
