@@ -63,6 +63,7 @@ const allNavigation = [
   { name: 'Audit Log', href: '/portal/audit', icon: AiOutlineAudit, feature: 'AUDIT_LOG', roles: [ROLES.ADMIN] },
   { name: 'AI Assistant', href: '/portal/ai', icon: AiOutlineRobot, feature: 'AI_ASSISTANT', roles: [ROLES.ADMIN] },
   { name: 'User Management', href: '/portal/users', icon: AiOutlineTeam, feature: 'USER_MANAGEMENT', roles: [ROLES.ADMIN] },
+  { name: 'Manage Departments', href: '/portal/departments', icon: AiOutlineSetting, feature: 'SETTINGS', roles: [ROLES.ADMIN] },
   { name: 'Settings', href: '/portal/settings', icon: AiOutlineSetting, feature: 'SETTINGS', roles: [ROLES.ADMIN] },
 
   // Client portal

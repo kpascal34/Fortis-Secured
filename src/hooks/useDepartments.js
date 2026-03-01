@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { config, databases } from '../lib/appwrite.js';
-import { Query } from 'appwrite';
+import { ID, Query } from 'appwrite';
+import { DEFAULT_DEPARTMENTS } from '../constants/departments.js';
 
 /**
  * useDepartments
@@ -10,58 +11,104 @@ import { Query } from 'appwrite';
  */
 export function useDepartments() {
   const [departments, setDepartments] = useState([]);
+  const [departmentDocs, setDepartmentDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [source, setSource] = useState('fallback');
+
+  const collectionId = config.departmentsCollectionId;
+  const canManage = Boolean(collectionId && databases && !config.isDemoMode && config.databaseId);
+
+  const loadDepartments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (canManage) {
+        const result = await databases.listDocuments(
+          config.databaseId,
+          collectionId,
+          [Query.orderAsc('name')]
+        );
+        const items = (result?.documents || [])
+          .map((d) => d.name || d.title || d.slug)
+          .filter(Boolean);
+
+        setDepartments(items);
+        setDepartmentDocs(result?.documents || []);
+        setSource('collection');
+      } else {
+        setDepartments(DEFAULT_DEPARTMENTS);
+        setDepartmentDocs([]);
+        setSource('fallback');
+      }
+    } catch (e) {
+      setDepartments(DEFAULT_DEPARTMENTS);
+      setDepartmentDocs([]);
+      setSource('fallback');
+      setError(e.message || 'Failed to load departments');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let cancelled = false;
+    loadDepartments();
+  }, [canManage, collectionId]);
 
-    async function load() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // If a dedicated departments collection exists and not in demo mode, fetch it
-        const collectionId = import.meta.env.VITE_APPWRITE_DEPARTMENTS_COLLECTION_ID;
-        const shouldFetch = Boolean(
-          collectionId && databases && !config.isDemoMode && config.databaseId
-        );
-
-        if (shouldFetch) {
-          const result = await databases.listDocuments(
-            config.databaseId,
-            collectionId,
-            [Query.orderAsc('name')]
-          );
-          const items = (result?.documents || []).map((d) => d.name || d.title || d.slug).filter(Boolean);
-          if (!cancelled) setDepartments(items);
-        } else {
-          // Static fallback list
-          const fallback = [
-            'Operations',
-            'Management',
-            'HR',
-            'Compliance',
-            'Finance',
-            'Security',
-            'IT',
-            'Sales',
-            'Marketing',
-          ];
-          if (!cancelled) setDepartments(fallback);
-        }
-      } catch (e) {
-        if (!cancelled) setError(e.message || 'Failed to load departments');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  const createDepartment = async (name) => {
+    if (!canManage) {
+      throw new Error('Departments collection is not configured');
+    }
+    const cleanName = name?.trim();
+    if (!cleanName) {
+      throw new Error('Department name is required');
     }
 
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    await databases.createDocument(
+      config.databaseId,
+      collectionId,
+      ID.unique(),
+      {
+        name: cleanName,
+      }
+    );
 
-  return { departments, loading, error };
+    await loadDepartments();
+  };
+
+  const updateDepartment = async (documentId, name) => {
+    if (!canManage) {
+      throw new Error('Departments collection is not configured');
+    }
+    const cleanName = name?.trim();
+    if (!cleanName) {
+      throw new Error('Department name is required');
+    }
+
+    await databases.updateDocument(config.databaseId, collectionId, documentId, { name: cleanName });
+    await loadDepartments();
+  };
+
+  const deleteDepartment = async (documentId) => {
+    if (!canManage) {
+      throw new Error('Departments collection is not configured');
+    }
+
+    await databases.deleteDocument(config.databaseId, collectionId, documentId);
+    await loadDepartments();
+  };
+
+  return {
+    departments,
+    departmentDocs,
+    loading,
+    error,
+    source,
+    canManage,
+    refresh: () => loadDepartments(),
+    createDepartment,
+    updateDepartment,
+    deleteDepartment,
+  };
 }

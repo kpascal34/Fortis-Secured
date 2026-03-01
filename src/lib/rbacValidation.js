@@ -225,6 +225,7 @@ export const profileSchemas = {
   manager: {
     create: {
       fullName: { type: 'string', required: true, min: 2, max: 255 },
+      department: { type: 'string', required: false, max: 100 },
       assignedClients: { type: 'array', required: false },
       assignedSites: { type: 'array', required: false },
       maxStaffSupervision: { type: 'integer', required: false, min: 1, max: 500 },
@@ -232,6 +233,7 @@ export const profileSchemas = {
     },
     update: {
       fullName: { type: 'string', required: false, min: 2, max: 255 },
+      department: { type: 'string', required: false, max: 100 },
       assignedClients: { type: 'array', required: false },
       assignedSites: { type: 'array', required: false },
       maxStaffSupervision: { type: 'integer', required: false, min: 1, max: 500 },
@@ -242,6 +244,7 @@ export const profileSchemas = {
   staff: {
     create: {
       fullName: { type: 'string', required: true, min: 2, max: 255 },
+      department: { type: 'string', required: false, max: 100 },
       siaLicence: { type: 'string', required: true, min: 8, max: 50 },
       siaExpiryDate: { type: 'datetime', required: true },
       emergencyContact: { type: 'string', required: false, max: 500 },
@@ -256,6 +259,7 @@ export const profileSchemas = {
     },
     update: {
       fullName: { type: 'string', required: false, min: 2, max: 255 },
+      department: { type: 'string', required: false, max: 100 },
       siaLicence: { type: 'string', required: false, min: 8, max: 50 },
       siaExpiryDate: { type: 'datetime', required: false },
       emergencyContact: { type: 'string', required: false, max: 500 },
