@@ -4,6 +4,7 @@ import PortalHeader from '../../components/PortalHeader.jsx';
 import SignaturePad from '../../components/compliance/SignaturePad.jsx';
 import EmploymentHistoryStep, { employmentEmptyRow } from '../../components/compliance/EmploymentHistoryStep.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC.js';
+import Button from '../../components/ui/Button.jsx';
 import {
   createAuditLog,
   getMySubmission,
@@ -79,6 +80,9 @@ const ComplianceWizard = () => {
   }, [user, isStaff, isAdmin]);
 
   const coverage = useMemo(() => validateEmploymentCoverage(state.employmentHistory), [state.employmentHistory]);
+
+  const submitDisabledReason = getSubmitDisabledReason(state, coverage);
+  const isSubmitDisabled = busy || Boolean(submitDisabledReason);
 
   const saveDraft = async () => {
     setBusy(true);
@@ -172,8 +176,8 @@ const ComplianceWizard = () => {
                     {doc.webViewLink && <a className="text-accent underline" href={doc.webViewLink} target="_blank" rel="noreferrer">Open generated PDF</a>}
                   </div>
                   <div className="flex gap-2">
-                    <button className="rounded bg-emerald-500 px-3 py-2 text-sm font-semibold text-black" onClick={() => adminDecision(doc, true)} disabled={busy}>Approve</button>
-                    <button className="rounded bg-rose-500 px-3 py-2 text-sm font-semibold text-black" onClick={() => adminDecision(doc, false)} disabled={busy}>Reject</button>
+                    <Button variant="success" onClick={() => adminDecision(doc, true)} disabled={busy} disabledReason="Please wait while we process your previous action.">Approve</Button>
+                    <Button variant="danger" onClick={() => adminDecision(doc, false)} disabled={busy} disabledReason="Please wait while we process your previous action.">Reject</Button>
                   </div>
                 </div>
               </GlassPanel>
@@ -197,9 +201,14 @@ const ComplianceWizard = () => {
         <GlassPanel className="mb-4 border-white/10 bg-white/5">
           <div className="grid gap-2 md:grid-cols-7">
             {steps.map((name, index) => (
-              <button key={name} type="button" onClick={() => setActiveStep(index)} className={`rounded-lg px-2 py-2 text-xs ${index === activeStep ? 'bg-accent text-black' : 'bg-white/5 text-white/70'}`}>
+              <Button
+                key={name}
+                type="button"
+                onClick={() => setActiveStep(index)}
+                variant={index === activeStep ? 'tabActive' : 'tab'}
+              >
                 {index + 1}. {name}
-              </button>
+              </Button>
             ))}
           </div>
         </GlassPanel>
@@ -219,12 +228,25 @@ const ComplianceWizard = () => {
           {activeStep === 6 && <SignatureStep value={state} onChange={setState} />}
 
           <div className="mt-6 flex flex-wrap justify-between gap-3">
-            <button type="button" className="rounded border border-white/20 px-4 py-2 text-sm" onClick={saveDraft} disabled={busy}>Save Draft</button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={saveDraft}
+              disabled={busy}
+              disabledReason="Please wait while we process your previous action."
+            >
+              Save Draft
+            </Button>
             <div className="flex gap-2">
-              <button type="button" className="rounded border border-white/20 px-4 py-2 text-sm" onClick={() => setActiveStep((s) => Math.max(0, s - 1))}>Back</button>
-              <button type="button" className="rounded bg-accent px-4 py-2 text-sm font-semibold text-black" onClick={() => activeStep === 6 ? submit() : setActiveStep((s) => Math.min(6, s + 1))} disabled={busy}>
+              <Button type="button" variant="secondary" onClick={() => setActiveStep((s) => Math.max(0, s - 1))}>Back</Button>
+              <Button
+                type="button"
+                onClick={() => activeStep === 6 ? submit() : setActiveStep((s) => Math.min(6, s + 1))}
+                disabled={activeStep === 6 ? isSubmitDisabled : busy}
+                disabledReason={activeStep === 6 ? submitDisabledReason : 'Please wait while we process your previous action.'}
+              >
                 {activeStep === 6 ? 'Submit' : 'Next'}
-              </button>
+              </Button>
             </div>
           </div>
         </GlassPanel>
@@ -245,7 +267,7 @@ const ComplianceWizard = () => {
 };
 
 const Alert = ({ tone, message }) => <div className={`mb-4 rounded-lg border p-3 text-sm ${tone === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'}`}>{message}</div>;
-const Input = ({ label, value, onChange, type = 'text', placeholder = '' }) => <label className="text-sm text-white/80">{label}<input type={type} value={value || ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white" /></label>;
+const Input = ({ label, value, onChange, type = 'text', placeholder = '', disabled = false }) => <label className="text-sm text-white/80">{label}<input type={type} value={value || ''} placeholder={placeholder} disabled={disabled} tabIndex={disabled ? -1 : undefined} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/50" /></label>;
 
 const PersonalDetails = ({ value, onChange }) => (
   <div className="grid gap-3 md:grid-cols-2">
@@ -350,6 +372,18 @@ function validateBeforeSubmit(state, coverage) {
 
   const missingConsent = CONSENTS.find((consent) => !state.consents[consent.key]);
   if (missingConsent) return `Consent required: ${missingConsent.label}`;
+
+  return '';
+}
+
+
+function getSubmitDisabledReason(state, coverage) {
+  if (!coverage.ok) return coverage.message;
+
+  const missingConsent = CONSENTS.find((consent) => !state.consents[consent.key]);
+  if (missingConsent) return `Consent required: ${missingConsent.label}`;
+
+  if (!state.signatureDataUrl) return 'Signature is required before submission.';
 
   return '';
 }
