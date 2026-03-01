@@ -23,7 +23,7 @@ const ForgotPassword = () => {
     try {
       // Send password recovery email via Appwrite using configured base URL
       const baseUrl = (import.meta.env.VITE_PUBLIC_BASE_URL || window.location.origin).replace(/\/$/, '');
-      await account.createRecovery(email, `${baseUrl}/reset-password`);
+      await account.createRecovery(email, `${baseUrl}/portal/reset-password`);
       setSuccess('Check your email for a password reset link. It expires in 1 hour.');
       setStep('check-inbox');
       setEmail('');
@@ -39,7 +39,7 @@ const ForgotPassword = () => {
       <div className="mx-auto max-w-3xl">
         <PortalHeader
           eyebrow="Account Recovery"
-          title="Reset Your Password"
+          title="Request Password Reset"
           description="Enter your email to receive a password reset link."
         />
 
