@@ -120,8 +120,7 @@
 - [x] Search/filter functionality
 - [x] Pagination support
 - [x] Manual retry capability
-- [x] **⚠️ REQUIRED SETUP**: `drive_sync_status` attribute must be added to `compliance_uploads`
-  - See: `scripts/add-drive-sync-attribute.js` for automated setup
+- [x] Provisioned by schema automation (`npm run schema:provision`)
 
 ### 2.7 Compliance Wizard
 - [x] Compliance Wizard page (`/portal/compliance-wizard`)
@@ -343,9 +342,14 @@
 - [x] Sample data population (optional)
 
 ### 8.2 Drive Sync Setup (REQUIRED)
-- [x] `scripts/add-drive-sync-attribute.js` - Adds drive_sync_status attribute
-- **ACTION REQUIRED**: Run this script before production deployment
-- Command: `node scripts/add-drive-sync-attribute.js`
+- [x] `scripts/provision-appwrite-schema.mjs` - Idempotent core schema provisioning
+- [x] `scripts/verify-schema.mjs` - CI-safe schema verification
+- Provision command: `npm run schema:provision`
+- Verify command: `npm run schema:verify`
+- Expected output: summary table showing `created/skipped/failed` counts for collections, attributes, and indexes
+- Troubleshooting:
+  - Missing env vars: set `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, `APPWRITE_DATABASE_ID`
+  - Index creation failure: remove conflicting duplicate data, then rerun `npm run schema:provision`
 
 ### 8.3 Database Attributes
 - [x] All RBAC collections have required attributes
@@ -373,7 +377,7 @@
 ### 9.3 Setup Instructions
 - [x] Environment variable templates
 - [x] Appwrite collection setup docs
-- [x] Drive sync attribute script
+- [x] Idempotent schema provisioning + verification scripts
 - [x] Deployment instructions
 
 ---
@@ -381,9 +385,9 @@
 ## 10. Known Issues & Resolutions ✅
 
 ### 10.1 Drive Sync Status Feature
-**Issue**: Drive Sync Status page queries `drive_sync_status` attribute that may not exist
-**Resolution**: Run `scripts/add-drive-sync-attribute.js` to add the required attribute
-**Status**: ✅ Script created and documented
+**Issue**: Drive Sync Status page requires `driveSyncStatus`/`drive_sync_status` attributes
+**Resolution**: Run `npm run schema:provision` to provision required collections/attributes/indexes
+**Status**: ✅ Covered by schema automation
 
 ### 10.2 Collection Configuration
 **Issue**: Collection IDs must be added to `.env.production`
@@ -400,7 +404,8 @@
 ## 11. Pre-Deployment Verification
 
 ### Before Going Live:
-- [ ] Run `scripts/add-drive-sync-attribute.js`
+- [ ] Run `npm run schema:provision`
+- [ ] Run `npm run schema:verify`
 - [ ] Verify all environment variables in `.env.production`
 - [ ] Test each feature in production environment
 - [ ] Verify database connections
