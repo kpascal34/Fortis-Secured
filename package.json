@@ -16,7 +16,11 @@
     "setup:create-staff-compliance": "node scripts/create_staff_compliance_collection.mjs",
     "setup:create-staff-hr": "node scripts/create_staff_collections.mjs",
     "seed:sample-data": "node scripts/populate_sample_data.mjs",
-    "setup:hr-workflows": "node scripts/setup_hr_workflows_collections.mjs"
+    "setup:hr-workflows": "node scripts/setup_hr_workflows_collections.mjs",
+    "verify:env": "node scripts/verify-env.mjs",
+    "verify:no-process-env": "node scripts/no-process-env-in-src.mjs",
+    "verify:no-duplicates": "node scripts/no-duplicate-2-files.mjs",
+    "verify:schema": "node scripts/verify-schema.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.958.0",

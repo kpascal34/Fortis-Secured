@@ -31,12 +31,15 @@ const InviteManagement = () => {
       setLoadingInvites(true);
       const response = await databases.listDocuments(
         config.databaseId,
-        import.meta.env.VITE_APPWRITE_STAFF_INVITES_COLLECTION_ID,
+        config.staffInvitesCollectionId,
         [Query.orderDesc('createdAt'), Query.limit(50)]
       );
       setInvites(response.documents);
     } catch (err) {
       console.error('Failed to load invites:', err);
+      setError(err.message || 'Failed to load staff invites.');
+      showFeedback('error', err.message || 'Failed to load staff invites.');
+      setInvites([]);
     } finally {
       setLoadingInvites(false);
     }
@@ -107,9 +110,14 @@ const InviteManagement = () => {
       setError(null);
       setResult(null);
       console.log('Calling createStaffInvite with:', { userId: user.$id, email, expiresInDays });
-      const res = await createStaffInvite(user.$id, email, Number(expiresInDays || 30));
+      const res = await createStaffInvite(user.$id, email.trim().toLowerCase(), Number(expiresInDays || 30));
       console.log('Invite created:', res);
       setResult(res);
+      if (res.emailDispatchError) {
+        showFeedback('error', res.emailDispatchError);
+      } else {
+        showFeedback('success', `Invite created for ${res.email}.`);
+      }
       setEmail('');
       loadInvites(); // Reload the list
     } catch (err) {

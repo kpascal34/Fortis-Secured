@@ -8,6 +8,8 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { initializeWebVitalsMonitoring, detectPerformanceIssues } from './lib/performance.js';
 import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from './lib/analyticsUtils.js';
 import { can } from './lib/rbac.ts';
+import { env } from './lib/env.js';
+import { getFatalConfigError } from './lib/config.js';
 import RequirePermission from './components/auth/RequirePermission.tsx';
 
 const ROLES = {
@@ -163,6 +165,7 @@ const FeatureRoute = ({ feature, name, element, roles }) => {
 
 const AppContent = () => {
   const location = useLocation();
+  const fatalConfigError = getFatalConfigError();
 
   useEffect(() => {
     // Track page views
@@ -171,10 +174,22 @@ const AppContent = () => {
       search: location.search,
     });
 
-    if (import.meta.env.DEV) {
+    if (env.isDev) {
       console.debug('[Portal Routing]', location.pathname, location.search);
     }
   }, [location]);
+
+  if (fatalConfigError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-night-sky px-4">
+        <div className="max-w-2xl rounded-2xl border border-red-500/40 bg-red-500/10 p-6 text-red-100">
+          <h1 className="text-2xl font-bold">Fatal configuration error</h1>
+          <p className="mt-3 text-sm">{fatalConfigError}</p>
+          <p className="mt-2 text-sm">Set required VITE_APPWRITE_* values and redeploy.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Suspense fallback={<LoadingFallback />}>
@@ -205,7 +220,7 @@ const AppContent = () => {
         <Route path="/terms" element={<Terms />} />
         <Route path="/cookie-policy" element={<CookiePolicy />} />
 
-        {import.meta.env.DEV && <Route path="/portal/ui-audit" element={<UIAudit />} />}
+        {env.isDev && <Route path="/portal/ui-audit" element={<UIAudit />} />}
 
         {/* Portal Routes */}
         <Route
@@ -522,7 +537,7 @@ const App = () => {
     initializeWebVitalsMonitoring();
 
     // Detect and log performance issues in development
-    if (process.env.NODE_ENV === 'development') {
+    if (env.isDev) {
       detectPerformanceIssues();
     }
   }, []);

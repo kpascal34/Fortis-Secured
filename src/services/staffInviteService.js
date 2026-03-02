@@ -61,8 +61,9 @@ export async function createStaffInvite(adminId, email, expiresInDays = 30) {
   const signupUrl = buildInviteLink(inviteCode);
 
   // Send invite email via API
+  let emailDispatchError = null;
   try {
-    await fetch('/api/send-invite-email', {
+    const emailResponse = await fetch('/api/send-invite-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -71,9 +72,12 @@ export async function createStaffInvite(adminId, email, expiresInDays = 30) {
         signupUrl,
       }),
     });
+    if (!emailResponse.ok) {
+      emailDispatchError = `Invite created but email dispatch failed (${emailResponse.status}).`;
+    }
   } catch (emailError) {
     console.error('Failed to send invite email:', emailError);
-    // Don't fail the whole operation if email fails
+    emailDispatchError = emailError.message || 'Invite created but email dispatch failed.';
   }
 
   return {
@@ -81,6 +85,7 @@ export async function createStaffInvite(adminId, email, expiresInDays = 30) {
     inviteCode,
     signupUrl,
     email: email.toLowerCase(),
+    emailDispatchError,
   };
 }
 

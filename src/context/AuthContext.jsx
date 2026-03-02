@@ -24,8 +24,8 @@ const normalizeCsv = (value) => {
 const DEFAULT_ADMIN_EMAILS = ['k.pascal@fortissecured.co.uk'];
 const DEFAULT_INTERNAL_DOMAINS = ['fortissecured.co.uk', 'fortissecured.com'];
 
-const adminEmails = normalizeCsv(import.meta.env.VITE_ADMIN_EMAILS);
-const internalDomains = normalizeCsv(import.meta.env.VITE_INTERNAL_EMAIL_DOMAINS);
+const adminEmails = normalizeCsv(config.adminEmails);
+const internalDomains = normalizeCsv(config.internalEmailDomains);
 
 const getEffectiveAdminEmails = () => (adminEmails.length ? adminEmails : DEFAULT_ADMIN_EMAILS);
 const getEffectiveInternalDomains = () => (internalDomains.length ? internalDomains : DEFAULT_INTERNAL_DOMAINS);
@@ -71,10 +71,7 @@ export const AuthProvider = ({ children }) => {
       );
 
       const result = await Promise.race([account.get(), timeoutPromise]);
-      const membershipsResult = await account.listMemberships().catch((error) => {
-        console.error('Membership fetch error:', error);
-        return { memberships: [] };
-      });
+      const membershipsResult = await account.listMemberships();
       const userMemberships = membershipsResult?.memberships || [];
 
       const roleFromAccessControls = resolveUserRole(result, userMemberships);

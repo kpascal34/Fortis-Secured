@@ -98,7 +98,7 @@ const HR = () => {
       try {
         const documentsResponse = await databases.listDocuments(
           config.databaseId,
-          config.complianceUploadsCollectionId || 'documents',
+          config.complianceUploadsCollectionId,
           [Query.limit(100), Query.orderDesc('uploadedAt')]
         );
         setDocuments(documentsResponse.documents || []);
@@ -169,7 +169,7 @@ const HR = () => {
     try {
       await databases.updateDocument(
         config.databaseId,
-        config.complianceUploadsCollectionId || 'documents',
+        config.complianceUploadsCollectionId,
         docId,
         {
           status,
@@ -185,7 +185,7 @@ const HR = () => {
 
   const handleDownloadDocument = async (doc) => {
     try {
-      const bucketId = config.documentsBucketId || 'documents';
+      const bucketId = config.documentsBucketId;
       const result = storage.getFileDownload(bucketId, doc.fileId);
       window.open(result.href, '_blank');
     } catch (err) {
@@ -197,11 +197,11 @@ const HR = () => {
   const handleDeleteDocument = async (docId, fileId) => {
     if (!window.confirm('Are you sure you want to delete this document?')) return;
     try {
-      const bucketId = config.documentsBucketId || 'documents';
+      const bucketId = config.documentsBucketId;
       await storage.deleteFile(bucketId, fileId);
       await databases.deleteDocument(
         config.databaseId,
-        config.complianceUploadsCollectionId || 'documents',
+        config.complianceUploadsCollectionId,
         docId
       );
       fetchAllData(); // Refresh data

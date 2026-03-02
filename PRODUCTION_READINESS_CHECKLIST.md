@@ -451,3 +451,11 @@ All 10 originally reported "UX problems" have been verified as **fully implement
 **Validation Method**: Comprehensive codebase audit + feature-by-feature verification  
 **Audit Date**: Current session  
 **Next Review**: Post-first-production-deployment (7 days)
+
+## 2026-03-02 Phase 1 Remediation Reality Check
+- [x] Centralized env/config (`src/lib/env.js`, `src/lib/config.js`) is now the only client env access layer.
+- [x] `process.env` removed from `src/` client modules.
+- [x] Production enforces demo mode off and renders a fatal config error UI if required Appwrite configuration is missing.
+- [x] Compliance v1 feature is hard-disabled by default and requires explicit collection IDs + feature flag before enablement.
+- [x] Duplicate `* 2.*` files removed and blocked by verification script.
+- [ ] Appwrite console confirmation still required for final collection provisioning IDs.
