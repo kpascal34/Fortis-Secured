@@ -22,7 +22,7 @@ export const env = {
   isProd: readBool('PROD', false),
   baseUrl: read('BASE_URL', '/'),
 
-  appwriteEndpoint: read('VITE_APPWRITE_ENDPOINT', 'https://cloud.appwrite.io/v1'),
+  appwriteEndpoint: read('VITE_APPWRITE_ENDPOINT', 'https://fra.cloud.appwrite.io/v1'),
   appwriteProjectId: read('VITE_APPWRITE_PROJECT_ID'),
   appwriteDatabaseId: read('VITE_APPWRITE_DATABASE_ID'),
 

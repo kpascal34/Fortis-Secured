@@ -1,0 +1,71 @@
+{
+  "goal": "Coordinate worker bots to audit the /portal experience, record compliance status with the AGENTS requirements, and keep a delegated task memory for next steps.",
+  "status": "planning",
+  "constraints": [
+    "All application routes and portal pages must remain under /portal/* to respect the route boundary requirement.",
+    "Portal UI changes must enforce error boundaries, toast notifications, menu grouping, and WCAG AA contrast as noted in AGENTS.md.",
+    "Every failure path must surface explicit feedback (no silent failures).",
+    "Work should document reproduction, root cause, code change, validation, and commit message when fixing issues.",
+    "No silent dependency on missing scripts; adapt even when referenced helpers (like scripts/task_memory.py) don\u2019t exist."
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Inventory /portal routes and their hosting components",
+      "owner": "worker-scout",
+      "status": "completed",
+      "dependsOn": [],
+      "deliverables": [
+        "Catalog of /portal routes from App.jsx plus relevant files (layouts, rbac nav entries).",
+        "List of vendor wrappers (FeatureRoute, PortalLayout) that enforce permissions so future edits stay within /portal namespace."
+      ],
+      "notes": "App.jsx lazily loads dashboard and module pages; lib/rbac.js builds the nav groups. Use those files to ensure portals stay under /portal/*. Artifact stored at .codex/portal-route-inventory.md."
+    },
+    {
+      "id": "T2",
+      "title": "Audit AGENTS requirements coverage inside portal UX",
+      "owner": "worker-audit",
+      "status": "planned",
+      "dependsOn": [
+        "T1"
+      ],
+      "deliverables": [
+        "Checklist showing which pages/components already use ErrorBoundary wrappers and toast notifications.",
+        "Menu structure validation ensuring new menu items are grouped logically and roles are honored.",
+        "Contrast verification report referencing theme tokens (colors in theme/tokens if available) against WCAG AA ratios."
+      ],
+      "notes": "Focus on PortalLayout, Navigation, and any component that calls toast, to verify every failure path reports explicitly per rule."
+    },
+    {
+      "id": "T3",
+      "title": "Draft implementation tasks for detected gaps",
+      "owner": "worker-planner",
+      "status": "planned",
+      "dependsOn": [
+        "T2"
+      ],
+      "deliverables": [
+        "Concrete steps with targeted files for adding missing error boundaries/toasts/menu grouping fixes.",
+        "Validation plan covering reproduction steps, root cause description, code change summary, validation actions, and commit messaging as mandated."
+      ],
+      "notes": "Plan should bundle fixes into work that naturally fits inside the AGENTS fix delivery format so nothing is incomplete."
+    }
+  ],
+  "updates": [
+    {
+      "timestamp": "2026-03-02T08:00:00Z",
+      "summary": "Initialized delegated task memory in response to the user's coordination request."
+    },
+    {
+      "timestamp": "2026-03-02T00:47:17Z",
+      "summary": "Captured the portal route inventory artifact for T1 completion."
+    }
+  ],
+  "decisions": [],
+  "artifacts": [
+    {
+      "path": ".codex/portal-route-inventory.md",
+      "description": "Portal route and navigation inventory for worker-scout output."
+    }
+  ]
+}
