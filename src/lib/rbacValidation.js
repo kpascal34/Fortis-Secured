@@ -3,13 +3,10 @@
  * Provides schema validation for role-based access control
  */
 
-// Valid enum values
-export const ROLES = {
-  ADMIN: 'admin',
-  MANAGER: 'manager',
-  STAFF: 'staff',
-  CLIENT: 'client',
-};
+import { ROLES as CANONICAL_ROLES } from './rbac.ts';
+
+// Canonical role values come from src/lib/rbac.ts
+export const ROLES = CANONICAL_ROLES;
 
 export const STATUSES = {
   ACTIVE: 'active',

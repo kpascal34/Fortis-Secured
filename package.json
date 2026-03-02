@@ -19,6 +19,7 @@
     "setup:hr-workflows": "node scripts/setup_hr_workflows_collections.mjs",
     "schema:provision": "node scripts/provision-appwrite-schema.mjs",
     "schema:verify": "node scripts/verify-schema.mjs",
+    "smoke:tenancy": "node scripts/smoke-tenancy.mjs",
     "verify:env": "node scripts/verify-env.mjs",
     "verify:no-process-env": "node scripts/no-process-env-in-src.mjs",
     "verify:no-duplicates": "node scripts/no-duplicate-2-files.mjs",

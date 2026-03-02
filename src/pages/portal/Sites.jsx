@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
+import { useAuth } from '../../context/AuthContext';
 import PortalHeader from '../../components/PortalHeader';
+import { logEvent } from '../../services/auditLogService.js';
 import {
   AiOutlinePlus,
   AiOutlineSearch,
@@ -15,6 +17,7 @@ import {
 } from 'react-icons/ai';
 
 const Sites = () => {
+  const { user } = useAuth();
   const [sites, setSites] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,12 @@ const Sites = () => {
     if (!window.confirm('Are you sure you want to delete this site?')) return;
     try {
       await databases.deleteDocument(config.databaseId, config.sitesCollectionId, id);
+      await logEvent({
+        actorId: user?.$id || 'system',
+        action: 'site.deleted',
+        resourceType: 'sites',
+        resourceId: id,
+      });
       setSites(sites.filter((s) => s.$id !== id));
     } catch (error) {
       alert(`Failed to delete: ${error.message}`);
@@ -158,6 +167,7 @@ const Sites = () => {
         <SiteFormModal
           site={editingSite}
           clients={clients}
+          actorId={user?.$id}
           onClose={(refresh) => {
             setIsModalOpen(false);
             if (refresh) fetchData();
@@ -168,7 +178,7 @@ const Sites = () => {
   );
 };
 
-const SiteFormModal = ({ site, clients, onClose }) => {
+const SiteFormModal = ({ site, clients, actorId, onClose }) => {
   const [formData, setFormData] = useState({
     clientId: site?.clientId || '',
     siteName: site?.siteName || '',
@@ -189,8 +199,24 @@ const SiteFormModal = ({ site, clients, onClose }) => {
     try {
       if (site) {
         await databases.updateDocument(config.databaseId, config.sitesCollectionId, site.$id, formData);
+        await logEvent({
+          actorId: actorId || 'system',
+          action: 'site.updated',
+          resourceType: 'sites',
+          resourceId: site.$id,
+          clientId: formData.clientId || null,
+          metadata: { siteName: formData.siteName },
+        });
       } else {
-        await databases.createDocument(config.databaseId, config.sitesCollectionId, ID.unique(), formData);
+        const created = await databases.createDocument(config.databaseId, config.sitesCollectionId, ID.unique(), formData);
+        await logEvent({
+          actorId: actorId || 'system',
+          action: 'site.created',
+          resourceType: 'sites',
+          resourceId: created.$id,
+          clientId: formData.clientId || null,
+          metadata: { siteName: formData.siteName },
+        });
       }
       onClose(true);
     } catch (error) {

@@ -128,15 +128,28 @@ export const createShift = async (shiftData) => {
     ensureConfigured();
     const docId = `shift_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
     const { startTime, endTime } = buildShiftTimes(shiftData);
+    const clientId = shiftData.clientId || shiftData.client_id;
+    const dateIso = shiftData.date
+      ? toISO(new Date(`${shiftData.date}T00:00:00.000Z`))
+      : startTime;
+
+    if (!clientId) {
+      throw new Error('clientId is required to create a shift');
+    }
+    if (!shiftData.siteId) {
+      throw new Error('siteId is required to create a shift');
+    }
 
     return await databases.createDocument(DATABASE_ID, SHIFTS_COLLECTION_ID, docId, {
       shiftId: shiftData.shiftId || docId,
+      clientId,
+      siteId: shiftData.siteId,
+      date: dateIso,
       startTime,
       endTime,
       title: shiftData.title || 'Shift',
       description: shiftData.description || '',
       status: shiftData.status || 'active',
-      siteId: shiftData.siteId,
       staffId: shiftData.staffId || null,
       notes: shiftData.notes || '',
       createdAt: toISO(new Date()),

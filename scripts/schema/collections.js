@@ -56,6 +56,8 @@ export const COLLECTION_DEFINITIONS = [
       { key: 'firstName', type: 'string', size: 100, required: false },
       { key: 'lastName', type: 'string', size: 100, required: false },
       { key: 'email', type: 'string', size: 320, required: false },
+      { key: 'clientId', type: 'string', size: 255, required: true },
+      { key: 'siteId', type: 'string', size: 255, required: false },
       { key: 'employeeNumber', type: 'string', size: 64, required: false },
       { key: 'username', type: 'string', size: 120, required: false },
       { key: 'department', type: 'string', size: 120, required: false },
@@ -94,6 +96,8 @@ export const COLLECTION_DEFINITIONS = [
         attributes: ['username'],
         orders: ['asc'],
       },
+      { key: 'staff_profiles_clientId_idx', type: 'key', attributes: ['clientId'], orders: ['asc'] },
+      { key: 'staff_profiles_siteId_idx', type: 'key', attributes: ['siteId'], orders: ['asc'] },
     ],
   },
   {
@@ -105,6 +109,8 @@ export const COLLECTION_DEFINITIONS = [
     attributes: [
       { key: 'code', type: 'string', size: 64, required: true },
       { key: 'email', type: 'email', required: true },
+      { key: 'clientId', type: 'string', size: 255, required: false },
+      { key: 'siteId', type: 'string', size: 255, required: false },
       { key: 'createdBy', type: 'string', size: 255, required: true },
       { key: 'createdAt', type: 'datetime', required: true },
       { key: 'expiresAt', type: 'datetime', required: true },
@@ -122,6 +128,8 @@ export const COLLECTION_DEFINITIONS = [
       { key: 'staff_invites_code_unique', type: 'unique', attributes: ['code'], orders: ['asc'] },
       { key: 'staff_invites_email_idx', type: 'key', attributes: ['email'], orders: ['asc'] },
       { key: 'staff_invites_status_idx', type: 'key', attributes: ['status'], orders: ['asc'] },
+      { key: 'staff_invites_clientId_idx', type: 'key', attributes: ['clientId'], orders: ['asc'] },
+      { key: 'staff_invites_siteId_idx', type: 'key', attributes: ['siteId'], orders: ['asc'] },
       {
         key: 'staff_invites_expiry_idx',
         type: 'key',
@@ -337,6 +345,8 @@ export const COLLECTION_DEFINITIONS = [
     permissions: AUTHENTICATED_RW,
     attributes: [
       { key: 'shiftId', type: 'string', size: 255, required: true },
+      { key: 'clientId', type: 'string', size: 255, required: true },
+      { key: 'siteId', type: 'string', size: 255, required: true },
       { key: 'guardId', type: 'string', size: 255, required: true },
       { key: 'staffId', type: 'string', size: 255, required: false },
       {
@@ -357,6 +367,18 @@ export const COLLECTION_DEFINITIONS = [
         key: 'shift_assign_shiftId_idx',
         type: 'key',
         attributes: ['shiftId'],
+        orders: ['asc'],
+      },
+      {
+        key: 'shift_assign_clientId_idx',
+        type: 'key',
+        attributes: ['clientId'],
+        orders: ['asc'],
+      },
+      {
+        key: 'shift_assign_siteId_idx',
+        type: 'key',
+        attributes: ['siteId'],
         orders: ['asc'],
       },
       {
@@ -388,6 +410,8 @@ export const COLLECTION_DEFINITIONS = [
       { key: 'entityType', type: 'string', size: 120, required: false },
       { key: 'entityId', type: 'string', size: 255, required: false },
       { key: 'actorUserId', type: 'string', size: 255, required: false },
+      { key: 'clientId', type: 'string', size: 255, required: false },
+      { key: 'siteId', type: 'string', size: 255, required: false },
       { key: 'metadataJson', type: 'string', size: 32768, required: false },
       { key: 'diff', type: 'string', size: 32768, required: false },
       { key: 'ipAddress', type: 'string', size: 64, required: false },
@@ -415,6 +439,8 @@ export const COLLECTION_DEFINITIONS = [
         attributes: ['createdAt'],
         orders: ['desc'],
       },
+      { key: 'audit_logs_clientId_idx', type: 'key', attributes: ['clientId'], orders: ['asc'] },
+      { key: 'audit_logs_siteId_idx', type: 'key', attributes: ['siteId'], orders: ['asc'] },
       { key: 'audit_logs_entity_idx', type: 'key', attributes: ['entity'], orders: ['asc'] },
       { key: 'audit_logs_entityId_idx', type: 'key', attributes: ['entityId'], orders: ['asc'] },
     ],
@@ -467,6 +493,8 @@ export const COLLECTION_DEFINITIONS = [
       { key: 'fileId', type: 'string', size: 255, required: false },
       { key: 'fileName', type: 'string', size: 500, required: true },
       { key: 'fileType', type: 'string', size: 120, required: true },
+      { key: 'clientId', type: 'string', size: 255, required: false },
+      { key: 'siteId', type: 'string', size: 255, required: false },
       { key: 'appwriteFileId', type: 'string', size: 255, required: false },
       { key: 'googleDriveFileId', type: 'string', size: 255, required: false },
       { key: 'googleDriveFolderId', type: 'string', size: 255, required: false },
@@ -528,6 +556,18 @@ export const COLLECTION_DEFINITIONS = [
         orders: ['asc'],
       },
       {
+        key: 'compliance_uploads_clientId_idx',
+        type: 'key',
+        attributes: ['clientId'],
+        orders: ['asc'],
+      },
+      {
+        key: 'compliance_uploads_siteId_idx',
+        type: 'key',
+        attributes: ['siteId'],
+        orders: ['asc'],
+      },
+      {
         key: 'compliance_uploads_syncStatus_idx',
         type: 'key',
         attributes: ['syncStatus'],
@@ -549,6 +589,8 @@ export const COLLECTION_DEFINITIONS = [
     permissions: AUTHENTICATED_RW,
     attributes: [
       { key: 'staffId', type: 'string', size: 255, required: true },
+      { key: 'clientId', type: 'string', size: 255, required: false },
+      { key: 'siteId', type: 'string', size: 255, required: false },
       { key: 'staff_id', type: 'string', size: 255, required: false },
       {
         key: 'status',
@@ -600,6 +642,8 @@ export const COLLECTION_DEFINITIONS = [
         attributes: ['updatedAt'],
         orders: ['desc'],
       },
+      { key: 'staff_compliance_clientId_idx', type: 'key', attributes: ['clientId'], orders: ['asc'] },
+      { key: 'staff_compliance_siteId_idx', type: 'key', attributes: ['siteId'], orders: ['asc'] },
     ],
   },
   {
@@ -610,6 +654,8 @@ export const COLLECTION_DEFINITIONS = [
     permissions: AUTHENTICATED_RW,
     attributes: [
       { key: 'staffId', type: 'string', size: 255, required: true },
+      { key: 'clientId', type: 'string', size: 255, required: false },
+      { key: 'siteId', type: 'string', size: 255, required: false },
       { key: 'staff_id', type: 'string', size: 255, required: false },
       { key: 'overallGrade', type: 'integer', required: false, min: 1, max: 5 },
       { key: 'overall_grade', type: 'integer', required: false, min: 1, max: 5 },
@@ -637,6 +683,8 @@ export const COLLECTION_DEFINITIONS = [
         attributes: ['overallGrade'],
         orders: ['desc'],
       },
+      { key: 'staff_grades_clientId_idx', type: 'key', attributes: ['clientId'], orders: ['asc'] },
+      { key: 'staff_grades_siteId_idx', type: 'key', attributes: ['siteId'], orders: ['asc'] },
       { key: 'staff_grades_status_idx', type: 'key', attributes: ['status'], orders: ['asc'] },
     ],
   },
@@ -648,6 +696,8 @@ export const COLLECTION_DEFINITIONS = [
     permissions: AUTHENTICATED_RW,
     attributes: [
       { key: 'staffId', type: 'string', size: 255, required: true },
+      { key: 'clientId', type: 'string', size: 255, required: false },
+      { key: 'siteId', type: 'string', size: 255, required: false },
       { key: 'staffName', type: 'string', size: 255, required: false },
       { key: 'staffEmail', type: 'string', size: 320, required: false },
       { key: 'grade', type: 'integer', required: false, min: 1, max: 5 },
@@ -679,6 +729,8 @@ export const COLLECTION_DEFINITIONS = [
         attributes: ['gradedAt'],
         orders: ['desc'],
       },
+      { key: 'admin_grading_clientId_idx', type: 'key', attributes: ['clientId'], orders: ['asc'] },
+      { key: 'admin_grading_siteId_idx', type: 'key', attributes: ['siteId'], orders: ['asc'] },
     ],
   },
   {
@@ -691,6 +743,8 @@ export const COLLECTION_DEFINITIONS = [
       { key: 'guardId', type: 'string', size: 255, required: true },
       { key: 'guardName', type: 'string', size: 255, required: true },
       { key: 'shiftId', type: 'string', size: 255, required: true },
+      { key: 'clientId', type: 'string', size: 255, required: true },
+      { key: 'siteId', type: 'string', size: 255, required: true },
       { key: 'shiftDetails', type: 'json', required: true, size: 65535 },
       { key: 'eligibilityScore', type: 'json', required: true, size: 65535 },
       { key: 'message', type: 'string', size: 2000, required: false },
@@ -713,6 +767,8 @@ export const COLLECTION_DEFINITIONS = [
     indexes: [
       { key: 'applications_guardId_idx', type: 'key', attributes: ['guardId'], orders: ['asc'] },
       { key: 'applications_shiftId_idx', type: 'key', attributes: ['shiftId'], orders: ['asc'] },
+      { key: 'applications_clientId_idx', type: 'key', attributes: ['clientId'], orders: ['asc'] },
+      { key: 'applications_siteId_idx', type: 'key', attributes: ['siteId'], orders: ['asc'] },
       { key: 'applications_status_idx', type: 'key', attributes: ['status'], orders: ['asc'] },
       {
         key: 'applications_appliedAt_idx',

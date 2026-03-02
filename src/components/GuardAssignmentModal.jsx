@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../lib/appwrite';
 import { Query, ID } from 'appwrite';
+import { useAuth } from '../context/AuthContext';
 import {
   AiOutlineClose,
   AiOutlineUser,
@@ -15,10 +16,12 @@ import {
   AiOutlineDelete,
 } from 'react-icons/ai';
 import { notifyShiftAssigned } from '../services/notificationService.js';
+import { logEvent } from '../services/auditLogService.js';
 
 const LICENSE_EXPIRY_THRESHOLD_DAYS = Number(import.meta.env.VITE_LICENSE_EXPIRY_THRESHOLD_DAYS || 30);
 
 const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) => {
+  const { user } = useAuth();
   const [guards, setGuards] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -134,9 +137,14 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
 
       const assignmentData = {
         shiftId: shift.$id,
+        clientId: shift.clientId,
+        siteId: shift.siteId,
         guardId: guardId,
+        staffId: guardId,
         status: 'assigned',
         assignedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       await databases.createDocument(
@@ -159,6 +167,16 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
 
       // Refresh assignments
       await fetchData();
+
+      await logEvent({
+        actorId: user?.$id || 'system',
+        action: 'shift.assignment.created',
+        resourceType: 'shift_assignments',
+        resourceId: shift.$id,
+        clientId: shift.clientId || null,
+        siteId: shift.siteId || null,
+        metadata: { guardId },
+      });
       
       // Check if shift is now fully filled
       const currentAssignments = assignments.length + 1;
@@ -193,11 +211,21 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
         config.databaseId,
         config.shiftAssignmentsCollectionId,
         assignmentId,
-        { status: 'cancelled' }
+        { status: 'cancelled', updatedAt: new Date().toISOString() }
       );
 
       // Refresh assignments
       await fetchData();
+
+      await logEvent({
+        actorId: user?.$id || 'system',
+        action: 'shift.assignment.cancelled',
+        resourceType: 'shift_assignments',
+        resourceId: assignmentId,
+        clientId: shift.clientId || null,
+        siteId: shift.siteId || null,
+        metadata: { shiftId: shift.$id },
+      });
 
       // Update shift status to unfilled if needed
       const activeAssignments = assignments.filter(a => a.status !== 'cancelled').length - 1;
@@ -224,7 +252,7 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
     try {
       setSubmitting(true);
 
-      const updateData = { status: newStatus };
+      const updateData = { status: newStatus, updatedAt: new Date().toISOString() };
       
       if (newStatus === 'checked-in') {
         updateData.checkInTime = new Date().toISOString();
@@ -238,6 +266,16 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
         assignmentId,
         updateData
       );
+
+      await logEvent({
+        actorId: user?.$id || 'system',
+        action: 'shift.assignment.status-updated',
+        resourceType: 'shift_assignments',
+        resourceId: assignmentId,
+        clientId: shift.clientId || null,
+        siteId: shift.siteId || null,
+        metadata: { shiftId: shift.$id, status: newStatus },
+      });
 
       await fetchData();
       alert('Assignment status updated!');

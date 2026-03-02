@@ -6,6 +6,7 @@ import { useCurrentUser, useRole } from '../../hooks/useRBAC';
 import { databases, config } from '../../lib/appwrite';
 import { Query, ID } from 'appwrite';
 import { toISO, formatForDisplay } from '../../lib/date';
+import { logEvent } from '../../services/auditLogService.js';
 
 const SchedulingBoard = () => {
   const { user, profile } = useCurrentUser();
@@ -184,9 +185,13 @@ const SchedulingBoard = () => {
   const handleApply = async (shiftId) => {
     try {
       setError(null);
+      const shift = shifts.find((item) => item.$id === shiftId);
+      if (!shift) {
+        throw new Error('Shift not found.');
+      }
       
       // Create application document
-      await databases.createDocument(
+      const application = await databases.createDocument(
         config.databaseId,
         config.applicationsCollectionId,
         ID.unique(),
@@ -194,10 +199,40 @@ const SchedulingBoard = () => {
           shiftId,
           guardId: user.$id,
           guardName: profile?.firstName ? `${profile.firstName} ${profile.lastName || ''}`.trim() : user.email,
+          clientId: shift.clientId,
+          siteId: shift.siteId,
+          shiftDetails: {
+            siteId: shift.siteId,
+            clientId: shift.clientId,
+            date: shift.date || shift.startTime,
+            startTime: shift.startTime,
+            endTime: shift.endTime,
+            position: shift.position || shift.positionTitle,
+          },
+          eligibilityScore: {
+            score: 0,
+            eligible: true,
+            source: 'scheduling-board-basic',
+          },
           status: 'pending',
           appliedAt: new Date().toISOString(),
+          reviewedAt: null,
+          reviewedBy: null,
+          reviewerName: null,
+          reviewNotes: '',
+          rejectionReason: null,
         }
       );
+
+      await logEvent({
+        actorId: user?.$id || 'system',
+        action: 'shift.application.created',
+        resourceType: 'applications',
+        resourceId: application.$id,
+        clientId: shift.clientId || null,
+        siteId: shift.siteId || null,
+        metadata: { shiftId },
+      });
       
       await loadShifts();
     } catch (err) {
@@ -260,13 +295,14 @@ const SchedulingBoard = () => {
       const startISO = toISO(new Date(`${form.date}T${form.startTime}:00.000Z`));
       const endISO = toISO(new Date(`${form.date}T${form.endTime}:00.000Z`));
 
-      await databases.createDocument(
+      const createdShift = await databases.createDocument(
         config.databaseId,
         config.shiftsCollectionId,
         ID.unique(),
         {
           clientId: form.clientId || profile?.clientId || null,
           siteId: form.siteId,
+          date: startISO,
           shiftId: `shift_${Date.now()}` ,
           startTime: startISO,
           endTime: endISO,
@@ -286,6 +322,15 @@ const SchedulingBoard = () => {
           published: 'false',
         }
       );
+
+      await logEvent({
+        actorId: user?.$id || 'system',
+        action: 'shift.created',
+        resourceType: 'shifts',
+        resourceId: createdShift.$id,
+        clientId: createdShift.clientId || null,
+        siteId: createdShift.siteId || null,
+      });
 
       setForm({ clientId: '', siteId: '', positionTitle: '', date: '', startTime: '', endTime: '', positionsOpen: 1, minimumGradeRequired: '', specialRequirements: '' });
       await loadShifts();

@@ -258,14 +258,22 @@ export const createApplication = ({
   guardId,
   guardName,
   shiftId,
+  clientId,
+  siteId,
   shiftDetails,
   eligibilityScore,
   message = '',
 }) => {
+  if (!clientId || !siteId) {
+    throw new Error('Applications require clientId and siteId.');
+  }
+
   return {
     guardId,
     guardName,
     shiftId,
+    clientId,
+    siteId,
     shiftDetails,
     eligibilityScore,
     message,

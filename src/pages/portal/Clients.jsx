@@ -6,6 +6,7 @@ import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/rbac.ts';
+import { logEvent } from '../../services/auditLogService.js';
 import {
   AiOutlineSearch,
   AiOutlinePlus,
@@ -112,6 +113,13 @@ const Clients = () => {
         config.clientsCollectionId,
         clientId
       );
+      await logEvent({
+        actorId: user?.$id || 'system',
+        action: 'client.deleted',
+        resourceType: 'clients',
+        resourceId: clientId,
+        clientId,
+      });
       setClients(clients.filter((c) => c.$id !== clientId));
       alert('Client deleted successfully!');
     } catch (error) {

@@ -7,16 +7,10 @@ import AccessDenied from './components/AccessDenied.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { initializeWebVitalsMonitoring, detectPerformanceIssues } from './lib/performance.js';
 import { trackEvent, EVENT_CATEGORIES, EVENT_TYPES } from './lib/analyticsUtils.js';
-import { can } from './lib/rbac.ts';
+import { can, PERMISSIONS as RBAC_PERMISSIONS } from './lib/rbac.ts';
 import { env } from './lib/env.js';
 import { getFatalConfigError } from './lib/config.js';
 import RequirePermission from './components/auth/RequirePermission.tsx';
-
-const ROLES = {
-  ADMIN: 'admin',
-  STAFF: 'staff',
-  CLIENT: 'client',
-};
 
 // Eager load critical components
 import PublicSite from './pages/PublicSite.jsx';
@@ -124,10 +118,9 @@ const PortalRouteErrorFallback = ({ errorCode, onReset }) => (
 );
 
 /**
- * FeatureRoute wrapper: renders component if feature enabled, else shows FeatureDisabled.
- * Also enforces a basic role gate so staff/client users don't see admin-only screens.
+ * FeatureRoute wrapper: renders component if feature enabled and permission is granted.
  */
-const FeatureRoute = ({ feature, name, element, roles }) => {
+const FeatureRoute = ({ feature, name, element, permission }) => {
   const { user, loading, resolvedRole, permissions } = useAuth();
 
   if (!isFeatureEnabled(feature)) {
@@ -138,29 +131,31 @@ const FeatureRoute = ({ feature, name, element, roles }) => {
     return <LoadingFallback />;
   }
 
-  if (roles && roles.length > 0 && user) {
-    const allowed = roles.some((role) => {
-      if (role === ROLES.ADMIN) {
-        return can('manageUsers', { role: user?.role, resolvedRole, permissions });
-      }
-
-      if (role === ROLES.CLIENT) {
-        return can('viewCustomerPortal', { role: user?.role, resolvedRole, permissions });
-      }
-
-      if (role === ROLES.STAFF) {
-        return !can('viewCustomerPortal', { role: user?.role, resolvedRole, permissions });
-      }
-
-      return false;
-    });
-
-    if (!allowed) {
-      return <AccessDenied title="Access denied" message={`Your account role does not have access to ${name}.`} />;
-    }
+  if (!user) {
+    return (
+      <AccessDenied
+        title="Sign-in required"
+        message="Please sign in to access this portal area."
+      />
+    );
   }
 
-  return element;
+  const allowed = permission
+    ? can(permission, { role: user?.role, resolvedRole, permissions })
+    : true;
+
+  if (!allowed) {
+    return (
+      <AccessDenied
+        title="Access denied"
+        message={`Your account does not have permission to access ${name}.`}
+      />
+    );
+  }
+
+  if (!permission) return element;
+
+  return <RequirePermission permission={permission}>{element}</RequirePermission>;
 };
 
 const AppContent = () => {
@@ -220,7 +215,16 @@ const AppContent = () => {
         <Route path="/terms" element={<Terms />} />
         <Route path="/cookie-policy" element={<CookiePolicy />} />
 
-        {env.isDev && <Route path="/portal/ui-audit" element={<UIAudit />} />}
+        {env.isDev && (
+          <Route
+            path="/portal/ui-audit"
+            element={
+              <RequirePermission permission={RBAC_PERMISSIONS.DEBUG_ADMIN}>
+                <UIAudit />
+              </RequirePermission>
+            }
+          />
+        )}
 
         {/* Portal Routes */}
         <Route
@@ -241,7 +245,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="DASHBOARD"
                 name="Dashboard"
-                roles={[ROLES.ADMIN, ROLES.STAFF, ROLES.CLIENT]}
+                permission={RBAC_PERMISSIONS.VIEW_DASHBOARD}
                 element={<Dashboard />}
               />
             }
@@ -252,7 +256,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="PROFILE"
                 name="My Profile"
-                roles={[ROLES.ADMIN, ROLES.STAFF, ROLES.CLIENT]}
+                permission={RBAC_PERMISSIONS.VIEW_PROFILE}
                 element={<Profile />}
               />
             }
@@ -265,7 +269,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SCHEDULING"
                 name="Scheduling"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.VIEW_SCHEDULING}
                 element={<Scheduling />}
               />
             }
@@ -276,7 +280,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SCHEDULING"
                 name="Scheduling"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.VIEW_SCHEDULING}
                 element={<SchedulingWithDragDrop />}
               />
             }
@@ -287,7 +291,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SCHEDULING"
                 name="Scheduling Board"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.VIEW_SCHEDULING}
                 element={<SchedulingBoard />}
               />
             }
@@ -298,7 +302,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SCHEDULING"
                 name="New Shift"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.MANAGE_SHIFTS}
                 element={<NewShift />}
               />
             }
@@ -309,7 +313,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SCHEDULING"
                 name="New Shift"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.MANAGE_SHIFTS}
                 element={<NewShift />}
               />
             }
@@ -320,7 +324,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="RECURRING_PATTERNS"
                 name="Recurring Patterns"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.VIEW_RECURRING_PATTERNS}
                 element={<RecurringPatterns />}
               />
             }
@@ -331,7 +335,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="MY_SCHEDULE"
                 name="My Schedule"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.VIEW_MY_SCHEDULE}
                 element={<MySchedule />}
               />
             }
@@ -342,7 +346,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="MY_SCHEDULE"
                 name="My Schedule"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.VIEW_MY_SCHEDULE}
                 element={<StaffScheduleView />}
               />
             }
@@ -353,7 +357,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="OPEN_SHIFTS"
                 name="Open Shifts"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.VIEW_OPEN_SHIFTS}
                 element={<OpenShifts />}
               />
             }
@@ -364,7 +368,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="SHIFT_APPLICATIONS"
                 name="Shift Applications"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.REVIEW_SHIFT_APPLICATIONS}
                 element={<ShiftApplications />}
               />
             }
@@ -377,7 +381,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="COMPLIANCE"
                 name="HR & Compliance"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.VIEW_COMPLIANCE}
                 element={<HR />}
               />
             }
@@ -388,7 +392,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="COMPLIANCE"
                 name="Compliance Wizard"
-                roles={[ROLES.ADMIN, ROLES.STAFF]}
+                permission={RBAC_PERMISSIONS.VIEW_COMPLIANCE}
                 element={<ComplianceWizard />}
               />
             }
@@ -399,7 +403,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="COMPLIANCE"
                 name="Admin Grading"
-                roles={[ROLES.ADMIN]}
+                permission={RBAC_PERMISSIONS.MANAGE_COMPLIANCE}
                 element={<AdminGrading />}
               />
             }
@@ -410,7 +414,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="COMPLIANCE"
                 name="Invite Management"
-                roles={[ROLES.ADMIN]}
+                permission={RBAC_PERMISSIONS.MANAGE_INVITES}
                 element={<InviteManagement />}
               />
             }
@@ -421,7 +425,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="COMPLIANCE"
                 name="Drive Sync Status"
-                roles={[ROLES.ADMIN]}
+                permission={RBAC_PERMISSIONS.VIEW_DRIVE_SYNC}
                 element={<DriveSyncStatus />}
               />
             }
@@ -432,7 +436,7 @@ const AppContent = () => {
               <FeatureRoute
                 feature="AUDIT_LOG"
                 name="Audit Log"
-                roles={[ROLES.ADMIN]}
+                permission={RBAC_PERMISSIONS.VIEW_AUDIT_LOG}
                 element={<AuditLog />}
               />
             }
@@ -441,87 +445,87 @@ const AppContent = () => {
           {/* Other modules */}
           <Route
             path="clients"
-            element={<FeatureRoute feature="CRM" name="Clients / CRM" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Clients />} />}
+            element={<FeatureRoute feature="CRM" name="Clients / CRM" permission={RBAC_PERMISSIONS.VIEW_CLIENTS} element={<Clients />} />}
           />
           <Route
             path="clients/:id"
-            element={<FeatureRoute feature="CRM" name="Client Details" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<ClientDetail />} />}
+            element={<FeatureRoute feature="CRM" name="Client Details" permission={RBAC_PERMISSIONS.VIEW_CLIENTS} element={<ClientDetail />} />}
           />
           <Route
             path="sites"
-            element={<FeatureRoute feature="SITES" name="Sites" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Sites />} />}
+            element={<FeatureRoute feature="SITES" name="Sites" permission={RBAC_PERMISSIONS.VIEW_SITES} element={<Sites />} />}
           />
           <Route
             path="posts"
-            element={<FeatureRoute feature="POSTS" name="Posts" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Posts />} />}
+            element={<FeatureRoute feature="POSTS" name="Posts" permission={RBAC_PERMISSIONS.VIEW_POSTS} element={<Posts />} />}
           />
           <Route
             path="guards"
-            element={<FeatureRoute feature="GUARDS" name="Guards" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Guards />} />}
+            element={<FeatureRoute feature="GUARDS" name="Guards" permission={RBAC_PERMISSIONS.VIEW_GUARDS} element={<Guards />} />}
           />
           <Route
             path="time"
-            element={<FeatureRoute feature="TIME_TRACKING" name="Time Tracking" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<TimeTracking />} />}
+            element={<FeatureRoute feature="TIME_TRACKING" name="Time Tracking" permission={RBAC_PERMISSIONS.VIEW_TIME_TRACKING} element={<TimeTracking />} />}
           />
           <Route
             path="tasks"
-            element={<FeatureRoute feature="TASKS" name="Tasks" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Tasks />} />}
+            element={<FeatureRoute feature="TASKS" name="Tasks" permission={RBAC_PERMISSIONS.VIEW_TASKS} element={<Tasks />} />}
           />
           <Route
             path="incidents"
-            element={<FeatureRoute feature="INCIDENTS" name="Incidents" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Incidents />} />}
+            element={<FeatureRoute feature="INCIDENTS" name="Incidents" permission={RBAC_PERMISSIONS.VIEW_INCIDENTS} element={<Incidents />} />}
           />
           <Route
             path="assets"
-            element={<FeatureRoute feature="ASSETS" name="Assets" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Assets />} />}
+            element={<FeatureRoute feature="ASSETS" name="Assets" permission={RBAC_PERMISSIONS.VIEW_ASSETS} element={<Assets />} />}
           />
           <Route
             path="messages"
-            element={<FeatureRoute feature="MESSAGES" name="Messages" roles={[ROLES.ADMIN, ROLES.STAFF]} element={<Messages />} />}
+            element={<FeatureRoute feature="MESSAGES" name="Messages" permission={RBAC_PERMISSIONS.VIEW_MESSAGES} element={<Messages />} />}
           />
           <Route
             path="finance"
-            element={<FeatureRoute feature="FINANCE" name="Finance" roles={[ROLES.ADMIN]} element={<Finance />} />}
+            element={<FeatureRoute feature="FINANCE" name="Finance" permission={RBAC_PERMISSIONS.VIEW_FINANCE} element={<Finance />} />}
           />
           <Route
             path="ai"
-            element={<FeatureRoute feature="AI_ASSISTANT" name="AI Assistant" roles={[ROLES.ADMIN]} element={<AIAssistant />} />}
+            element={<FeatureRoute feature="AI_ASSISTANT" name="AI Assistant" permission={RBAC_PERMISSIONS.USE_AI_ASSISTANT} element={<AIAssistant />} />}
           />
           <Route
             path="users"
-            element={<FeatureRoute feature="USER_MANAGEMENT" name="User Management" roles={[ROLES.ADMIN]} element={<UserManagement />} />}
+            element={<FeatureRoute feature="USER_MANAGEMENT" name="User Management" permission={RBAC_PERMISSIONS.MANAGE_USERS} element={<UserManagement />} />}
           />
           <Route
             path="admin-debug"
             element={
-              <RequirePermission permission="manageUsers">
+              <RequirePermission permission={RBAC_PERMISSIONS.DEBUG_ADMIN}>
                 <AdminDebug />
               </RequirePermission>
             }
           />
           <Route
             path="payroll"
-            element={<FeatureRoute feature="PAYROLL" name="Payroll" roles={[ROLES.ADMIN]} element={<Payroll />} />}
+            element={<FeatureRoute feature="PAYROLL" name="Payroll" permission={RBAC_PERMISSIONS.VIEW_PAYROLL} element={<Payroll />} />}
           />
           <Route
             path="reports"
-            element={<FeatureRoute feature="REPORTS" name="Reports" roles={[ROLES.ADMIN]} element={<Reports />} />}
+            element={<FeatureRoute feature="REPORTS" name="Reports" permission={RBAC_PERMISSIONS.VIEW_REPORTS} element={<Reports />} />}
           />
           <Route
             path="analytics"
-            element={<FeatureRoute feature="ANALYTICS" name="Analytics" roles={[ROLES.ADMIN]} element={<Analytics />} />}
+            element={<FeatureRoute feature="ANALYTICS" name="Analytics" permission={RBAC_PERMISSIONS.VIEW_ANALYTICS} element={<Analytics />} />}
           />
           <Route
             path="client-portal"
-            element={<FeatureRoute feature="CRM" name="Client Portal" roles={[ROLES.CLIENT, ROLES.ADMIN]} element={<ClientPortal />} />}
+            element={<FeatureRoute feature="CRM" name="Client Portal" permission={RBAC_PERMISSIONS.VIEW_CUSTOMER_PORTAL} element={<ClientPortal />} />}
           />
           <Route
             path="settings"
-            element={<FeatureRoute feature="SETTINGS" name="Settings" roles={[ROLES.ADMIN]} element={<Settings />} />}
+            element={<FeatureRoute feature="SETTINGS" name="Settings" permission={RBAC_PERMISSIONS.MANAGE_SETTINGS} element={<Settings />} />}
           />
           <Route
             path="departments"
-            element={<FeatureRoute feature="SETTINGS" name="Manage Departments" roles={[ROLES.ADMIN]} element={<ManageDepartments />} />}
+            element={<FeatureRoute feature="SETTINGS" name="Manage Departments" permission={RBAC_PERMISSIONS.MANAGE_DEPARTMENTS} element={<ManageDepartments />} />}
           />
         </Route>
 

@@ -5,6 +5,7 @@ import { Query, ID } from 'appwrite';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC';
 import PageHeader from '../../components/PageHeader';
 import GlassPanel from '../../components/GlassPanel';
+import { logEvent } from '../../services/auditLogService.js';
 
 const NewShift = () => {
   const navigate = useNavigate();
@@ -140,8 +141,14 @@ const NewShift = () => {
       // Match Appwrite schema for the `shifts` collection (date = datetime)
       const dateISO = new Date(formData.date).toISOString();
 
+      const selectedSite = sites.find((site) => site.$id === formData.siteId);
+      const resolvedClientId = formData.clientId || selectedSite?.clientId || profile?.clientId || null;
+      if (!resolvedClientId) {
+        throw new Error('Client is required for shift creation.');
+      }
+
       const shiftData = {
-        clientId: formData.clientId || null,
+        clientId: resolvedClientId,
         siteId: formData.siteId || null,
         date: dateISO,
         startTime: formData.startTime,
@@ -156,12 +163,21 @@ const NewShift = () => {
         published: 'false',
       };
 
-      await databases.createDocument(
+      const createdShift = await databases.createDocument(
         config.databaseId,
         config.shiftsCollectionId,
         ID.unique(),
         shiftData
       );
+
+      await logEvent({
+        actorId: user?.$id || 'system',
+        action: 'shift.created',
+        resourceType: 'shifts',
+        resourceId: createdShift.$id,
+        clientId: resolvedClientId,
+        siteId: shiftData.siteId,
+      });
 
       setSuccess(true);
       

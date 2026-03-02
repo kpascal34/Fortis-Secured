@@ -344,12 +344,15 @@
 ### 8.2 Drive Sync Setup (REQUIRED)
 - [x] `scripts/provision-appwrite-schema.mjs` - Idempotent core schema provisioning
 - [x] `scripts/verify-schema.mjs` - CI-safe schema verification
+- [x] `scripts/smoke-tenancy.mjs` - Stage 3 tenancy smoke validation
 - Provision command: `npm run schema:provision`
 - Verify command: `npm run schema:verify`
+- Tenancy smoke command: `npm run smoke:tenancy`
 - Expected output: summary table showing `created/skipped/failed` counts for collections, attributes, and indexes
 - Troubleshooting:
   - Missing env vars: set `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, `APPWRITE_DATABASE_ID`
   - Index creation failure: remove conflicting duplicate data, then rerun `npm run schema:provision`
+  - Tenancy smoke failure: review `src/lib/tenancyScope.js`, `/portal` route permission gates in `src/App.jsx`, and scoped service methods
 
 ### 8.3 Database Attributes
 - [x] All RBAC collections have required attributes
@@ -406,6 +409,7 @@
 ### Before Going Live:
 - [ ] Run `npm run schema:provision`
 - [ ] Run `npm run schema:verify`
+- [ ] Run `npm run smoke:tenancy`
 - [ ] Verify all environment variables in `.env.production`
 - [ ] Test each feature in production environment
 - [ ] Verify database connections

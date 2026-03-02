@@ -1,20 +1,29 @@
 /**
  * Google Drive Integration Service
- * Syncs compliance files to Google Drive with retry logic
- * 
- * Requires: GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON, GOOGLE_DRIVE_PARENT_FOLDER_ID
+ * Syncs compliance files to Google Drive with tenancy-aware controls.
  */
 
 import { ID, Query } from 'appwrite';
 import { google } from 'googleapis';
 import { config, databases, storage } from '../lib/appwrite.js';
-import { logAudit } from './auditService.js';
+import { PERMISSIONS } from '../lib/rbac.ts';
+import { buildPermissionsForDoc } from '../lib/appwritePermissions.js';
+import { ensureDatabaseConfig, getAuthorizedScope, withScopedQueries } from '../lib/serviceSecurity.js';
+import { RESOURCE_TYPES, normalizeTenancyDocument } from '../lib/tenancyScope.js';
+import { logEvent } from './auditLogService.js';
 
 const isBrowser = typeof window !== 'undefined';
-
 const dbId = config.databaseId;
+const uploadsCol = config.complianceUploadsCollectionId || 'compliance_uploads';
+const staffProfilesCol = config.staffProfilesCollectionId || 'staff_profiles';
+const foldersCol = 'google_drive_folders';
 
 let driveService = null;
+
+const ensureCollections = () => {
+  ensureDatabaseConfig(uploadsCol, 'compliance uploads collection');
+  ensureDatabaseConfig(staffProfilesCol, 'staff profiles collection');
+};
 
 function getDriveService() {
   if (driveService) return driveService;
@@ -31,13 +40,48 @@ function getDriveService() {
   return driveService;
 }
 
+const resolveStaffProfile = async (staffId) => {
+  try {
+    const profileByDoc = await databases.getDocument(dbId, staffProfilesCol, staffId);
+    return profileByDoc;
+  } catch (_) {
+    const docs = await databases.listDocuments(dbId, staffProfilesCol, [
+      Query.equal('userId', staffId),
+      Query.limit(1),
+    ]);
+    return docs.documents[0] || null;
+  }
+};
+
+const resolveTenancy = async (staffId) => {
+  const profile = await resolveStaffProfile(staffId);
+  return {
+    profile,
+    clientId: profile?.clientId || profile?.client_id || null,
+    siteId: profile?.siteId || profile?.site_id || null,
+    employeeNumber: profile?.employeeNumber || 'FS-UNKNOWN',
+    fullName: profile?.fullName || `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim() || 'Unknown',
+  };
+};
+
+const assertOwnStaff = (scope, staffId, message = 'You can only operate on your own compliance records.') => {
+  if (scope.role === 'staff' && String(scope.userId || '') !== String(staffId || '')) {
+    throw new Error(message);
+  }
+};
+
 /**
- * Create or get staff Google Drive folder
- * Folder path: Fortis Compliance / FS-000123 (Name)
+ * Create or get staff Google Drive folder.
  */
-export async function ensureStaffFolder(staffId, employeeNumber, fullName) {
-  const existingFolder = await databases.listDocuments(dbId, 'google_drive_folders', [
+export async function ensureStaffFolder(staffId, employeeNumber, fullName, actor = null) {
+  ensureCollections();
+
+  const { actor: resolvedActor, scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.SUBMIT_COMPLIANCE });
+  assertOwnStaff(scope, staffId);
+
+  const existingFolder = await databases.listDocuments(dbId, foldersCol, [
     Query.equal('staffId', staffId),
+    Query.limit(1),
   ]);
 
   if (existingFolder.documents.length > 0) {
@@ -51,132 +95,146 @@ export async function ensureStaffFolder(staffId, employeeNumber, fullName) {
     throw new Error('GOOGLE_DRIVE_PARENT_FOLDER_ID not set');
   }
 
-  // Fallback lookups for folder naming if not provided
-  if (!employeeNumber || !fullName) {
-    try {
-      const profile = await databases.getDocument(dbId, 'staff_profiles', staffId);
-      employeeNumber = employeeNumber || profile?.employeeNumber || 'FS-UNKNOWN';
-      fullName = fullName || profile?.fullName || 'Unknown';
-    } catch (_) {
-      employeeNumber = employeeNumber || 'FS-UNKNOWN';
-      fullName = fullName || 'Unknown';
-    }
-  }
+  const tenancy = await resolveTenancy(staffId);
 
-  // Create folder: FS-000123 (Name)
-  const folderName = `${employeeNumber} (${fullName})`;
+  const staffEmployeeNumber = employeeNumber || tenancy.employeeNumber;
+  const staffFullName = fullName || tenancy.fullName;
+  const folderName = `${staffEmployeeNumber} (${staffFullName})`;
 
-  const folderMetadata = {
-    name: folderName,
-    parents: [parentFolderId],
-    mimeType: 'application/vnd.google-apps.folder',
-  };
+  const response = await drive.files.create({
+    resource: {
+      name: folderName,
+      parents: [parentFolderId],
+      mimeType: 'application/vnd.google-apps.folder',
+    },
+    fields: 'id',
+  });
 
-  try {
-    const response = await drive.files.create({
-      resource: folderMetadata,
-      fields: 'id',
-    });
+  const folderId = response.data.id;
 
-    const folderId = response.data.id;
+  const dbFolder = await databases.createDocument(dbId, foldersCol, ID.unique(), {
+    staffId,
+    folderId,
+    folderName,
+    parentFolderId,
+    clientId: tenancy.clientId,
+    siteId: tenancy.siteId,
+    createdAt: new Date().toISOString(),
+  });
 
-    const dbFolder = await databases.createDocument(dbId, 'google_drive_folders', ID.unique(), {
-      staffId: staffId,
-      folderId: folderId,
-      folderName: folderName,
-      createdAt: new Date().toISOString(),
-      parentFolderId: parentFolderId,
-    });
+  await logEvent({
+    actorId: resolvedActor.$id,
+    action: 'compliance.drive-folder.created',
+    resourceType: 'google_drive_folders',
+    resourceId: dbFolder.$id,
+    clientId: tenancy.clientId,
+    siteId: tenancy.siteId,
+    metadata: { staffId, folderId, folderName },
+  });
 
-    await logAudit({
-      actorId: staffId,
-      actorRole: 'staff',
-      action: 'CREATE',
-      entity: 'google_drive_folders',
-      entityId: dbFolder.$id,
-      diff: JSON.stringify({ folderId, folderName }),
-      driveSyncStatus: 'synced',
-    });
-
-    return dbFolder;
-  } catch (err) {
-    console.error('Failed to create Google Drive folder:', err);
-    throw err;
-  }
+  return dbFolder;
 }
 
 /**
- * Sync file to Google Drive
- * Called after each compliance upload
- * Includes retry logic (max 3 attempts, 5-min backoff)
+ * Sync file to Google Drive.
  */
-export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType, appwriteFileId) {
-  // If running in the browser, call the serverless API to perform sync
+export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType, appwriteFileId, actor = null) {
+  ensureCollections();
+
+  const { actor: resolvedActor, scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.SUBMIT_COMPLIANCE });
+  assertOwnStaff(scope, staffId);
+
+  const tenancy = await resolveTenancy(staffId);
+
   if (isBrowser) {
     const payload = { staffId, fileId, fileName, fileType, appwriteFileId };
-    const resp = await fetch('/api/drive-sync', {
+    const response = await fetch('/api/drive-sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.error || 'Drive sync failed');
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Drive sync failed');
     }
-    const data = await resp.json();
-    // Also update local DB record to reflect success if it exists
+
+    const data = await response.json();
+
     try {
-      const uploads = await databases.listDocuments(dbId, config.complianceUploadsCollectionId, [
+      const uploads = await databases.listDocuments(dbId, uploadsCol, [
         Query.equal('appwriteFileId', appwriteFileId),
+        Query.equal('staffId', staffId),
+        Query.limit(1),
       ]);
+
       if (uploads.documents.length > 0) {
-        await databases.updateDocument(dbId, config.complianceUploadsCollectionId, uploads.documents[0].$id, {
+        await databases.updateDocument(dbId, uploadsCol, uploads.documents[0].$id, {
           googleDriveFileId: data.driveFileId,
           googleDriveFolderId: data.folderId,
           syncStatus: 'synced',
+          driveSyncStatus: 'success',
           lastSyncAttempt: new Date().toISOString(),
           syncError: null,
+          updatedAt: new Date().toISOString(),
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      // Local status update best-effort only.
+    }
+
     return data;
   }
-  // Check if already synced
-  const uploads = await databases.listDocuments(dbId, config.complianceUploadsCollectionId, [
+
+  const uploads = await databases.listDocuments(dbId, uploadsCol, [
     Query.equal('appwriteFileId', appwriteFileId),
+    Query.equal('staffId', staffId),
+    Query.limit(1),
   ]);
 
-  if (uploads.documents.length > 0) {
-    const upload = uploads.documents[0];
-    if (upload.syncStatus === 'synced') {
-      return upload; // Already synced
-    }
+  if (uploads.documents.length > 0 && uploads.documents[0].syncStatus === 'synced') {
+    return uploads.documents[0];
   }
 
-  // Get or create record
   let uploadRecord;
   if (uploads.documents.length > 0) {
     uploadRecord = uploads.documents[0];
   } else {
-    uploadRecord = await databases.createDocument(dbId, config.complianceUploadsCollectionId, ID.unique(), {
-      staffId: staffId,
-      fileId: fileId,
-      fileName: fileName,
-      fileType: fileType,
-      appwriteFileId: appwriteFileId,
-      uploadedAt: new Date().toISOString(),
-      syncStatus: 'pending',
-      syncAttempts: 0,
+    const permissions = buildPermissionsForDoc({
+      type: 'compliance_uploads',
+      ownerUserId: staffId,
+      clientUserId: null,
+      sharedWithClient: false,
     });
+
+    uploadRecord = await databases.createDocument(
+      dbId,
+      uploadsCol,
+      ID.unique(),
+      {
+        staffId,
+        fileId,
+        fileName,
+        fileType,
+        appwriteFileId,
+        uploadedAt: new Date().toISOString(),
+        syncStatus: 'pending',
+        driveSyncStatus: 'pending',
+        syncAttempts: 0,
+        clientId: tenancy.clientId,
+        siteId: tenancy.siteId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      permissions
+    );
   }
 
-  // Attempt sync
   try {
-    const staffFolder = await ensureStaffFolder(staffId);
+    const staffFolder = await ensureStaffFolder(staffId, tenancy.employeeNumber, tenancy.fullName, resolvedActor);
     const drive = getDriveService();
 
-    // Get folder for file type (Identity, Employment, etc.)
-    const typeFolders = {
+    const typeFolderNameByKey = {
       identity: 'Identity',
       employment: 'Employment',
       evidence: 'Evidence',
@@ -185,100 +243,84 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
       video: 'Video',
     };
 
-    const typeFolderName = typeFolders[fileType] || 'Other';
-    let typeFolderId = await getOrCreateTypeFolder(drive, staffFolder.folderId, typeFolderName);
+    const typeFolderName = typeFolderNameByKey[fileType] || 'Other';
+    const typeFolderId = await getOrCreateTypeFolder(drive, staffFolder.folderId, typeFolderName);
 
-    // Download file from Appwrite
-    const filesBucket =
-      config.documentsBucketId;
-    const appwriteFile = await storage.getFileDownload(
-      filesBucket,
-      appwriteFileId
-    );
+    const filesBucket = config.documentsBucketId;
+    const appwriteFile = await storage.getFileDownload(filesBucket, appwriteFileId);
 
-    // Upload to Google Drive
-    const fileMetadata = {
-      name: fileName,
-      parents: [typeFolderId],
-    };
-
-    const media = {
-      mimeType: getMimeType(fileName),
-      body: Buffer.from(appwriteFile),
-    };
-
-    const response = await drive.files.create({
-      resource: fileMetadata,
-      media: media,
+    const driveResponse = await drive.files.create({
+      resource: {
+        name: fileName,
+        parents: [typeFolderId],
+      },
+      media: {
+        mimeType: getMimeType(fileName),
+        body: Buffer.from(appwriteFile),
+      },
       fields: 'id',
     });
 
-    const driveFileId = response.data.id;
+    const driveFileId = driveResponse.data.id;
 
-    // Update record
-    await databases.updateDocument(dbId, config.complianceUploadsCollectionId, uploadRecord.$id, {
+    await databases.updateDocument(dbId, uploadsCol, uploadRecord.$id, {
       googleDriveFileId: driveFileId,
       googleDriveFolderId: typeFolderId,
       syncStatus: 'synced',
-      syncAttempts: uploadRecord.syncAttempts + 1,
+      driveSyncStatus: 'success',
+      syncAttempts: Number(uploadRecord.syncAttempts || 0) + 1,
       lastSyncAttempt: new Date().toISOString(),
       syncError: null,
+      updatedAt: new Date().toISOString(),
     });
 
-    await logAudit({
-      actorId: staffId,
-      actorRole: 'staff',
-      action: 'UPDATE',
-      entity: config.complianceUploadsCollectionId,
-      entityId: uploadRecord.$id,
-      diff: JSON.stringify({ driveFileId, status: 'synced' }),
-      driveSyncStatus: 'synced',
+    await logEvent({
+      actorId: resolvedActor.$id,
+      action: 'compliance.upload.synced',
+      resourceType: RESOURCE_TYPES.COMPLIANCE_UPLOADS,
+      resourceId: uploadRecord.$id,
+      clientId: tenancy.clientId,
+      siteId: tenancy.siteId,
+      metadata: {
+        staffId,
+        appwriteFileId,
+        driveFileId,
+      },
     });
 
     return uploadRecord;
-  } catch (err) {
-    const attempts = uploadRecord.syncAttempts + 1;
+  } catch (error) {
+    const attempts = Number(uploadRecord.syncAttempts || 0) + 1;
+    const failed = attempts >= 3;
 
-    if (attempts < 3) {
-      // Retry: schedule for 5 minutes later (TBD: use job queue)
-      await databases.updateDocument(dbId, config.complianceUploadsCollectionId, uploadRecord.$id, {
-        syncAttempts: attempts,
-        lastSyncAttempt: new Date().toISOString(),
-        syncError: err.message,
-        syncStatus: 'pending',
-      });
+    await databases.updateDocument(dbId, uploadsCol, uploadRecord.$id, {
+      syncAttempts: attempts,
+      lastSyncAttempt: new Date().toISOString(),
+      syncError: error.message,
+      syncStatus: failed ? 'failed' : 'pending',
+      driveSyncStatus: failed ? 'failed' : 'pending',
+      updatedAt: new Date().toISOString(),
+    });
 
-      // TODO: Implement background job for retry
-      console.error(`[Retry ${attempts}/3] File sync failed:`, err.message);
-    } else {
-      // Give up after 3 attempts
-      await databases.updateDocument(dbId, config.complianceUploadsCollectionId, uploadRecord.$id, {
-        syncAttempts: attempts,
-        syncStatus: 'failed',
-        lastSyncAttempt: new Date().toISOString(),
-        syncError: err.message,
-      });
+    await logEvent({
+      actorId: resolvedActor.$id,
+      action: failed ? 'compliance.upload.sync.failed' : 'compliance.upload.sync.retry-scheduled',
+      resourceType: RESOURCE_TYPES.COMPLIANCE_UPLOADS,
+      resourceId: uploadRecord.$id,
+      clientId: tenancy.clientId,
+      siteId: tenancy.siteId,
+      metadata: {
+        staffId,
+        attempts,
+        error: error.message,
+      },
+    });
 
-      await logAudit({
-        actorId: staffId,
-        actorRole: 'system',
-        action: 'UPDATE',
-        entity: config.complianceUploadsCollectionId,
-        entityId: uploadRecord.$id,
-        diff: JSON.stringify({ status: 'failed', error: err.message }),
-        driveSyncStatus: 'failed',
-      });
-    }
-
-    throw err;
+    throw error;
   }
 }
 
-/**
- * Get or create type folder (Identity, Employment, etc.)
- */
 async function getOrCreateTypeFolder(drive, parentFolderId, typeName) {
-  // Check if exists
   const response = await drive.files.list({
     q: `name='${typeName}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents`,
     spaces: 'drive',
@@ -289,26 +331,20 @@ async function getOrCreateTypeFolder(drive, parentFolderId, typeName) {
     return response.data.files[0].id;
   }
 
-  // Create folder
-  const folderMetadata = {
-    name: typeName,
-    parents: [parentFolderId],
-    mimeType: 'application/vnd.google-apps.folder',
-  };
-
   const createResponse = await drive.files.create({
-    resource: folderMetadata,
+    resource: {
+      name: typeName,
+      parents: [parentFolderId],
+      mimeType: 'application/vnd.google-apps.folder',
+    },
     fields: 'id',
   });
 
   return createResponse.data.id;
 }
 
-/**
- * Get MIME type from filename
- */
 function getMimeType(fileName) {
-  const ext = fileName.split('.').pop().toLowerCase();
+  const ext = String(fileName || '').split('.').pop().toLowerCase();
 
   const types = {
     pdf: 'application/pdf',
@@ -327,14 +363,18 @@ function getMimeType(fileName) {
   return types[ext] || 'application/octet-stream';
 }
 
-/**
- * Retry failed syncs (call periodically)
- */
-export async function retryFailedSyncs() {
-  const failed = await databases.listDocuments(dbId, config.complianceUploadsCollectionId, [
+export async function retryFailedSyncs(actor = null) {
+  ensureCollections();
+
+  const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_DRIVE_SYNC });
+
+  const queries = withScopedQueries(RESOURCE_TYPES.COMPLIANCE_UPLOADS, scope, [
     Query.equal('syncStatus', 'pending'),
     Query.lessThan('syncAttempts', 3),
+    Query.limit(200),
   ]);
+
+  const failed = await databases.listDocuments(dbId, uploadsCol, queries);
 
   for (const upload of failed.documents) {
     try {
@@ -343,33 +383,41 @@ export async function retryFailedSyncs() {
         upload.fileId,
         upload.fileName,
         upload.fileType,
-        upload.appwriteFileId
+        upload.appwriteFileId,
+        actor
       );
-    } catch (err) {
-      console.error(`Retry failed for ${upload.fileId}:`, err.message);
+    } catch (error) {
+      console.error(`Retry failed for ${upload.fileId}:`, error.message);
     }
   }
 }
 
-/**
- * Get staff's uploaded files (with sync status)
- */
-export async function getStaffUploads(staffId) {
-  const uploads = await databases.listDocuments(dbId, config.complianceUploadsCollectionId, [
+export async function getStaffUploads(staffId, actor = null) {
+  ensureCollections();
+
+  const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_COMPLIANCE });
+  assertOwnStaff(scope, staffId, 'You can only view your own uploads.');
+
+  const queries = withScopedQueries(RESOURCE_TYPES.COMPLIANCE_UPLOADS, scope, [
     Query.equal('staffId', staffId),
     Query.orderDesc('uploadedAt'),
+    Query.limit(500),
   ]);
 
-  return uploads.documents;
+  const uploads = await databases.listDocuments(dbId, uploadsCol, queries);
+  return uploads.documents.map((doc) => normalizeTenancyDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, doc));
 }
 
-/**
- * Get failed syncs for admin review
- */
-export async function getFailedSyncs() {
-  const failed = await databases.listDocuments(dbId, config.complianceUploadsCollectionId, [
+export async function getFailedSyncs(actor = null) {
+  ensureCollections();
+
+  const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_DRIVE_SYNC });
+
+  const queries = withScopedQueries(RESOURCE_TYPES.COMPLIANCE_UPLOADS, scope, [
     Query.equal('syncStatus', 'failed'),
+    Query.limit(500),
   ]);
 
-  return failed.documents;
+  const failed = await databases.listDocuments(dbId, uploadsCol, queries);
+  return failed.documents.map((doc) => normalizeTenancyDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, doc));
 }

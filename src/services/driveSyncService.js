@@ -1,11 +1,15 @@
 /**
  * Drive Sync Status Service
- * Manages fetching and updating Google Drive sync status records for compliance uploads
+ * Tenancy-scoped access for compliance upload sync records.
  */
 
-import { databases, config } from '../lib/appwrite.js';
 import { Query } from 'appwrite';
-import * as auditService from './auditService.js';
+import { databases, config } from '../lib/appwrite.js';
+import { PERMISSIONS } from '../lib/rbac.ts';
+import { buildPermissionsForDoc } from '../lib/appwritePermissions.js';
+import { ensureDatabaseConfig, getAuthorizedScope, withScopedQueries, assertScopedDocument } from '../lib/serviceSecurity.js';
+import { RESOURCE_TYPES, normalizeTenancyDocument } from '../lib/tenancyScope.js';
+import { logEvent } from './auditLogService.js';
 
 const dbId = config.databaseId;
 const complianceUploadsCol = config.complianceUploadsCollectionId || 'compliance_uploads';
@@ -24,10 +28,14 @@ export const DRIVE_SYNC_REQUIRED_ATTRIBUTES = [
 let schemaValidationPromise;
 
 const buildSchemaError = (message, details = {}) => {
-  const err = new Error(message);
-  err.code = 'DRIVE_SYNC_SCHEMA_MISSING';
-  err.details = details;
-  return err;
+  const error = new Error(message);
+  error.code = 'DRIVE_SYNC_SCHEMA_MISSING';
+  error.details = details;
+  return error;
+};
+
+const ensureCollection = () => {
+  ensureDatabaseConfig(complianceUploadsCol, 'compliance uploads collection');
 };
 
 async function getCollectionAttributes() {
@@ -36,9 +44,7 @@ async function getCollectionAttributes() {
 }
 
 export async function validateDriveSyncSchema({ force = false } = {}) {
-  if (!dbId || !complianceUploadsCol) {
-    throw buildSchemaError('Drive Sync Status is not configured.', { missingConfig: true });
-  }
+  ensureCollection();
 
   if (config.isDemoMode) {
     return { ok: true, attributes: [] };
@@ -61,11 +67,7 @@ export async function validateDriveSyncSchema({ force = false } = {}) {
         }
 
         if (requirement.type && found.type !== requirement.type) {
-          mismatchedType.push({
-            key: requirement.key,
-            expected: requirement.type,
-            found: found.type,
-          });
+          mismatchedType.push({ key: requirement.key, expected: requirement.type, found: found.type });
         }
 
         if (requirement.enum?.length) {
@@ -99,199 +101,127 @@ export async function validateDriveSyncSchema({ force = false } = {}) {
 }
 
 /**
- * Get all sync status records with filters
- * @param {object} filters - Query filters (status, staffId, dateRange, etc.)
- * @returns {Promise<array>} List of sync records
+ * Get sync records with optional filters.
  */
-export async function getSyncStatusRecords(filters = {}) {
-  if (!dbId || !complianceUploadsCol) {
-    throw new Error('Compliance uploads collection not configured. Set VITE_APPWRITE_COMPLIANCE_UPLOADS_COLLECTION_ID.');
-  }
+export async function getSyncStatusRecords(filters = {}, actor = null) {
+  ensureCollection();
 
   if (config.isDemoMode) {
-    return []; // Return empty array in demo mode
+    return [];
   }
 
   try {
+    const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_DRIVE_SYNC });
     await validateDriveSyncSchema();
 
-    const queries = [];
+    const queries = withScopedQueries(RESOURCE_TYPES.COMPLIANCE_UPLOADS, scope, []);
 
-    // Filter by status if provided
-    if (filters.status) {
-      queries.push(Query.equal('driveSyncStatus', filters.status));
-    }
+    if (filters.status) queries.push(Query.equal('driveSyncStatus', filters.status));
+    if (filters.staffId) queries.push(Query.equal('staffId', filters.staffId));
+    if (filters.fileType) queries.push(Query.equal('fileType', filters.fileType));
 
-    // Filter by staff ID if provided
-    if (filters.staffId) {
-      queries.push(Query.equal('staffId', filters.staffId));
-    }
-
-    // Filter by file type if provided
-    if (filters.fileType) {
-      queries.push(Query.equal('fileType', filters.fileType));
-    }
-
-    // Order by most recent first
     queries.push(Query.orderDesc('lastSyncAttempt'));
+    queries.push(Query.limit(Number(filters.limit || 500)));
 
-    const response = await databases.listDocuments(
-      dbId,
-      complianceUploadsCol,
-      queries
-    );
-
-    return response.documents || [];
+    const response = await databases.listDocuments(dbId, complianceUploadsCol, queries);
+    return response.documents.map((doc) => normalizeTenancyDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, doc));
   } catch (error) {
     console.error('Error fetching sync status records:', error);
-    if (error.code === 'DRIVE_SYNC_SCHEMA_MISSING') {
-      throw error;
+    if (error.code === 'DRIVE_SYNC_SCHEMA_MISSING') throw error;
+
+    if (String(error.message || '').includes('driveSyncStatus')) {
+      throw new Error('Missing attribute: driveSyncStatus. Add enum attribute (pending, failed, success) to compliance_uploads.');
     }
-    
-    // Provide helpful error messages
-    if (error.message && error.message.includes('driveSyncStatus')) {
-      throw new Error('Missing attribute: driveSyncStatus. Add this enum attribute (pending, failed, success) to your compliance_uploads collection.');
-    }
-    if (error.message && error.message.includes('Invalid collection')) {
+
+    if (String(error.message || '').includes('Invalid collection')) {
       throw new Error('Collection not found. Create the compliance_uploads collection in Appwrite.');
     }
-    
+
     throw error;
   }
 }
 
-/**
- * Get failed sync records
- * @returns {Promise<array>} List of failed syncs
- */
-export async function getFailedSyncs() {
-  return getSyncStatusRecords({ status: 'failed' });
+export async function getFailedSyncs(actor = null) {
+  return getSyncStatusRecords({ status: 'failed' }, actor);
 }
 
-/**
- * Get pending sync records
- * @returns {Promise<array>} List of pending syncs
- */
-export async function getPendingSyncs() {
-  return getSyncStatusRecords({ status: 'pending' });
+export async function getPendingSyncs(actor = null) {
+  return getSyncStatusRecords({ status: 'pending' }, actor);
 }
 
-/**
- * Get successful sync records
- * @returns {Promise<array>} List of successful syncs
- */
-export async function getSuccessfulSyncs() {
-  return getSyncStatusRecords({ status: 'success' });
+export async function getSuccessfulSyncs(actor = null) {
+  return getSyncStatusRecords({ status: 'success' }, actor);
 }
 
-/**
- * Get sync summary statistics
- * @returns {Promise<object>} Summary with counts by status
- */
-export async function getSyncSummary() {
-  if (!dbId || !complianceUploadsCol) {
-    throw new Error('Compliance uploads collection not configured.');
-  }
+export async function getSyncSummary(actor = null) {
+  ensureCollection();
 
   if (config.isDemoMode) {
     throw new Error('Drive sync is disabled in demo mode.');
   }
 
-  try {
-    await validateDriveSyncSchema();
+  const [failed, pending, successful] = await Promise.all([
+    getFailedSyncs(actor),
+    getPendingSyncs(actor),
+    getSuccessfulSyncs(actor),
+  ]);
 
-    const [failed, pending, successful] = await Promise.all([
-      getFailedSyncs(),
-      getPendingSyncs(),
-      getSuccessfulSyncs(),
-    ]);
-
-    return {
-      total: failed.length + pending.length + successful.length,
-      failed: failed.length,
-      pending: pending.length,
-      successful: successful.length,
-      failureRate: failed.length > 0 
-        ? ((failed.length / (failed.length + successful.length)) * 100).toFixed(1) 
-        : 0,
-    };
-  } catch (error) {
-    console.error('Error getting sync summary:', error);
-    throw error;
-  }
+  return {
+    total: failed.length + pending.length + successful.length,
+    failed: failed.length,
+    pending: pending.length,
+    successful: successful.length,
+    failureRate:
+      failed.length > 0 ? ((failed.length / Math.max(1, failed.length + successful.length)) * 100).toFixed(1) : 0,
+  };
 }
 
-/**
- * Get sync details for a specific file
- * @param {string} recordId - Document ID
- * @returns {Promise<object>} Detailed sync record
- */
-export async function getSyncRecordDetail(recordId) {
-  if (!dbId || !complianceUploadsCol) {
-    throw new Error('Compliance uploads collection not configured');
-  }
+export async function getSyncRecordDetail(recordId, actor = null) {
+  ensureCollection();
 
-  try {
-    await validateDriveSyncSchema();
+  const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_DRIVE_SYNC });
+  await validateDriveSyncSchema();
 
-    const record = await databases.getDocument(
-      dbId,
-      complianceUploadsCol,
-      recordId
-    );
-    return record;
-  } catch (error) {
-    console.error('Error fetching sync record detail:', error);
-    throw error;
-  }
+  const record = await databases.getDocument(dbId, complianceUploadsCol, recordId);
+  const normalized = normalizeTenancyDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, record);
+  assertScopedDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, normalized, scope);
+  return normalized;
 }
 
-/**
- * Update sync status (used by retry or manual update)
- * @param {string} recordId - Document ID
- * @param {string} status - New status (success/failed/pending)
- * @param {object} updates - Additional fields to update
- * @returns {Promise<object>} Updated record
- */
-export async function updateSyncStatus(recordId, status, updates = {}) {
-  if (!dbId || !complianceUploadsCol) {
-    throw new Error('Compliance uploads collection not configured');
-  }
+export async function updateSyncStatus(recordId, status, updates = {}, actor = null) {
+  ensureCollection();
 
-  try {
-    await validateDriveSyncSchema();
+  const { actor: resolvedActor, scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_DRIVE_SYNC });
+  await validateDriveSyncSchema();
 
-    const updateData = {
-      ...updates,
-      driveSyncStatus: status,
-      updatedAt: new Date().toISOString(),
-    };
+  const existing = await databases.getDocument(dbId, complianceUploadsCol, recordId);
+  const normalized = normalizeTenancyDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, existing);
+  assertScopedDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, normalized, scope);
 
-    const updated = await databases.updateDocument(
-      dbId,
-      complianceUploadsCol,
-      recordId,
-      updateData
-    );
+  const updateData = {
+    ...updates,
+    driveSyncStatus: status,
+    updatedAt: new Date().toISOString(),
+  };
 
-    return updated;
-  } catch (error) {
-    console.error('Error updating sync status:', error);
-    throw error;
-  }
+  const updated = await databases.updateDocument(dbId, complianceUploadsCol, recordId, updateData);
+
+  await logEvent({
+    actorId: resolvedActor.$id,
+    action: 'compliance.upload.sync-status.updated',
+    resourceType: RESOURCE_TYPES.COMPLIANCE_UPLOADS,
+    resourceId: recordId,
+    clientId: normalized.clientId || null,
+    siteId: normalized.siteId || null,
+    metadata: {
+      previousStatus: normalized.driveSyncStatus || normalized.syncStatus || null,
+      status,
+    },
+  });
+
+  return normalizeTenancyDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, updated);
 }
 
-/**
- * Log a sync attempt
- * @param {string} staffId - Staff member ID
- * @param {string} fileName - File name
- * @param {string} fileType - File type (e.g., 'id_document', 'proof_of_address')
- * @param {string} status - Sync status (success/failed)
- * @param {string} appwriteFileId - Appwrite file ID
- * @param {string} driveFileId - Google Drive file ID (if successful)
- * @param {string} syncError - Error message if failed
- * @returns {Promise<object>} Created record
- */
 export async function logSyncAttempt(
   staffId,
   fileName,
@@ -299,175 +229,170 @@ export async function logSyncAttempt(
   status,
   appwriteFileId,
   driveFileId = null,
-  syncError = null
+  syncError = null,
+  actor = null,
+  tenancy = {}
 ) {
-  if (!dbId || !complianceUploadsCol) {
-    throw new Error('Compliance uploads collection not configured');
+  ensureCollection();
+
+  const { actor: resolvedActor, scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.SUBMIT_COMPLIANCE });
+
+  if (scope.role === 'staff' && String(scope.userId || '') !== String(staffId || '')) {
+    throw new Error('Staff can only log sync attempts for their own files.');
   }
 
-  try {
-    await validateDriveSyncSchema();
+  await validateDriveSyncSchema();
 
-    const recordData = {
-      staffId: staffId,
-      fileName: fileName,
-      fileType: fileType,
-      driveSyncStatus: status,
-      appwriteFileId: appwriteFileId,
-      googleDriveFileId: driveFileId,
-      syncError: syncError,
-      lastSyncAttempt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  const recordData = {
+    staffId,
+    fileName,
+    fileType,
+    driveSyncStatus: status,
+    appwriteFileId,
+    googleDriveFileId: driveFileId,
+    syncError,
+    lastSyncAttempt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    clientId: tenancy.clientId || resolvedActor?.profile?.clientId || scope.clientId || null,
+    siteId: tenancy.siteId || resolvedActor?.profile?.siteId || null,
+  };
 
-    const record = await databases.createDocument(
-      dbId,
-      complianceUploadsCol,
-      undefined, // Auto-generate ID
-      recordData
-    );
+  const permissions = buildPermissionsForDoc({
+    type: 'compliance_uploads',
+    ownerUserId: staffId,
+  });
 
-    // Audit log
-    await auditService.logAction({
-      action: 'DRIVE_SYNC_ATTEMPT',
-      entity: 'compliance_uploads',
-      entityId: record.$id,
-      changes: { status, staffId, fileName },
-    });
+  const record = await databases.createDocument(dbId, complianceUploadsCol, undefined, recordData, permissions);
 
-    return record;
-  } catch (error) {
-    console.error('Error logging sync attempt:', error);
-    throw error;
-  }
+  await logEvent({
+    actorId: resolvedActor.$id,
+    action: 'compliance.upload.sync-attempt.logged',
+    resourceType: RESOURCE_TYPES.COMPLIANCE_UPLOADS,
+    resourceId: record.$id,
+    clientId: recordData.clientId,
+    siteId: recordData.siteId,
+    metadata: {
+      status,
+      staffId,
+      fileName,
+    },
+  });
+
+  return normalizeTenancyDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, record);
 }
 
-/**
- * Clear old successful syncs (older than days)
- * @param {number} olderThanDays - Clear records older than this many days
- * @returns {Promise<number>} Number of records cleared
- */
-export async function clearOldSuccessfulSyncs(olderThanDays = 90) {
-  if (!dbId || !complianceUploadsCol) {
-    throw new Error('Compliance uploads collection not configured');
+export async function clearOldSuccessfulSyncs(olderThanDays = 90, actor = null) {
+  ensureCollection();
+
+  const { actor: resolvedActor, scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_DRIVE_SYNC });
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+
+  const queries = withScopedQueries(RESOURCE_TYPES.COMPLIANCE_UPLOADS, scope, [
+    Query.equal('driveSyncStatus', 'success'),
+    Query.lessThan('createdAt', cutoffDate.toISOString()),
+    Query.limit(1000),
+  ]);
+
+  const oldRecords = await databases.listDocuments(dbId, complianceUploadsCol, queries);
+
+  let cleared = 0;
+  for (const record of oldRecords.documents) {
+    try {
+      await databases.deleteDocument(dbId, complianceUploadsCol, record.$id);
+      cleared += 1;
+    } catch (error) {
+      console.warn(`Failed to delete record ${record.$id}:`, error);
+    }
   }
 
-  try {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+  await logEvent({
+    actorId: resolvedActor.$id,
+    action: 'compliance.upload.sync-success.cleared',
+    resourceType: RESOURCE_TYPES.COMPLIANCE_UPLOADS,
+    resourceId: 'bulk',
+    metadata: {
+      olderThanDays,
+      cleared,
+    },
+  });
 
-    const oldRecords = await databases.listDocuments(
-      dbId,
-      complianceUploadsCol,
-      [
-        Query.equal('driveSyncStatus', 'success'),
-        Query.lessThan('createdAt', cutoffDate.toISOString()),
-      ]
-    );
+  return cleared;
+}
 
-    let cleared = 0;
-    for (const record of oldRecords.documents) {
-      try {
-        await databases.deleteDocument(dbId, complianceUploadsCol, record.$id);
-        cleared++;
-      } catch (e) {
-        console.warn(`Failed to delete record ${record.$id}:`, e);
-      }
+export async function getStaffSyncStatus(staffId, actor = null) {
+  ensureCollection();
+
+  const permission = actor ? PERMISSIONS.VIEW_COMPLIANCE : PERMISSIONS.VIEW_DRIVE_SYNC;
+  const { scope } = await getAuthorizedScope({ actor, permission });
+
+  if (scope.role === 'staff' && String(scope.userId || '') !== String(staffId || '')) {
+    throw new Error('Staff can only view their own sync records.');
+  }
+
+  const queries = withScopedQueries(RESOURCE_TYPES.COMPLIANCE_UPLOADS, scope, [
+    Query.equal('staffId', staffId),
+    Query.orderDesc('createdAt'),
+    Query.limit(500),
+  ]);
+
+  const records = await databases.listDocuments(dbId, complianceUploadsCol, queries);
+  const documents = records.documents.map((doc) => normalizeTenancyDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, doc));
+
+  const failed = documents.filter((doc) => doc.driveSyncStatus === 'failed');
+  const pending = documents.filter((doc) => doc.driveSyncStatus === 'pending');
+  const successful = documents.filter((doc) => doc.driveSyncStatus === 'success');
+
+  return {
+    staffId,
+    total: documents.length,
+    failed: failed.length,
+    pending: pending.length,
+    successful: successful.length,
+    latestAttempt: documents[0]?.lastSyncAttempt || null,
+    latestStatus: documents[0]?.driveSyncStatus || null,
+    failedRecords: failed,
+    pendingRecords: pending,
+    successfulRecords: successful,
+  };
+}
+
+export async function generateSyncReport(actor = null) {
+  ensureCollection();
+
+  const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_DRIVE_SYNC });
+
+  const queries = withScopedQueries(RESOURCE_TYPES.COMPLIANCE_UPLOADS, scope, [
+    Query.orderDesc('createdAt'),
+    Query.limit(1000),
+  ]);
+
+  const allRecords = await databases.listDocuments(dbId, complianceUploadsCol, queries);
+  const records = allRecords.documents.map((doc) => normalizeTenancyDocument(RESOURCE_TYPES.COMPLIANCE_UPLOADS, doc));
+
+  const byStatus = {};
+  const byFileType = {};
+  const byStaff = {};
+
+  records.forEach((record) => {
+    byStatus[record.driveSyncStatus] = (byStatus[record.driveSyncStatus] || 0) + 1;
+    byFileType[record.fileType] = (byFileType[record.fileType] || 0) + 1;
+
+    if (!byStaff[record.staffId]) {
+      byStaff[record.staffId] = { total: 0, failed: 0, pending: 0, success: 0 };
     }
 
-    return cleared;
-  } catch (error) {
-    console.error('Error clearing old syncs:', error);
-    throw error;
-  }
-}
+    byStaff[record.staffId].total += 1;
+    byStaff[record.staffId][record.driveSyncStatus] = (byStaff[record.staffId][record.driveSyncStatus] || 0) + 1;
+  });
 
-/**
- * Get sync status for a specific staff member
- * @param {string} staffId - Staff member ID
- * @returns {Promise<object>} Summary of staff's sync status
- */
-export async function getStaffSyncStatus(staffId) {
-  if (!dbId || !complianceUploadsCol) {
-    throw new Error('Compliance uploads collection not configured');
-  }
-
-  try {
-    const records = await databases.listDocuments(
-      dbId,
-      complianceUploadsCol,
-      [Query.equal('staffId', staffId), Query.orderDesc('createdAt')]
-    );
-
-    const documents = records.documents || [];
-    const failed = documents.filter(d => d.driveSyncStatus === 'failed');
-    const pending = documents.filter(d => d.driveSyncStatus === 'pending');
-    const successful = documents.filter(d => d.driveSyncStatus === 'success');
-
-    return {
-      staffId,
-      total: documents.length,
-      failed: failed.length,
-      pending: pending.length,
-      successful: successful.length,
-      latestAttempt: documents[0]?.lastSyncAttempt || null,
-      latestStatus: documents[0]?.driveSyncStatus || null,
-      failedRecords: failed,
-      pendingRecords: pending,
-      successfulRecords: successful,
-    };
-  } catch (error) {
-    console.error('Error getting staff sync status:', error);
-    throw error;
-  }
-}
-
-/**
- * Generate sync status report
- * @returns {Promise<object>} Comprehensive sync report
- */
-export async function generateSyncReport() {
-  if (!dbId || !complianceUploadsCol) {
-    throw new Error('Compliance uploads collection not configured');
-  }
-
-  try {
-    const allRecords = await databases.listDocuments(
-      dbId,
-      complianceUploadsCol,
-      [Query.orderDesc('createdAt')]
-    );
-
-    const records = allRecords.documents || [];
-    const byStatus = {};
-    const byFileType = {};
-    const byStaff = {};
-
-    records.forEach(record => {
-      // Group by status
-      byStatus[record.driveSyncStatus] = (byStatus[record.driveSyncStatus] || 0) + 1;
-
-      // Group by file type
-      byFileType[record.fileType] = (byFileType[record.fileType] || 0) + 1;
-
-      // Group by staff
-      if (!byStaff[record.staffId]) {
-        byStaff[record.staffId] = { total: 0, failed: 0, pending: 0, success: 0 };
-      }
-      byStaff[record.staffId].total++;
-      byStaff[record.staffId][record.driveSyncStatus]++;
-    });
-
-    return {
-      totalRecords: records.length,
-      byStatus,
-      byFileType,
-      byStaff,
-      generatedAt: new Date().toISOString(),
-    };
-  } catch (error) {
-    console.error('Error generating sync report:', error);
-    throw error;
-  }
+  return {
+    totalRecords: records.length,
+    byStatus,
+    byFileType,
+    byStaff,
+    generatedAt: new Date().toISOString(),
+  };
 }

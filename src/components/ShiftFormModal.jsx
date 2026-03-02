@@ -202,8 +202,24 @@ const ShiftFormModal = ({ shift, onClose, clients = [], sites = [] }) => {
     setLoading(true);
 
     try {
+      const dateISO = new Date(formData.date).toISOString();
+      const startISO = formData.startTime?.includes('T')
+        ? formData.startTime
+        : new Date(`${formData.date}T${formData.startTime}:00.000Z`).toISOString();
+      const endISO = formData.endTime?.includes('T')
+        ? formData.endTime
+        : new Date(`${formData.date}T${formData.endTime}:00.000Z`).toISOString();
+
       const shiftData = {
         ...formData,
+        clientId: formData.clientId,
+        siteId: formData.siteId,
+        date: dateISO,
+        startTime: startISO,
+        endTime: endISO,
+        position: formData.shiftType,
+        updatedAt: new Date().toISOString(),
+        createdAt: shift?.createdAt || new Date().toISOString(),
         requiredHeadcount: parseInt(formData.requiredHeadcount) || 1,
         breakMinutes: parseInt(formData.breakMinutes) || 0,
       };

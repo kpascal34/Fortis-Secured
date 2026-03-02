@@ -3,6 +3,7 @@ import { storage, databases, config } from '../lib/appwrite';
 import { ID, Query } from 'appwrite';
 import { AiOutlineClose, AiOutlineLoading3Quarters, AiOutlineUpload, AiOutlineFile } from 'react-icons/ai';
 import { useAuth } from '../context/AuthContext';
+import { buildPermissionsForDoc } from '../lib/appwritePermissions.js';
 
 const DocumentUploadModal = ({ isOpen, onClose, onSuccess, staffId = null }) => {
   const { user } = useAuth();
@@ -119,7 +120,11 @@ const DocumentUploadModal = ({ isOpen, onClose, onSuccess, staffId = null }) => 
       const fileUrl = storage.getFileView(bucketId, uploadedFile.$id);
 
       // Create metadata entry in documents collection
+      const relatedStaffId = formData.relatedStaffId || user.$id;
+      const relatedProfile = staffList.find((profile) => profile.userId === relatedStaffId || profile.$id === relatedStaffId);
+
       const documentData = {
+        staffId: relatedStaffId,
         documentName: formData.documentName.trim(),
         documentType: formData.documentType,
         description: formData.description.trim(),
@@ -127,20 +132,33 @@ const DocumentUploadModal = ({ isOpen, onClose, onSuccess, staffId = null }) => 
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
+        appwriteFileId: uploadedFile.$id,
+        driveSyncStatus: 'pending',
+        syncStatus: 'pending',
         fileUrl: fileUrl.href,
         uploadedBy: user.$id,
         uploadedByName: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-        relatedStaffId: formData.relatedStaffId || null,
+        relatedStaffId: relatedStaffId || null,
+        clientId: relatedProfile?.clientId || null,
+        siteId: relatedProfile?.siteId || null,
         status: 'pending',
         reviewedAt: null,
         uploadedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
+
+      const permissions = buildPermissionsForDoc({
+        type: 'compliance_uploads',
+        ownerUserId: relatedStaffId,
+      });
 
       await databases.createDocument(
         config.databaseId,
         config.complianceUploadsCollectionId || 'documents',
         ID.unique(),
-        documentData
+        documentData,
+        permissions
       );
 
       setSuccess('Document uploaded successfully!');

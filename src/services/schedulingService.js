@@ -1,62 +1,67 @@
 /**
  * Scheduling Service
- * Handles shift postings, applications, and eligibility enforcement
+ * Model A tenancy + RBAC enforced for all reads and writes.
  */
 
 import { ID, Query } from 'appwrite';
 import { databases, config } from '../lib/appwrite.js';
-import { logAudit } from './auditService.js';
+import { PERMISSIONS } from '../lib/rbac.ts';
+import { ensureDatabaseConfig, getAuthorizedScope, withScopedQueries, assertScopedDocument, resolveActor } from '../lib/serviceSecurity.js';
+import {
+  RESOURCE_TYPES,
+  assertScopedAccess,
+  enforceTenancyFields,
+  getScope,
+  normalizeTenancyDocument,
+} from '../lib/tenancyScope.js';
+import { logEvent } from './auditLogService.js';
 
 const dbId = config.databaseId;
-const shiftsCol = 'shifts';
-const applicationsCol = 'shift_applications';
+const shiftsCol = config.shiftsCollectionId || 'shifts';
+const applicationsCol = config.applicationsCollectionId || 'applications';
+const assignmentsCol = config.shiftAssignmentsCollectionId || 'shift_assignments';
+const sitesCol = config.sitesCollectionId || 'sites';
 const staffProfilesCol = config.staffProfilesCollectionId || 'staff_profiles';
+const staffComplianceCol = config.staffComplianceCollectionId || 'staff_compliance';
+const staffGradesCol = config.staffGradesCollectionId || 'staff_grades';
 const LICENSE_EXPIRY_THRESHOLD_DAYS = config.licenseExpiryThresholdDays;
 
-/**
- * Create shift (admin/manager only)
- * Scoped by clientId
- */
-export async function createShift(createdBy, clientId, shiftData) {
-  validateShiftData(shiftData);
+const MAX_LIST_LIMIT = 500;
 
-  const shift = await databases.createDocument(dbId, shiftsCol, ID.unique(), {
-    clientId: clientId,
-    siteId: shiftData.siteId,
-    positionTitle: shiftData.positionTitle,
-    shiftId: shiftData.shiftId || ID.unique(),
-    startTime: shiftData.startTime, // ISO string
-    endTime: shiftData.endTime, // ISO string
-    minimumGradeRequired: shiftData.minimumGradeRequired || null,
-    positionsOpen: shiftData.positionsOpen || 1,
-    assignments: JSON.stringify([]),
-    status: 'open',
-    createdBy: createdBy,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    specialRequirements: shiftData.specialRequirements || null,
-  });
+const ensureCollections = () => {
+  ensureDatabaseConfig(shiftsCol, 'shifts collection');
+  ensureDatabaseConfig(applicationsCol, 'applications collection');
+};
 
-  await logAudit({
-    actorId: createdBy,
-    actorRole: 'admin',
-    action: 'CREATE',
-    entity: 'shifts',
-    entityId: shift.$id,
-    diff: JSON.stringify({
-      clientId,
-      startTime: shiftData.startTime,
-      endTime: shiftData.endTime,
-      positions: shiftData.positionsOpen,
-      minGrade: shiftData.minimumGradeRequired,
-    }),
-  });
+const toIsoDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+};
 
-  return shift;
-}
+const extractDateOnlyIso = (value) => {
+  const date = toIsoDate(value);
+  if (!date) return null;
+  return date;
+};
 
-function validateShiftData(data) {
-  const required = ['siteId', 'positionTitle', 'startTime', 'endTime', 'positionsOpen'];
+const parseJson = (value, fallback = {}) => {
+  if (!value) return fallback;
+  if (typeof value === 'object') return value;
+  if (typeof value !== 'string') return fallback;
+  try {
+    return JSON.parse(value);
+  } catch (_) {
+    return fallback;
+  }
+};
+
+const toShiftTitle = (shiftData) =>
+  shiftData.title || shiftData.positionTitle || shiftData.position || 'Shift';
+
+const validateShiftData = (data) => {
+  const required = ['siteId', 'startTime', 'endTime'];
   for (const field of required) {
     if (!data[field]) throw new Error(`Missing required field: ${field}`);
   }
@@ -68,140 +73,282 @@ function validateShiftData(data) {
     throw new Error('Shift startTime and endTime must be valid ISO strings');
   }
 
-  if (shiftStart < new Date()) {
-    throw new Error('Shift start time must be in the future');
-  }
-
   if (shiftEnd <= shiftStart) {
     throw new Error('Shift end time must be after start time');
   }
 
   if (data.minimumGradeRequired && (data.minimumGradeRequired < 1 || data.minimumGradeRequired > 5)) {
-    throw new Error('Grade must be 1-5');
+    throw new Error('minimumGradeRequired must be between 1 and 5');
   }
 
-  if (data.positionsOpen < 1) {
-    throw new Error('Positions open must be at least 1');
+  if (data.positionsOpen !== undefined && Number(data.positionsOpen) < 1) {
+    throw new Error('positionsOpen must be at least 1');
   }
+};
+
+const resolveSite = async (siteId) => {
+  if (!siteId) return null;
+  if (!sitesCol || !databases || !dbId) return null;
+
+  try {
+    return await databases.getDocument(dbId, sitesCol, siteId);
+  } catch (error) {
+    throw new Error(`Site ${siteId} not found: ${error.message}`);
+  }
+};
+
+const buildShiftPayload = ({ actor, clientId, shiftData }) => {
+  const date = extractDateOnlyIso(shiftData.date || shiftData.shiftDate || shiftData.startTime);
+
+  const payload = {
+    shiftId: shiftData.shiftId || ID.unique(),
+    clientId,
+    siteId: shiftData.siteId,
+    date,
+    startTime: shiftData.startTime,
+    endTime: shiftData.endTime,
+    position: shiftData.position || null,
+    positionTitle: shiftData.positionTitle || shiftData.position || null,
+    title: toShiftTitle(shiftData),
+    description: shiftData.description || null,
+    requirements: shiftData.requirements || null,
+    specialRequirements: shiftData.specialRequirements || null,
+    notes: shiftData.notes || null,
+    status: shiftData.status || 'open',
+    published: shiftData.published || 'false',
+    guardId: shiftData.guardId || null,
+    assignedGuardId: shiftData.assignedGuardId || null,
+    assignedGuardName: shiftData.assignedGuardName || null,
+    staffId: shiftData.staffId || null,
+    positionsOpen: Number(shiftData.positionsOpen || shiftData.requiredHeadcount || 1),
+    requiredHeadcount: Number(shiftData.requiredHeadcount || shiftData.positionsOpen || 1),
+    minimumGradeRequired: shiftData.minimumGradeRequired || null,
+    hourlyRate: shiftData.hourlyRate || null,
+    breakLength: shiftData.breakLength || null,
+    createdBy: actor?.$id || null,
+    updatedAt: new Date().toISOString(),
+    createdAt: shiftData.createdAt || new Date().toISOString(),
+  };
+
+  enforceTenancyFields('shifts', payload);
+  return payload;
+};
+
+const buildApplicationPayload = ({ actor, shift, eligibility }) => {
+  const shiftDetails = {
+    shiftId: shift.$id,
+    title: shift.title || shift.positionTitle || 'Shift',
+    siteId: shift.siteId,
+    clientId: shift.clientId,
+    date: shift.date,
+    startTime: shift.startTime,
+    endTime: shift.endTime,
+  };
+
+  const payload = {
+    guardId: actor.$id,
+    guardName: actor.name || actor.profile?.fullName || actor.email || 'Staff',
+    shiftId: shift.$id,
+    clientId: shift.clientId,
+    siteId: shift.siteId,
+    shiftDetails,
+    eligibilityScore: eligibility,
+    status: 'pending',
+    appliedAt: new Date().toISOString(),
+    reviewedAt: null,
+    reviewedBy: null,
+    reviewerName: null,
+    reviewNotes: null,
+    rejectionReason: null,
+  };
+
+  enforceTenancyFields('applications', payload);
+  return payload;
+};
+
+const parseEligibility = (app) => ({
+  ...app,
+  shiftDetails: parseJson(app.shiftDetails, {}),
+  eligibilityScore: parseJson(app.eligibilityScore, {}),
+});
+
+/**
+ * Create shift (admin/manager only)
+ */
+export async function createShift(createdBy, clientId, shiftData, actor = null) {
+  ensureCollections();
+  validateShiftData(shiftData);
+
+  const { actor: resolvedActor, scope } = await getAuthorizedScope({
+    actor,
+    permission: PERMISSIONS.MANAGE_SHIFTS,
+  });
+
+  if (createdBy && String(createdBy) !== String(resolvedActor.$id) && scope.role !== 'admin') {
+    throw new Error('Cannot create shift on behalf of another user.');
+  }
+
+  const site = await resolveSite(shiftData.siteId);
+  if (site) {
+    assertScopedAccess(RESOURCE_TYPES.SITES, site, scope);
+  }
+
+  const effectiveClientId =
+    clientId ||
+    shiftData.clientId ||
+    site?.clientId ||
+    resolvedActor?.profile?.clientId ||
+    scope.clientId;
+
+  if (!effectiveClientId) {
+    throw new Error('clientId is required to create a shift.');
+  }
+
+  const payload = buildShiftPayload({ actor: resolvedActor, clientId: effectiveClientId, shiftData });
+
+  const shift = await databases.createDocument(dbId, shiftsCol, ID.unique(), payload);
+
+  await logEvent({
+    actorId: resolvedActor.$id,
+    action: 'shift.created',
+    resourceType: RESOURCE_TYPES.SHIFTS,
+    resourceId: shift.$id,
+    clientId: payload.clientId,
+    siteId: payload.siteId,
+    metadata: {
+      createdBy,
+      inputShiftDate: shiftData.shiftDate || null,
+      normalizedDate: payload.date,
+      status: payload.status,
+    },
+  });
+
+  return normalizeTenancyDocument(RESOURCE_TYPES.SHIFTS, shift);
 }
 
 /**
- * Get shifts (client-scoped)
- * - Clients: only their own sites
- * - Staff: all open shifts
- * - Admin: all shifts
+ * Get shifts with tenancy scope.
  */
-export async function getShifts(userId, userRole, userClientId = null) {
-  let queries = [];
+export async function getShifts(userId, userRole, userClientId = null, actor = null) {
+  ensureCollections();
 
-  if (userRole === 'client' && userClientId) {
-    // Clients only see their own sites' shifts
-    queries.push(Query.equal('clientId', userClientId));
-  }
-
-  if (userRole === 'staff') {
-    // Staff only see open shifts
-    queries.push(Query.equal('status', 'open'));
-  }
-
-  // Default sort: by start time
-  queries.push(Query.orderAsc('startTime'));
-
-  const result = await databases.listDocuments(dbId, shiftsCol, queries);
-  return result.documents;
-}
-
-/**
- * Get single shift with full details
- */
-export async function getShiftDetail(shiftId) {
-  const shift = await databases.getDocument(dbId, shiftsCol, shiftId);
-
-  // Parse assignments
-  if (shift.assignments) {
+  let resolvedActor = actor;
+  if (!resolvedActor) {
     try {
-      shift.assignments = JSON.parse(shift.assignments);
-    } catch (e) {
-      shift.assignments = [];
+      resolvedActor = await resolveActor();
+    } catch (_) {
+      if (!userId || !userRole) {
+        throw new Error('Unable to resolve actor for shift listing.');
+      }
+      resolvedActor = {
+        $id: userId,
+        role: userRole,
+        profile: userClientId ? { clientId: userClientId } : {},
+      };
     }
   }
 
-  return shift;
-}
-
-/**
- * Apply for shift (staff only)
- * Server-side eligibility check:
- * 1. Compliance must be approved
- * 2. Grade must meet minimumGradeRequired (if set)
- */
-export async function applyForShift(staffId, shiftId) {
-  const shift = await getShiftDetail(shiftId);
-
-  if (shift.status !== 'open') {
-    throw new Error('Shift is not open');
+  const scope = getScope(resolvedActor, resolvedActor.profile || {});
+  if (!scope.role) {
+    throw new Error('Unable to resolve tenancy scope for shifts.');
   }
 
-  if (shift.assignments.length >= shift.positionsOpen) {
-    throw new Error('Shift is now full');
+  const canViewScheduling =
+    scope.role === 'staff'
+      ? true
+      : await getAuthorizedScope({ actor: resolvedActor, permission: PERMISSIONS.VIEW_SCHEDULING }).then(() => true).catch(() => false);
+
+  if (!canViewScheduling) {
+    throw new Error('Permission denied for shift listing.');
   }
 
-  // Check existing application
-  const existing = await databases.listDocuments(dbId, applicationsCol, [
-    Query.equal('shiftId', shiftId),
-    Query.equal('staffId', staffId),
+  const queries = withScopedQueries(RESOURCE_TYPES.SHIFTS, scope, [
+    Query.orderAsc('date'),
+    Query.orderAsc('startTime'),
+    Query.limit(MAX_LIST_LIMIT),
   ]);
 
-  if (existing.documents.length > 0) {
-    const app = existing.documents[0];
-    if (app.status === 'accepted' || app.status === 'pending') {
-      throw new Error(`Already applied (${app.status})`);
-    }
+  const result = await databases.listDocuments(dbId, shiftsCol, queries);
+  return result.documents.map((doc) => normalizeTenancyDocument(RESOURCE_TYPES.SHIFTS, doc));
+}
+
+/**
+ * Get single shift with scoped access.
+ */
+export async function getShiftDetail(shiftId, actor = null) {
+  ensureCollections();
+
+  const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_SCHEDULING });
+  const shift = await databases.getDocument(dbId, shiftsCol, shiftId);
+  const normalized = normalizeTenancyDocument(RESOURCE_TYPES.SHIFTS, shift);
+  assertScopedDocument(RESOURCE_TYPES.SHIFTS, normalized, scope);
+  return normalized;
+}
+
+/**
+ * Apply for shift (staff).
+ */
+export async function applyForShift(staffId, shiftId, actor = null) {
+  ensureCollections();
+
+  const { actor: resolvedActor, scope } = await getAuthorizedScope({
+    actor,
+    permission: PERMISSIONS.APPLY_SHIFT,
+  });
+
+  if (scope.role === 'staff' && String(staffId) !== String(resolvedActor.$id)) {
+    throw new Error('Staff can only apply for their own account.');
   }
 
-  // Check eligibility
-  const eligibility = await checkEligibility(staffId, shift);
+  const shift = await getShiftDetail(shiftId, resolvedActor);
 
+  if (!['open', 'scheduled'].includes(String(shift.status || '').toLowerCase())) {
+    throw new Error('Shift is not open for applications.');
+  }
+
+  const existing = await databases.listDocuments(dbId, applicationsCol, [
+    Query.equal('shiftId', shiftId),
+    Query.equal('guardId', staffId),
+    Query.limit(1),
+  ]);
+
+  if (existing.documents.length > 0 && ['pending', 'approved'].includes(existing.documents[0].status)) {
+    throw new Error(`Already applied (${existing.documents[0].status}).`);
+  }
+
+  const eligibility = await checkEligibility(staffId, shift);
   if (!eligibility.licenseEligible) {
     throw new Error(`Licence invalid or expiring within ${LICENSE_EXPIRY_THRESHOLD_DAYS} days`);
   }
 
-  const application = await databases.createDocument(dbId, applicationsCol, ID.unique(), {
-    shiftId: shiftId,
-    staffId: staffId,
-    appliedAt: new Date().toISOString(),
-    status: 'pending',
-    eligibilityCheck: JSON.stringify(eligibility),
-  });
+  const payload = buildApplicationPayload({ actor: resolvedActor, shift, eligibility });
+  const application = await databases.createDocument(dbId, applicationsCol, ID.unique(), payload);
 
-  await logAudit({
-    actorId: staffId,
-    actorRole: 'staff',
-    action: 'CREATE',
-    entity: 'shift_applications',
-    entityId: application.$id,
-    diff: JSON.stringify({
+  await logEvent({
+    actorId: resolvedActor.$id,
+    action: 'shift.application.created',
+    resourceType: RESOURCE_TYPES.APPLICATIONS,
+    resourceId: application.$id,
+    clientId: payload.clientId,
+    siteId: payload.siteId,
+    metadata: {
       shiftId,
-      eligible: eligibility.compliant && eligibility.gradeEligible,
-    }),
+      eligible: eligibility.compliant && eligibility.gradeEligible && eligibility.licenseEligible,
+    },
   });
 
-  return application;
+  return parseEligibility(normalizeTenancyDocument(RESOURCE_TYPES.APPLICATIONS, application));
 }
 
-/**
- * Check staff eligibility for shift
- * Returns: {compliant, grade_eligible, reasons}
- */
 async function checkEligibility(staffId, shift) {
   const reasons = [];
   let compliant = false;
   let gradeEligible = false;
   let licenseEligible = false;
 
-  // Check compliance status
-  const compDocs = await databases.listDocuments(dbId, 'staff_compliance', [
+  const compDocs = await databases.listDocuments(dbId, staffComplianceCol, [
     Query.equal('staffId', staffId),
+    Query.limit(1),
   ]);
 
   if (compDocs.documents.length === 0) {
@@ -215,10 +362,10 @@ async function checkEligibility(staffId, shift) {
     }
   }
 
-  // Check grade (if required)
   if (shift.minimumGradeRequired) {
-    const gradeDocs = await databases.listDocuments(dbId, 'staff_grades', [
+    const gradeDocs = await databases.listDocuments(dbId, staffGradesCol, [
       Query.equal('staffId', staffId),
+      Query.limit(1),
     ]);
 
     if (gradeDocs.documents.length === 0 || !gradeDocs.documents[0].overallGrade) {
@@ -232,28 +379,26 @@ async function checkEligibility(staffId, shift) {
       }
     }
   } else {
-    gradeEligible = true; // No requirement
+    gradeEligible = true;
   }
 
-  // Licence expiry check
   try {
     const profile = await databases.getDocument(dbId, staffProfilesCol, staffId);
     const expiry = profile.licenseExpiry || profile.siaExpiryDate;
+
     if (expiry) {
       const expiryDate = new Date(expiry);
-      const daysUntilExpiry = Math.floor((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+      const daysUntilExpiry = Math.floor((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
       if (daysUntilExpiry < 0) {
         reasons.push('Licence expired');
-        licenseEligible = false;
       } else if (daysUntilExpiry <= LICENSE_EXPIRY_THRESHOLD_DAYS) {
         reasons.push(`Licence expiring within ${LICENSE_EXPIRY_THRESHOLD_DAYS} days`);
-        licenseEligible = false;
       } else {
         licenseEligible = true;
       }
     } else {
       reasons.push('No licence expiry on file');
-      licenseEligible = false;
     }
   } catch (error) {
     console.warn('Could not fetch staff profile for licence check', error);
@@ -262,128 +407,190 @@ async function checkEligibility(staffId, shift) {
 
   return {
     compliant,
-    gradeEligible: gradeEligible,
-    licenseEligible: licenseEligible,
+    gradeEligible,
+    licenseEligible,
     reasons,
   };
 }
 
 /**
- * Admin accept/reject shift application
+ * Review shift application (admin/manager).
  */
-export async function reviewApplication(adminId, applicationId, accepted) {
-  const app = await databases.getDocument(dbId, applicationsCol, applicationId);
+export async function reviewApplication(adminId, applicationId, accepted, actor = null) {
+  ensureCollections();
 
-  if (app.status !== 'pending') {
-    throw new Error('Application not pending');
+  const { actor: resolvedActor, scope } = await getAuthorizedScope({
+    actor,
+    permission: PERMISSIONS.REVIEW_SHIFT_APPLICATIONS,
+  });
+
+  if (adminId && String(adminId) !== String(resolvedActor.$id) && scope.role !== 'admin') {
+    throw new Error('Cannot review application on behalf of another user.');
   }
 
-  const newStatus = accepted ? 'accepted' : 'rejected';
+  const app = await databases.getDocument(dbId, applicationsCol, applicationId);
+  const normalizedApp = normalizeTenancyDocument(RESOURCE_TYPES.APPLICATIONS, app);
+  assertScopedDocument(RESOURCE_TYPES.APPLICATIONS, normalizedApp, scope);
 
+  if (normalizedApp.status !== 'pending') {
+    throw new Error('Application is not pending.');
+  }
+
+  const status = accepted ? 'approved' : 'rejected';
   const updated = await databases.updateDocument(dbId, applicationsCol, applicationId, {
-    status: newStatus,
-    reviewedBy: adminId,
+    status,
+    reviewedBy: resolvedActor.$id,
+    reviewerName: resolvedActor.name || resolvedActor.email || 'Reviewer',
     reviewedAt: new Date().toISOString(),
   });
 
-  // Update shift assignments if accepted
   if (accepted) {
-    const shift = await getShiftDetail(app.shiftId);
-    shift.assignments.push({
-      staffId: app.staffId,
-      status: 'accepted',
-      acceptedAt: new Date().toISOString(),
-    });
+    const shift = await databases.getDocument(dbId, shiftsCol, normalizedApp.shiftId);
+    const normalizedShift = normalizeTenancyDocument(RESOURCE_TYPES.SHIFTS, shift);
+    assertScopedDocument(RESOURCE_TYPES.SHIFTS, normalizedShift, scope);
 
-    // Check if now full
-    const newStatus = shift.assignments.length >= shift.positionsOpen ? 'filled' : 'open';
-
-    await databases.updateDocument(dbId, shiftsCol, app.shiftId, {
-      assignments: JSON.stringify(shift.assignments),
-      status: newStatus,
+    await databases.updateDocument(dbId, shiftsCol, normalizedShift.$id, {
+      assignedGuardId: normalizedApp.guardId,
+      assignedGuardName: normalizedApp.guardName,
+      status: 'assigned',
       updatedAt: new Date().toISOString(),
     });
+
+    if (assignmentsCol) {
+      const assignmentPayload = {
+        shiftId: normalizedShift.$id,
+        clientId: normalizedShift.clientId,
+        siteId: normalizedShift.siteId,
+        guardId: normalizedApp.guardId,
+        staffId: normalizedApp.guardId,
+        status: 'assigned',
+        assignedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      enforceTenancyFields('shift_assignments', assignmentPayload);
+
+      await databases.createDocument(dbId, assignmentsCol, ID.unique(), assignmentPayload);
+    }
   }
 
-  await logAudit({
-    actorId: adminId,
-    actorRole: 'admin',
-    action: 'UPDATE',
-    entity: 'shift_applications',
-    entityId: applicationId,
-    diff: JSON.stringify({ status: newStatus, staffId: app.staffId }),
+  await logEvent({
+    actorId: resolvedActor.$id,
+    action: 'shift.application.reviewed',
+    resourceType: RESOURCE_TYPES.APPLICATIONS,
+    resourceId: applicationId,
+    clientId: normalizedApp.clientId,
+    siteId: normalizedApp.siteId,
+    metadata: {
+      accepted,
+      reviewer: resolvedActor.$id,
+      shiftId: normalizedApp.shiftId,
+    },
   });
 
-  return updated;
+  return parseEligibility(normalizeTenancyDocument(RESOURCE_TYPES.APPLICATIONS, updated));
 }
 
 /**
- * Get applications for shift (admin only)
+ * Get applications for a shift with tenancy filters.
  */
-export async function getShiftApplications(shiftId, adminId) {
-  const apps = await databases.listDocuments(dbId, applicationsCol, [
+export async function getShiftApplications(shiftId, adminId, actor = null) {
+  ensureCollections();
+
+  const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.REVIEW_SHIFT_APPLICATIONS });
+
+  const queries = withScopedQueries(RESOURCE_TYPES.APPLICATIONS, scope, [
     Query.equal('shiftId', shiftId),
+    Query.orderDesc('appliedAt'),
+    Query.limit(MAX_LIST_LIMIT),
   ]);
 
-  // Parse eligibility checks
-  return apps.documents.map(app => {
-    try {
-      app.eligibilityCheck = JSON.parse(app.eligibilityCheck);
-    } catch (e) {
-      app.eligibilityCheck = {};
-    }
-    return app;
-  });
+  const apps = await databases.listDocuments(dbId, applicationsCol, queries);
+  return apps.documents.map((app) => parseEligibility(normalizeTenancyDocument(RESOURCE_TYPES.APPLICATIONS, app)));
 }
 
 /**
- * Get staff's applications
+ * Get applications for current staff member.
  */
-export async function getMyApplications(staffId) {
-  const apps = await databases.listDocuments(dbId, applicationsCol, [
-    Query.equal('staffId', staffId),
+export async function getMyApplications(staffId, actor = null) {
+  ensureCollections();
+
+  const { actor: resolvedActor, scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.APPLY_SHIFT });
+
+  if (scope.role === 'staff' && String(staffId) !== String(resolvedActor.$id)) {
+    throw new Error('Staff can only view their own applications.');
+  }
+
+  const queries = withScopedQueries(RESOURCE_TYPES.APPLICATIONS, scope, [
+    Query.equal('guardId', staffId),
+    Query.orderDesc('appliedAt'),
+    Query.limit(MAX_LIST_LIMIT),
   ]);
 
-  return apps.documents.map(app => {
-    try {
-      app.eligibilityCheck = JSON.parse(app.eligibilityCheck);
-    } catch (e) {
-      app.eligibilityCheck = {};
-    }
-    return app;
-  });
+  const apps = await databases.listDocuments(dbId, applicationsCol, queries);
+  return apps.documents.map((app) => parseEligibility(normalizeTenancyDocument(RESOURCE_TYPES.APPLICATIONS, app)));
 }
 
 /**
- * Cancel shift (admin only)
+ * Cancel shift (admin/manager).
  */
-export async function cancelShift(adminId, shiftId, reason) {
-  const shift = await getShiftDetail(shiftId);
+export async function cancelShift(adminId, shiftId, reason, actor = null) {
+  ensureCollections();
+
+  const { actor: resolvedActor, scope } = await getAuthorizedScope({
+    actor,
+    permission: PERMISSIONS.MANAGE_SHIFTS,
+  });
+
+  if (adminId && String(adminId) !== String(resolvedActor.$id) && scope.role !== 'admin') {
+    throw new Error('Cannot cancel shift on behalf of another user.');
+  }
+
+  const shift = await databases.getDocument(dbId, shiftsCol, shiftId);
+  const normalizedShift = normalizeTenancyDocument(RESOURCE_TYPES.SHIFTS, shift);
+  assertScopedDocument(RESOURCE_TYPES.SHIFTS, normalizedShift, scope);
 
   const updated = await databases.updateDocument(dbId, shiftsCol, shiftId, {
     status: 'cancelled',
+    cancellationReason: reason || null,
     updatedAt: new Date().toISOString(),
   });
 
-  // Notify all applicants (TBD: email)
-  const apps = await getShiftApplications(shiftId, adminId);
-  for (const app of apps) {
-    if (app.status === 'pending') {
+  const apps = await databases.listDocuments(dbId, applicationsCol, [
+    Query.equal('shiftId', shiftId),
+    Query.equal('status', 'pending'),
+    Query.limit(MAX_LIST_LIMIT),
+  ]);
+
+  for (const app of apps.documents) {
+    const normalizedApp = normalizeTenancyDocument(RESOURCE_TYPES.APPLICATIONS, app);
+    try {
+      assertScopedDocument(RESOURCE_TYPES.APPLICATIONS, normalizedApp, scope);
       await databases.updateDocument(dbId, applicationsCol, app.$id, {
-        status: 'cancelled',
-    updatedAt: new Date().toISOString(),
+        status: 'expired',
+        rejectionReason: reason || 'Shift cancelled',
+        reviewedBy: resolvedActor.$id,
+        reviewerName: resolvedActor.name || resolvedActor.email || 'Scheduler',
+        reviewedAt: new Date().toISOString(),
       });
+    } catch (error) {
+      console.warn('Skipping out-of-scope application during shift cancellation', app.$id, error.message);
     }
   }
 
-  await logAudit({
-    actorId: adminId,
-    actorRole: 'admin',
-    action: 'UPDATE',
-    entity: 'shifts',
-    entityId: shiftId,
-    diff: JSON.stringify({ status: 'cancelled', reason }),
+  await logEvent({
+    actorId: resolvedActor.$id,
+    action: 'shift.cancelled',
+    resourceType: RESOURCE_TYPES.SHIFTS,
+    resourceId: shiftId,
+    clientId: normalizedShift.clientId,
+    siteId: normalizedShift.siteId,
+    metadata: {
+      reason: reason || null,
+      affectedPendingApplications: apps.documents.length,
+    },
   });
 
-  return updated;
+  return normalizeTenancyDocument(RESOURCE_TYPES.SHIFTS, updated);
 }

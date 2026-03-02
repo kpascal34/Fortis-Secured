@@ -1,13 +1,6 @@
-/**
- * Permission definitions and RBAC utilities
- * Centralized permission management for Fortis Secured
- */
+import { ROLES as ROLE_ENUM, PERMISSIONS as PORTAL_PERMISSIONS, hasPermission as hasPortalPermission } from './rbac.ts';
+import { getScope } from './tenancyScope.js';
 
-import { ROLES } from './rbacValidation.js';
-
-/**
- * Resource types in the system
- */
 export const RESOURCES = {
   USERS: 'users',
   PROFILES: 'profiles',
@@ -20,11 +13,11 @@ export const RESOURCES = {
   REPORTS: 'reports',
   AUDIT_LOGS: 'audit_logs',
   SETTINGS: 'settings',
+  COMPLIANCE: 'compliance',
+  INVITES: 'invites',
+  APPLICATIONS: 'applications',
 };
 
-/**
- * Actions that can be performed on resources
- */
 export const PERMISSIONS = {
   CREATE: 'create',
   READ: 'read',
@@ -34,287 +27,186 @@ export const PERMISSIONS = {
   ASSIGN: 'assign',
 };
 
-/**
- * Permission matrix defining what each role can do
- * Format: { role: { resource: [permissions] } }
- */
-export const PERMISSION_MATRIX = {
-  [ROLES.ADMIN]: {
-    [RESOURCES.USERS]: [PERMISSIONS.CREATE, PERMISSIONS.READ, PERMISSIONS.UPDATE, PERMISSIONS.DELETE],
-    [RESOURCES.PROFILES]: [PERMISSIONS.CREATE, PERMISSIONS.READ, PERMISSIONS.UPDATE, PERMISSIONS.DELETE],
-    [RESOURCES.CLIENTS]: [PERMISSIONS.CREATE, PERMISSIONS.READ, PERMISSIONS.UPDATE, PERMISSIONS.DELETE],
-    [RESOURCES.SITES]: [PERMISSIONS.CREATE, PERMISSIONS.READ, PERMISSIONS.UPDATE, PERMISSIONS.DELETE],
-    [RESOURCES.GUARDS]: [PERMISSIONS.CREATE, PERMISSIONS.READ, PERMISSIONS.UPDATE, PERMISSIONS.DELETE, PERMISSIONS.ASSIGN],
-    [RESOURCES.SHIFTS]: [PERMISSIONS.CREATE, PERMISSIONS.READ, PERMISSIONS.UPDATE, PERMISSIONS.DELETE, PERMISSIONS.ASSIGN, PERMISSIONS.APPROVE],
-    [RESOURCES.INCIDENTS]: [PERMISSIONS.CREATE, PERMISSIONS.READ, PERMISSIONS.UPDATE, PERMISSIONS.DELETE],
-    [RESOURCES.ASSETS]: [PERMISSIONS.CREATE, PERMISSIONS.READ, PERMISSIONS.UPDATE, PERMISSIONS.DELETE],
-    [RESOURCES.REPORTS]: [PERMISSIONS.CREATE, PERMISSIONS.READ],
-    [RESOURCES.AUDIT_LOGS]: [PERMISSIONS.READ],
-    [RESOURCES.SETTINGS]: [PERMISSIONS.READ, PERMISSIONS.UPDATE],
-  },
+const ACTION_PERMISSION_MAP = {
+  [`${RESOURCES.USERS}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.MANAGE_USERS,
+  [`${RESOURCES.USERS}:${PERMISSIONS.CREATE}`]: PORTAL_PERMISSIONS.MANAGE_USERS,
+  [`${RESOURCES.USERS}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.MANAGE_USERS,
+  [`${RESOURCES.USERS}:${PERMISSIONS.DELETE}`]: PORTAL_PERMISSIONS.MANAGE_USERS,
 
-  [ROLES.MANAGER]: {
-    [RESOURCES.USERS]: [PERMISSIONS.READ], // Can view staff
-    [RESOURCES.PROFILES]: [PERMISSIONS.READ], // Can view staff profiles
-    [RESOURCES.CLIENTS]: [PERMISSIONS.READ], // Scope: assigned only
-    [RESOURCES.SITES]: [PERMISSIONS.READ, PERMISSIONS.UPDATE], // Scope: assigned only
-    [RESOURCES.GUARDS]: [PERMISSIONS.READ, PERMISSIONS.ASSIGN], // Scope: assigned sites
-    [RESOURCES.SHIFTS]: [PERMISSIONS.CREATE, PERMISSIONS.READ, PERMISSIONS.UPDATE, PERMISSIONS.ASSIGN, PERMISSIONS.APPROVE], // Scope: assigned sites
-    [RESOURCES.INCIDENTS]: [PERMISSIONS.CREATE, PERMISSIONS.READ, PERMISSIONS.UPDATE], // Scope: assigned sites
-    [RESOURCES.ASSETS]: [PERMISSIONS.READ, PERMISSIONS.UPDATE], // Scope: assigned sites
-    [RESOURCES.REPORTS]: [PERMISSIONS.READ], // Scope: assigned sites
-    [RESOURCES.AUDIT_LOGS]: [], // No access
-    [RESOURCES.SETTINGS]: [], // No access
-  },
+  [`${RESOURCES.PROFILES}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.VIEW_PROFILE,
+  [`${RESOURCES.PROFILES}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.VIEW_PROFILE,
 
-  [ROLES.STAFF]: {
-    [RESOURCES.USERS]: [], // No access to other users
-    [RESOURCES.PROFILES]: [PERMISSIONS.READ, PERMISSIONS.UPDATE], // Own profile only
-    [RESOURCES.CLIENTS]: [], // No direct client access
-    [RESOURCES.SITES]: [PERMISSIONS.READ], // Scope: assigned shifts only
-    [RESOURCES.GUARDS]: [], // No guard management
-    [RESOURCES.SHIFTS]: [PERMISSIONS.READ], // Scope: own shifts
-    [RESOURCES.INCIDENTS]: [PERMISSIONS.CREATE, PERMISSIONS.READ], // Scope: own shifts
-    [RESOURCES.ASSETS]: [PERMISSIONS.READ], // Scope: assigned shifts
-    [RESOURCES.REPORTS]: [], // No reports
-    [RESOURCES.AUDIT_LOGS]: [], // No access
-    [RESOURCES.SETTINGS]: [], // No settings
-  },
+  [`${RESOURCES.CLIENTS}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.VIEW_CLIENTS,
+  [`${RESOURCES.CLIENTS}:${PERMISSIONS.CREATE}`]: PORTAL_PERMISSIONS.MANAGE_CLIENTS,
+  [`${RESOURCES.CLIENTS}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.MANAGE_CLIENTS,
+  [`${RESOURCES.CLIENTS}:${PERMISSIONS.DELETE}`]: PORTAL_PERMISSIONS.MANAGE_CLIENTS,
 
-  [ROLES.CLIENT]: {
-    [RESOURCES.USERS]: [], // No user access
-    [RESOURCES.PROFILES]: [PERMISSIONS.READ, PERMISSIONS.UPDATE], // Own profile only
-    [RESOURCES.CLIENTS]: [PERMISSIONS.READ, PERMISSIONS.UPDATE], // Own client only
-    [RESOURCES.SITES]: [PERMISSIONS.READ, PERMISSIONS.UPDATE], // Own sites only
-    [RESOURCES.GUARDS]: [PERMISSIONS.READ], // Assigned to their sites
-    [RESOURCES.SHIFTS]: [PERMISSIONS.READ], // Their sites only
-    [RESOURCES.INCIDENTS]: [PERMISSIONS.READ], // Their sites only
-    [RESOURCES.ASSETS]: [PERMISSIONS.READ], // Their sites only
-    [RESOURCES.REPORTS]: [PERMISSIONS.READ], // Their sites only
-    [RESOURCES.AUDIT_LOGS]: [], // No access
-    [RESOURCES.SETTINGS]: [], // No access
-  },
+  [`${RESOURCES.SITES}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.VIEW_SITES,
+  [`${RESOURCES.SITES}:${PERMISSIONS.CREATE}`]: PORTAL_PERMISSIONS.MANAGE_SITES,
+  [`${RESOURCES.SITES}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.MANAGE_SITES,
+  [`${RESOURCES.SITES}:${PERMISSIONS.DELETE}`]: PORTAL_PERMISSIONS.MANAGE_SITES,
+
+  [`${RESOURCES.GUARDS}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.VIEW_GUARDS,
+  [`${RESOURCES.GUARDS}:${PERMISSIONS.CREATE}`]: PORTAL_PERMISSIONS.MANAGE_GUARDS,
+  [`${RESOURCES.GUARDS}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.MANAGE_GUARDS,
+  [`${RESOURCES.GUARDS}:${PERMISSIONS.DELETE}`]: PORTAL_PERMISSIONS.MANAGE_GUARDS,
+
+  [`${RESOURCES.SHIFTS}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.VIEW_SCHEDULING,
+  [`${RESOURCES.SHIFTS}:${PERMISSIONS.CREATE}`]: PORTAL_PERMISSIONS.MANAGE_SHIFTS,
+  [`${RESOURCES.SHIFTS}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.MANAGE_SHIFTS,
+  [`${RESOURCES.SHIFTS}:${PERMISSIONS.DELETE}`]: PORTAL_PERMISSIONS.MANAGE_SHIFTS,
+  [`${RESOURCES.SHIFTS}:${PERMISSIONS.APPROVE}`]: PORTAL_PERMISSIONS.REVIEW_SHIFT_APPLICATIONS,
+  [`${RESOURCES.SHIFTS}:${PERMISSIONS.ASSIGN}`]: PORTAL_PERMISSIONS.MANAGE_SHIFTS,
+
+  [`${RESOURCES.APPLICATIONS}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.REVIEW_SHIFT_APPLICATIONS,
+  [`${RESOURCES.APPLICATIONS}:${PERMISSIONS.CREATE}`]: PORTAL_PERMISSIONS.APPLY_SHIFT,
+  [`${RESOURCES.APPLICATIONS}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.REVIEW_SHIFT_APPLICATIONS,
+  [`${RESOURCES.APPLICATIONS}:${PERMISSIONS.APPROVE}`]: PORTAL_PERMISSIONS.REVIEW_SHIFT_APPLICATIONS,
+
+  [`${RESOURCES.INCIDENTS}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.VIEW_INCIDENTS,
+  [`${RESOURCES.INCIDENTS}:${PERMISSIONS.CREATE}`]: PORTAL_PERMISSIONS.VIEW_INCIDENTS,
+  [`${RESOURCES.INCIDENTS}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.VIEW_INCIDENTS,
+  [`${RESOURCES.INCIDENTS}:${PERMISSIONS.DELETE}`]: PORTAL_PERMISSIONS.VIEW_INCIDENTS,
+
+  [`${RESOURCES.ASSETS}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.VIEW_ASSETS,
+  [`${RESOURCES.ASSETS}:${PERMISSIONS.CREATE}`]: PORTAL_PERMISSIONS.VIEW_ASSETS,
+  [`${RESOURCES.ASSETS}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.VIEW_ASSETS,
+  [`${RESOURCES.ASSETS}:${PERMISSIONS.DELETE}`]: PORTAL_PERMISSIONS.VIEW_ASSETS,
+
+  [`${RESOURCES.REPORTS}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.VIEW_REPORTS,
+  [`${RESOURCES.AUDIT_LOGS}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.VIEW_AUDIT_LOG,
+  [`${RESOURCES.SETTINGS}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.MANAGE_SETTINGS,
+  [`${RESOURCES.SETTINGS}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.MANAGE_SETTINGS,
+  [`${RESOURCES.COMPLIANCE}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.VIEW_COMPLIANCE,
+  [`${RESOURCES.COMPLIANCE}:${PERMISSIONS.UPDATE}`]: PORTAL_PERMISSIONS.MANAGE_COMPLIANCE,
+  [`${RESOURCES.COMPLIANCE}:${PERMISSIONS.APPROVE}`]: PORTAL_PERMISSIONS.MANAGE_COMPLIANCE,
+  [`${RESOURCES.INVITES}:${PERMISSIONS.CREATE}`]: PORTAL_PERMISSIONS.MANAGE_INVITES,
+  [`${RESOURCES.INVITES}:${PERMISSIONS.READ}`]: PORTAL_PERMISSIONS.MANAGE_INVITES,
 };
 
-/**
- * Check if a role has permission for a resource action
- * @param {string} role - User role
- * @param {string} resource - Resource type
- * @param {string} permission - Permission to check
- * @returns {boolean} Whether permission is granted
- */
-export function hasPermission(role, resource, permission) {
-  if (!role || !resource || !permission) return false;
-  
-  const rolePermissions = PERMISSION_MATRIX[role];
-  if (!rolePermissions) return false;
-  
-  const resourcePermissions = rolePermissions[resource];
-  if (!resourcePermissions) return false;
-  
-  return resourcePermissions.includes(permission);
-}
+const resolvePortalPermission = (resource, permission) => ACTION_PERMISSION_MAP[`${resource}:${permission}`] || null;
 
-/**
- * Check if a role has any of the specified permissions
- * @param {string} role - User role
- * @param {string} resource - Resource type
- * @param {string[]} permissions - Permissions to check
- * @returns {boolean} Whether any permission is granted
- */
-export function hasAnyPermission(role, resource, permissions) {
-  return permissions.some(permission => hasPermission(role, resource, permission));
-}
-
-/**
- * Check if a role has all of the specified permissions
- * @param {string} role - User role
- * @param {string} resource - Resource type
- * @param {string[]} permissions - Permissions to check
- * @returns {boolean} Whether all permissions are granted
- */
-export function hasAllPermissions(role, resource, permissions) {
-  return permissions.every(permission => hasPermission(role, resource, permission));
-}
-
-/**
- * Get all permissions for a role on a resource
- * @param {string} role - User role
- * @param {string} resource - Resource type
- * @returns {string[]} Array of permissions
- */
-export function getPermissions(role, resource) {
-  if (!role || !resource) return [];
-  
-  const rolePermissions = PERMISSION_MATRIX[role];
-  if (!rolePermissions) return [];
-  
-  return rolePermissions[resource] || [];
-}
-
-/**
- * Check if user can access resource
- * Considers both permission and scope
- * @param {object} user - User object with role and profile
- * @param {string} resource - Resource type
- * @param {string} permission - Permission to check
- * @param {object} context - Additional context (clientId, siteId, etc.)
- * @returns {boolean} Whether access is granted
- */
-export function canAccess(user, resource, permission, context = {}) {
-  if (!user || !user.role) return false;
-  
-  // Check base permission
-  if (!hasPermission(user.role, resource, permission)) {
-    return false;
-  }
-  
-  // Admin has global access
-  if (user.role === ROLES.ADMIN) {
-    return true;
-  }
-  
-  // Manager scope check
-  if (user.role === ROLES.MANAGER) {
-    return checkManagerScope(user, resource, context);
-  }
-  
-  // Staff scope check
-  if (user.role === ROLES.STAFF) {
-    return checkStaffScope(user, resource, context);
-  }
-  
-  // Client scope check
-  if (user.role === ROLES.CLIENT) {
-    return checkClientScope(user, resource, context);
-  }
-  
-  return false;
-}
-
-/**
- * Check manager scope
- * Managers are limited to assigned clients and sites
- */
-function checkManagerScope(user, resource, context) {
-  const profile = user.profile;
-  if (!profile) return false;
-  
-  // Parse assigned clients and sites from JSON strings
-  const assignedClients = profile.assignedClients 
-    ? (typeof profile.assignedClients === 'string' 
-        ? JSON.parse(profile.assignedClients) 
-        : profile.assignedClients)
-    : [];
-    
-  const assignedSites = profile.assignedSites 
-    ? (typeof profile.assignedSites === 'string' 
-        ? JSON.parse(profile.assignedSites) 
-        : profile.assignedSites)
-    : [];
-  
-  // Check client scope
-  if (context.clientId && !assignedClients.includes(context.clientId)) {
-    return false;
-  }
-  
-  // Check site scope
-  if (context.siteId && !assignedSites.includes(context.siteId)) {
-    return false;
-  }
-  
-  return true;
-}
-
-/**
- * Check staff scope
- * Staff can only access their own data
- */
-function checkStaffScope(user, resource, context) {
-  // Staff can only access their own profile
-  if (resource === RESOURCES.PROFILES) {
-    return context.userId === user.$id;
-  }
-  
-  // For other resources, check if related to their shifts
-  // This would need additional logic based on shift assignments
-  return true;
-}
-
-/**
- * Check client scope
- * Clients can only access their own client data
- */
-function checkClientScope(user, resource, context) {
-  const profile = user.profile;
-  if (!profile || !profile.clientId) return false;
-  
-  // Check if accessing own client data
-  if (context.clientId && context.clientId !== profile.clientId) {
-    return false;
-  }
-  
-  return true;
-}
-
-/**
- * Get scope filters for database queries
- * Returns filters to apply based on user role and scope
- */
-export function getScopeFilters(user, resource) {
-  if (!user || !user.role) return null;
-  
-  // Admin has no scope restrictions
-  if (user.role === ROLES.ADMIN) {
-    return null;
-  }
-  
-  // Manager filters
-  if (user.role === ROLES.MANAGER) {
-    const profile = user.profile;
-    if (!profile) return null;
-    
-    const assignedClients = profile.assignedClients 
-      ? (typeof profile.assignedClients === 'string' 
-          ? JSON.parse(profile.assignedClients) 
-          : profile.assignedClients)
-      : [];
-      
-    const assignedSites = profile.assignedSites 
-      ? (typeof profile.assignedSites === 'string' 
-          ? JSON.parse(profile.assignedSites) 
-          : profile.assignedSites)
-      : [];
-    
-    return {
-      clientIds: assignedClients,
-      siteIds: assignedSites,
-    };
-  }
-  
-  // Staff filters - own data only
-  if (user.role === ROLES.STAFF) {
-    return {
-      userId: user.$id,
-    };
-  }
-  
-  // Client filters - own client only
-  if (user.role === ROLES.CLIENT) {
-    const profile = user.profile;
-    if (!profile || !profile.clientId) return null;
-    
-    return {
-      clientId: profile.clientId,
-    };
-  }
-  
+const toRole = (role) => {
+  if (!role) return null;
+  const normalized = String(role).toLowerCase();
+  if (normalized === ROLE_ENUM.ADMIN) return ROLE_ENUM.ADMIN;
+  if (normalized === ROLE_ENUM.MANAGER) return ROLE_ENUM.MANAGER;
+  if (normalized === ROLE_ENUM.CLIENT || normalized === 'customer') return ROLE_ENUM.CLIENT;
+  if (normalized === ROLE_ENUM.STAFF || normalized === 'guard' || normalized === 'employee') return ROLE_ENUM.STAFF;
   return null;
+};
+
+const toArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (_) {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+  }
+  return [];
+};
+
+export function hasPermission(role, resource, permission) {
+  const mapped = resolvePortalPermission(resource, permission);
+  if (!mapped) return false;
+  return hasPortalPermission(toRole(role), mapped);
 }
 
-/**
- * Permission error class
- */
+export function hasAnyPermission(role, resource, permissions) {
+  return permissions.some((permission) => hasPermission(role, resource, permission));
+}
+
+export function hasAllPermissions(role, resource, permissions) {
+  return permissions.every((permission) => hasPermission(role, resource, permission));
+}
+
+export function getPermissions(role, resource) {
+  return Object.values(PERMISSIONS).filter((permission) => hasPermission(role, resource, permission));
+}
+
+const clientScopePasses = (scope, context) => {
+  if (!context.clientId) return true;
+  return String(context.clientId) === String(scope.clientId || '');
+};
+
+const managerScopePasses = (scope, context) => {
+  if (!context.clientId && !context.siteId) return true;
+  const siteIds = toArray(scope.assignedSiteIds);
+  const clientIds = toArray(scope.assignedClientIds);
+
+  if (context.siteId && siteIds.includes(context.siteId)) return true;
+  if (context.clientId && clientIds.includes(context.clientId)) return true;
+  return false;
+};
+
+const staffScopePasses = (scope, context) => {
+  if (!scope.userId) return false;
+  const scopedUserId = context.userId || context.staffId || context.guardId || context.actorId;
+  if (!scopedUserId) return true;
+  return String(scopedUserId) === String(scope.userId);
+};
+
+export function canAccess(user, resource, permission, context = {}) {
+  const role = toRole(user?.role);
+  if (!role) return false;
+  if (!hasPermission(role, resource, permission)) return false;
+
+  if (role === ROLE_ENUM.ADMIN) return true;
+
+  const scope = getScope({ ...user, role }, user?.profile || {});
+
+  if (role === ROLE_ENUM.CLIENT) return clientScopePasses(scope, context);
+  if (role === ROLE_ENUM.MANAGER) return managerScopePasses(scope, context);
+  return staffScopePasses(scope, context);
+}
+
+export function getScopeFilters(user, resource) {
+  const role = toRole(user?.role);
+  if (!role) return { deny: true };
+  if (role === ROLE_ENUM.ADMIN) return null;
+
+  const scope = getScope({ ...user, role }, user?.profile || {});
+
+  if (role === ROLE_ENUM.CLIENT) {
+    return {
+      clientId: scope.clientId,
+      userId: scope.userId,
+      resource,
+    };
+  }
+
+  if (role === ROLE_ENUM.MANAGER) {
+    const clientIds = toArray(scope.assignedClientIds);
+    const siteIds = toArray(scope.assignedSiteIds);
+
+    if (clientIds.length === 0 && siteIds.length === 0) {
+      return { deny: true };
+    }
+
+    return {
+      clientIds,
+      siteIds,
+      userId: scope.userId,
+      resource,
+    };
+  }
+
+  return {
+    userId: scope.userId,
+    staffId: scope.userId,
+    guardId: scope.userId,
+    actorId: scope.userId,
+    resource,
+  };
+}
+
 export class PermissionError extends Error {
   constructor(message = 'Permission denied') {
     super(message);
@@ -323,14 +215,5 @@ export class PermissionError extends Error {
   }
 }
 
-/**
- * Require permission middleware
- * Throws error if user doesn't have permission
- */
-export function requirePermission(user, resource, permission, context = {}) {
-  if (!canAccess(user, resource, permission, context)) {
-    throw new PermissionError(
-      `You don't have permission to ${permission} ${resource}`
-    );
-  }
-}
+// Compatibility export: authority now lives in src/lib/rbac.ts.
+export const PERMISSION_MATRIX = {};

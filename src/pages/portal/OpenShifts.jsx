@@ -20,6 +20,7 @@ import {
   APPLICATION_STATUS_LABELS,
   APPLICATION_STATUS_COLORS,
 } from '../../lib/shiftApplications';
+import { logEvent } from '../../services/auditLogService.js';
 import {
   AiOutlineCalendar,
   AiOutlineClockCircle,
@@ -154,6 +155,8 @@ const OpenShifts = () => {
         guardId: currentGuard.$id,
         guardName: `${currentGuard.firstName} ${currentGuard.lastName || ''}`.trim(),
         shiftId: shift.$id,
+        clientId: shift.clientId,
+        siteId: shift.siteId,
         shiftDetails: {
           siteName: shift.siteName,
           date: shift.startTime,
@@ -167,12 +170,22 @@ const OpenShifts = () => {
 
       // Save application to database
       try {
-        await databases.createDocument(
+        const createdApplication = await databases.createDocument(
           config.databaseId,
           config.applicationsCollectionId,
           ID.unique(),
           applicationData
         );
+
+        await logEvent({
+          actorId: user?.$id || currentGuard?.$id || 'system',
+          action: 'shift.application.created',
+          resourceType: 'applications',
+          resourceId: createdApplication.$id,
+          clientId: shift.clientId || null,
+          siteId: shift.siteId || null,
+          metadata: { shiftId: shift.$id },
+        });
 
         // Refresh applications list
         await fetchApplications();

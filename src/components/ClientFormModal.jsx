@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { databases, config } from '../lib/appwrite';
 import { ID } from 'appwrite';
+import { useAuth } from '../context/AuthContext';
 import { validateRequired, validateEmail, validateRange, parseDate, formatCurrency } from '../lib/validation';
 import { AiOutlineClose, AiOutlineLoading3Quarters } from 'react-icons/ai';
+import { logEvent } from '../services/auditLogService.js';
 
 const ClientFormModal = ({ client, onClose }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     companyName: '',
     contactPerson: '',
@@ -119,15 +122,31 @@ const ClientFormModal = ({ client, onClose }) => {
           client.$id,
           payload
         );
+        await logEvent({
+          actorId: user?.$id || 'system',
+          action: 'client.updated',
+          resourceType: 'clients',
+          resourceId: client.$id,
+          clientId: client.$id,
+          metadata: { companyName: payload.companyName },
+        });
         setValidationMessage('Client updated successfully!');
       } else {
         // Create new client
-        await databases.createDocument(
+        const created = await databases.createDocument(
           config.databaseId,
           config.clientsCollectionId,
           ID.unique(),
           payload
         );
+        await logEvent({
+          actorId: user?.$id || 'system',
+          action: 'client.created',
+          resourceType: 'clients',
+          resourceId: created.$id,
+          clientId: created.$id,
+          metadata: { companyName: payload.companyName },
+        });
         setValidationMessage('Client created successfully!');
       }
       

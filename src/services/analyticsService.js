@@ -1,34 +1,37 @@
 import { databases, config } from '../lib/appwrite.js';
 import { Query } from 'appwrite';
+import { PERMISSIONS } from '../lib/rbac.ts';
+import { ensureDatabaseConfig, getAuthorizedScope, withScopedQueries } from '../lib/serviceSecurity.js';
+import { RESOURCE_TYPES } from '../lib/tenancyScope.js';
 
 const dbId = config.databaseId;
 
-const assertCollection = (collectionId, name) => {
-  if (!collectionId) {
-    throw new Error(`Analytics configuration missing for ${name}.`);
-  }
-};
-
 const listDocumentsStrict = async (collectionId, name, queries = []) => {
-  assertCollection(collectionId, name);
-  if (!databases) {
-    throw new Error('Analytics service requires an active Appwrite connection.');
-  }
+  ensureDatabaseConfig(collectionId, name);
   return databases.listDocuments(dbId, collectionId, queries);
 };
 
-export async function getStaffingMetrics() {
-  const staff = await listDocumentsStrict(config.staffProfilesCollectionId, 'staff profiles', [Query.limit(200)]);
-  const active = staff.documents.filter((s) => s.status === 'active').length;
-  const inactive = staff.documents.filter((s) => s.status && s.status !== 'active').length;
+export async function getStaffingMetrics(actor = null) {
+  const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_ANALYTICS });
+
+  const staffQueries = withScopedQueries(RESOURCE_TYPES.STAFF_PROFILES, scope, [Query.limit(200)]);
+  const staff = await listDocumentsStrict(config.staffProfilesCollectionId, 'staff profiles', staffQueries);
+
+  const active = staff.documents.filter((item) => item.status === 'active').length;
+  const inactive = staff.documents.filter((item) => item.status && item.status !== 'active').length;
   return { total: staff.total || staff.documents.length, active, inactive };
 }
 
-export async function getComplianceMetrics() {
-  const comp = await listDocumentsStrict(config.staffComplianceCollectionId, 'staff compliance', [Query.limit(200)]);
-  const approved = comp.documents.filter((c) => c.status === 'approved').length;
-  const inProgress = comp.documents.filter((c) => c.status === 'in_progress').length;
-  const rejected = comp.documents.filter((c) => c.status === 'rejected').length;
+export async function getComplianceMetrics(actor = null) {
+  const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_ANALYTICS });
+
+  const compQueries = withScopedQueries(RESOURCE_TYPES.STAFF_COMPLIANCE, scope, [Query.limit(200)]);
+  const comp = await listDocumentsStrict(config.staffComplianceCollectionId, 'staff compliance', compQueries);
+
+  const approved = comp.documents.filter((item) => item.status === 'approved').length;
+  const inProgress = comp.documents.filter((item) => item.status === 'in_progress').length;
+  const rejected = comp.documents.filter((item) => item.status === 'rejected').length;
+
   return {
     total: comp.total || comp.documents.length,
     approved,
@@ -38,20 +41,34 @@ export async function getComplianceMetrics() {
   };
 }
 
-export async function getShiftCoverageMetrics() {
-  const shifts = await listDocumentsStrict(config.shiftsCollectionId, 'shifts', [Query.limit(200)]);
-  const scheduled = shifts.documents.filter((s) => s.status === 'scheduled').length;
-  const open = shifts.documents.filter((s) => s.status === 'open' || s.status === 'unfilled').length;
-  const completed = shifts.documents.filter((s) => s.status === 'completed').length;
-  const filledRate = shifts.documents.length ? Math.round(((scheduled + completed) / shifts.documents.length) * 100) : 0;
-  return { total: shifts.total || shifts.documents.length, scheduled, open, completed, coverageRate: filledRate };
+export async function getShiftCoverageMetrics(actor = null) {
+  const { scope } = await getAuthorizedScope({ actor, permission: PERMISSIONS.VIEW_ANALYTICS });
+
+  const shiftQueries = withScopedQueries(RESOURCE_TYPES.SHIFTS, scope, [Query.limit(200)]);
+  const shifts = await listDocumentsStrict(config.shiftsCollectionId, 'shifts', shiftQueries);
+
+  const scheduled = shifts.documents.filter((item) => item.status === 'scheduled').length;
+  const open = shifts.documents.filter((item) => item.status === 'open' || item.status === 'unfilled').length;
+  const completed = shifts.documents.filter((item) => item.status === 'completed').length;
+  const filledRate = shifts.documents.length
+    ? Math.round(((scheduled + completed) / shifts.documents.length) * 100)
+    : 0;
+
+  return {
+    total: shifts.total || shifts.documents.length,
+    scheduled,
+    open,
+    completed,
+    coverageRate: filledRate,
+  };
 }
 
-export async function getCompositeAnalytics() {
+export async function getCompositeAnalytics(actor = null) {
   const [staffing, compliance, shifts] = await Promise.all([
-    getStaffingMetrics(),
-    getComplianceMetrics(),
-    getShiftCoverageMetrics(),
+    getStaffingMetrics(actor),
+    getComplianceMetrics(actor),
+    getShiftCoverageMetrics(actor),
   ]);
+
   return { staffing, compliance, shifts };
 }
