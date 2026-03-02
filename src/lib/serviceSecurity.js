@@ -25,6 +25,8 @@ const roleProfileCollectionId = (role) => {
   switch (role) {
     case ROLES.ADMIN:
       return config.adminProfilesCollectionId;
+    case ROLES.ENTITY_ADMIN:
+      return config.adminProfilesCollectionId || config.managerProfilesCollectionId;
     case ROLES.MANAGER:
       return config.managerProfilesCollectionId;
     case ROLES.STAFF:

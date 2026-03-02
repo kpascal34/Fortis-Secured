@@ -17,34 +17,58 @@ import {
 } from 'react-icons/ai';
 
 const Sites = () => {
+  const PAGE_SIZE = 50;
   const { user } = useAuth();
   const [sites, setSites] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [feedback, setFeedback] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSite, setEditingSite] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClient, setFilterClient] = useState('all');
 
   useEffect(() => {
-    fetchData();
+    fetchData({ append: false });
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async ({ append = false } = {}) => {
     try {
-      setLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setLoadError('');
+      }
+
+      const nextPage = append ? page : 0;
       const [sitesRes, clientsRes] = await Promise.all([
         databases.listDocuments(config.databaseId, config.sitesCollectionId, [
           Query.orderDesc('$createdAt'),
+          Query.limit(PAGE_SIZE),
+          Query.offset(nextPage * PAGE_SIZE),
         ]),
-        databases.listDocuments(config.databaseId, config.clientsCollectionId),
+        databases.listDocuments(config.databaseId, config.clientsCollectionId, [Query.limit(200)]),
       ]);
-      setSites(sitesRes.documents);
+      const incomingSites = sitesRes.documents;
+      const nextSites = append ? [...sites, ...incomingSites] : incomingSites;
+      setSites(nextSites);
       setClients(clientsRes.documents);
+      setPage(nextPage + 1);
+      setHasMore(incomingSites.length === PAGE_SIZE);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setLoadError(error.message || 'NetworkError: failed to load sites.');
     } finally {
-      setLoading(false);
+      if (append) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -59,8 +83,9 @@ const Sites = () => {
         resourceId: id,
       });
       setSites(sites.filter((s) => s.$id !== id));
+      setFeedback('Site deleted successfully.');
     } catch (error) {
-      alert(`Failed to delete: ${error.message}`);
+      setFeedback(`Failed to delete site: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -102,6 +127,27 @@ const Sites = () => {
           </button>
         </PortalHeader>
 
+        {loadError && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            <span>{loadError}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setPage(0);
+                fetchData({ append: false });
+              }}
+              className="rounded-md border border-red-300/40 px-3 py-1 text-xs font-semibold text-red-100 hover:bg-red-500/20"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {feedback && (
+          <div className="mb-4 rounded-lg border border-white/20 bg-white/5 p-3 text-sm text-white/90">
+            {feedback}
+          </div>
+        )}
+
         {/* Filters */}
         <div className="mb-6 flex gap-4">
           <div className="relative flex-1">
@@ -130,7 +176,11 @@ const Sites = () => {
 
         {/* Sites List */}
         <div className="space-y-4">
-          {filteredSites.map((site) => (
+          {filteredSites.length === 0 ? (
+            <div className="glass-panel p-8 text-center text-white/70">
+              No sites found for the selected filters.
+            </div>
+          ) : filteredSites.map((site) => (
             <div key={site.$id} className="glass-panel p-6 transition-all hover:border-accent/30">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -160,6 +210,18 @@ const Sites = () => {
               </div>
             </div>
           ))}
+          {hasMore && (
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                disabled={loadingMore}
+                onClick={() => fetchData({ append: true })}
+                className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-50"
+              >
+                {loadingMore ? 'Loading…' : 'Load More'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -170,7 +232,10 @@ const Sites = () => {
           actorId={user?.$id}
           onClose={(refresh) => {
             setIsModalOpen(false);
-            if (refresh) fetchData();
+            if (refresh) {
+              setPage(0);
+              fetchData({ append: false });
+            }
           }}
         />
       )}
@@ -192,10 +257,12 @@ const SiteFormModal = ({ site, clients, actorId, onClose }) => {
     status: site?.status || 'active',
   });
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage('');
     try {
       if (site) {
         await databases.updateDocument(config.databaseId, config.sitesCollectionId, site.$id, formData);
@@ -220,7 +287,7 @@ const SiteFormModal = ({ site, clients, actorId, onClose }) => {
       }
       onClose(true);
     } catch (error) {
-      alert(`Error: ${error.message}`);
+      setErrorMessage(error.message || 'Failed to save site.');
       setLoading(false);
     }
   };
@@ -236,6 +303,11 @@ const SiteFormModal = ({ site, clients, actorId, onClose }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {errorMessage && (
+            <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+              {errorMessage}
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="mb-2 block text-sm text-white/70">

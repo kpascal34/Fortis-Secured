@@ -1,1214 +1,402 @@
-import React, { useState, useEffect } from 'react';
-import { databases, config } from '../../lib/appwrite';
-import { Query, ID } from 'appwrite';
+import React, { useCallback, useState } from 'react';
+import { useAuth } from '../../context/AuthContext.jsx';
 import {
-  AiOutlineWarning,
-  AiOutlineAlert,
-  AiOutlineCheckCircle,
-  AiOutlineClockCircle,
-  AiOutlinePlus,
-  AiOutlineEdit,
-  AiOutlineDelete,
-  AiOutlineUser,
-  AiOutlineEnvironment,
-  AiOutlineCalendar,
-  AiOutlineSearch,
-  AiOutlineEye,
-  AiOutlineClose,
-  AiOutlineFile,
-  AiOutlineExclamationCircle,
-} from 'react-icons/ai';
+  createIncidentDraft,
+  listIncidents,
+  reviewIncident,
+  submitIncident,
+  updateIncidentDraft,
+} from '../../services/incidentService.js';
+
+const PAGE_SIZE = 15;
+
+const formatDate = (value) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const statusClass = (status) => {
+  switch (String(status || '').toLowerCase()) {
+    case 'draft':
+      return 'bg-blue-500/20 text-blue-300 border border-blue-400/40';
+    case 'needs_review':
+      return 'bg-amber-500/20 text-amber-300 border border-amber-400/40';
+    case 'final_sent':
+      return 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40';
+    case 'rejected':
+      return 'bg-red-500/20 text-red-300 border border-red-400/40';
+    default:
+      return 'bg-white/10 text-white border border-white/20';
+  }
+};
 
 const Incidents = () => {
-  const [incidents, setIncidents] = useState([]);
-  const [guards, setGuards] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [sites, setSites] = useState([]);
-  const [shifts, setShifts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [editingIncident, setEditingIncident] = useState(null);
-  const [viewingIncident, setViewingIncident] = useState(null);
-  const [view, setView] = useState('all'); // all, open, investigating, resolved, critical
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterSeverity, setFilterSeverity] = useState('');
-  const [filterType, setFilterType] = useState('');
+  const { user } = useAuth();
 
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    incidentType: 'security-breach',
-    severity: 'medium',
-    status: 'open',
-    reportedBy: '',
+  const [records, setRecords] = useState([]);
+  const [cursor, setCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [processingId, setProcessingId] = useState('');
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+  const [filters, setFilters] = useState({ status: '', clientId: '', siteId: '' });
+  const [draft, setDraft] = useState({
     clientId: '',
     siteId: '',
     shiftId: '',
-    incidentDate: '',
-    incidentTime: '',
-    location: '',
-    witnessName: '',
-    witnessContact: '',
-    actionTaken: '',
-    policeNotified: false,
-    policeReferenceNumber: '',
-    injuries: false,
-    injuryDetails: '',
-    propertyDamage: false,
-    damageDetails: '',
-    followUpRequired: false,
-    followUpNotes: '',
-    resolution: '',
+    severity: 'medium',
+    summary: '',
+    details: '',
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const load = useCallback(async ({ reset = false } = {}) => {
+    setLoading(true);
+    setError('');
 
-  const fetchData = async () => {
     try {
-      setLoading(true);
+      const response = await listIncidents({
+        filters: {
+          status: filters.status || null,
+          clientId: filters.clientId || null,
+          siteId: filters.siteId || null,
+        },
+        limit: PAGE_SIZE,
+        cursor: reset ? null : cursor,
+      });
 
-      let guardsData = [];
-      try {
-        const [guardsRes, clientsRes, sitesRes, shiftsRes] = await Promise.all([
-          databases.listDocuments(config.databaseId, config.guardsCollectionId, [Query.limit(500)]),
-          databases.listDocuments(config.databaseId, config.clientsCollectionId, [Query.limit(500)]),
-          databases.listDocuments(config.databaseId, config.sitesCollectionId, [Query.limit(500)]),
-          databases.listDocuments(config.databaseId, config.shiftsCollectionId, [Query.limit(500)]),
-        ]);
-
-        guardsData = guardsRes.documents;
-        setClients(clientsRes.documents);
-        setSites(sitesRes.documents);
-        setShifts(shiftsRes.documents);
-      } catch (error) {
-        console.log('Unable to load guard data. Connect Appwrite to enable live incidents.', error);
-        guardsData = [];
-        setClients([]);
-        setSites([]);
-        setShifts([]);
-      }
-
-      setGuards(guardsData);
-
-      // Check if incidents collection exists and fetch
-      try {
-        const incidentsRes = await databases.listDocuments(config.databaseId, config.incidentsCollectionId, [Query.limit(500)]);
-        setIncidents(incidentsRes.documents);
-      } catch (error) {
-        console.log('Incidents collection not yet available. No demo data loaded.');
-        setIncidents([]);
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      alert('Failed to load incidents data');
+      setRecords((prev) => (reset ? response.documents : [...prev, ...response.documents]));
+      setCursor(response.nextCursor || null);
+      setHasMore(Boolean(response.nextCursor));
+    } catch (loadError) {
+      setError(loadError.message || 'Failed to load incidents.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [cursor, filters.clientId, filters.siteId, filters.status]);
 
-  const getGuardName = (guardId) => {
-    const guard = guards.find(g => g.$id === guardId);
-    return guard ? `${guard.firstName} ${guard.lastName}` : 'Unknown';
-  };
+  React.useEffect(() => {
+    setCursor(null);
+    setHasMore(true);
+    load({ reset: true });
+  }, [filters.status, filters.clientId, filters.siteId]);
 
-  const getClientName = (clientId) => {
-    const client = clients.find(c => c.$id === clientId);
-    return client ? client.companyName : 'N/A';
-  };
+  React.useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => setToast(''), 5000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
-  const getSiteName = (siteId) => {
-    const site = sites.find(s => s.$id === siteId);
-    return site ? site.siteName : 'N/A';
-  };
+  const handleCreateDraft = async (event) => {
+    event.preventDefault();
 
-  const handleOpenModal = (incident = null) => {
-    if (incident) {
-      setEditingIncident(incident);
-      setFormData({
-        title: incident.title || '',
-        description: incident.description || '',
-        incidentType: incident.incidentType || 'security-breach',
-        severity: incident.severity || 'medium',
-        status: incident.status || 'open',
-        reportedBy: incident.reportedBy || '',
-        clientId: incident.clientId || '',
-        siteId: incident.siteId || '',
-        shiftId: incident.shiftId || '',
-        incidentDate: incident.incidentDate || '',
-        incidentTime: incident.incidentTime || '',
-        location: incident.location || '',
-        witnessName: incident.witnessName || '',
-        witnessContact: incident.witnessContact || '',
-        actionTaken: incident.actionTaken || '',
-        policeNotified: incident.policeNotified || false,
-        policeReferenceNumber: incident.policeReferenceNumber || '',
-        injuries: incident.injuries || false,
-        injuryDetails: incident.injuryDetails || '',
-        propertyDamage: incident.propertyDamage || false,
-        damageDetails: incident.damageDetails || '',
-        followUpRequired: incident.followUpRequired || false,
-        followUpNotes: incident.followUpNotes || '',
-        resolution: incident.resolution || '',
-      });
-    } else {
-      setEditingIncident(null);
-      const now = new Date();
-      setFormData({
-        title: '',
-        description: '',
-        incidentType: 'security-breach',
-        severity: 'medium',
-        status: 'open',
-        reportedBy: '',
-        clientId: '',
-        siteId: '',
-        shiftId: '',
-        incidentDate: now.toISOString().split('T')[0],
-        incidentTime: now.toTimeString().slice(0, 5),
-        location: '',
-        witnessName: '',
-        witnessContact: '',
-        actionTaken: '',
-        policeNotified: false,
-        policeReferenceNumber: '',
-        injuries: false,
-        injuryDetails: '',
-        propertyDamage: false,
-        damageDetails: '',
-        followUpRequired: false,
-        followUpNotes: '',
-        resolution: '',
-      });
+    if (!draft.clientId || !draft.siteId || !draft.summary) {
+      setError('clientId, siteId and summary are required.');
+      return;
     }
-    setShowModal(true);
-  };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingIncident(null);
-  };
-
-  const handleViewIncident = (incident) => {
-    setViewingIncident(incident);
-    setShowDetailModal(true);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      const incidentData = {
-        ...formData,
-        createdAt: editingIncident?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      if (editingIncident) {
-        // Update existing incident
-        try {
-          await databases.updateDocument(
-            config.databaseId,
-            config.incidentsCollectionId,
-            editingIncident.$id,
-            incidentData
-          );
-          await fetchData();
-        } catch (error) {
-          // Fallback to local state
-          const updatedIncidents = incidents.map(i => 
-            i.$id === editingIncident.$id ? { ...i, ...incidentData } : i
-          );
-          setIncidents(updatedIncidents);
-        }
-      } else {
-        // Create new incident
-        try {
-          await databases.createDocument(
-            config.databaseId,
-            config.incidentsCollectionId,
-            ID.unique(),
-            incidentData
-          );
-          await fetchData();
-        } catch (error) {
-          // Fallback to local state
-          const newIncident = {
-            $id: ID.unique(),
-            ...incidentData,
-          };
-          setIncidents([newIncident, ...incidents]);
-        }
-      }
-
-      handleCloseModal();
-      alert(editingIncident ? 'Incident updated successfully!' : 'Incident reported successfully!');
-    } catch (error) {
-      console.error('Error saving incident:', error);
-      alert('Failed to save incident');
-    }
-  };
-
-  const handleDeleteIncident = async (incidentId) => {
-    if (!confirm('Are you sure you want to delete this incident report?')) return;
+    setProcessingId('create');
+    setError('');
+    setToast('');
 
     try {
-      try {
-        await databases.deleteDocument(config.databaseId, config.incidentsCollectionId, incidentId);
-        await fetchData();
-      } catch (error) {
-        setIncidents(incidents.filter(i => i.$id !== incidentId));
-      }
-      
-      alert('Incident deleted successfully!');
-    } catch (error) {
-      console.error('Error deleting incident:', error);
-      alert('Failed to delete incident');
+      await createIncidentDraft(draft);
+      setToast('Incident draft created.');
+      setDraft({ clientId: '', siteId: '', shiftId: '', severity: 'medium', summary: '', details: '' });
+      await load({ reset: true });
+    } catch (actionError) {
+      setError(actionError.message || 'Failed to create incident draft.');
+    } finally {
+      setProcessingId('');
     }
   };
 
-  const handleUpdateStatus = async (incidentId, newStatus) => {
+  const handleSubmitDraft = async (incidentId) => {
+    setProcessingId(incidentId);
+    setError('');
+    setToast('');
+
     try {
-      const updateData = { 
-        status: newStatus, 
-        updatedAt: new Date().toISOString() 
-      };
-
-      try {
-        await databases.updateDocument(
-          config.databaseId,
-          config.incidentsCollectionId,
-          incidentId,
-          updateData
-        );
-        await fetchData();
-      } catch (error) {
-        const updatedIncidents = incidents.map(i => 
-          i.$id === incidentId ? { ...i, ...updateData } : i
-        );
-        setIncidents(updatedIncidents);
-      }
-    } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Failed to update incident status');
+      await submitIncident(incidentId);
+      setToast('Incident submitted and interim notification queued.');
+      await load({ reset: true });
+    } catch (actionError) {
+      setError(actionError.message || 'Incident submission failed.');
+    } finally {
+      setProcessingId('');
     }
   };
 
-  const filterIncidents = () => {
-    let filtered = [...incidents];
-
-    // View filter
-    if (view === 'open') {
-      filtered = filtered.filter(i => i.status === 'open');
-    } else if (view === 'investigating') {
-      filtered = filtered.filter(i => i.status === 'investigating');
-    } else if (view === 'resolved') {
-      filtered = filtered.filter(i => i.status === 'resolved');
-    } else if (view === 'critical') {
-      filtered = filtered.filter(i => i.severity === 'critical');
+  const handleAdminReview = async (incidentId, decision) => {
+    let reason = null;
+    if (decision === 'reject') {
+      reason = window.prompt('Enter rejection reason:');
+      if (!reason) return;
     }
 
-    // Severity filter
-    if (filterSeverity) {
-      filtered = filtered.filter(i => i.severity === filterSeverity);
-    }
+    setProcessingId(incidentId);
+    setError('');
+    setToast('');
 
-    // Type filter
-    if (filterType) {
-      filtered = filtered.filter(i => i.incidentType === filterType);
-    }
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(i => 
-        i.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        i.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        i.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getGuardName(i.reportedBy).toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Sort by date descending and severity
-    filtered.sort((a, b) => {
-      const severityOrder = { 'critical': 0, 'high': 1, 'medium': 2, 'low': 3 };
-      if (severityOrder[a.severity] !== severityOrder[b.severity]) {
-        return severityOrder[a.severity] - severityOrder[b.severity];
-      }
-      return new Date(b.incidentDate) - new Date(a.incidentDate);
-    });
-
-    return filtered;
-  };
-
-  const calculateStats = () => {
-    const total = incidents.length;
-    const open = incidents.filter(i => i.status === 'open').length;
-    const investigating = incidents.filter(i => i.status === 'investigating').length;
-    const resolved = incidents.filter(i => i.status === 'resolved').length;
-    const critical = incidents.filter(i => i.severity === 'critical').length;
-
-    return { total, open, investigating, resolved, critical };
-  };
-
-  const getSeverityColor = (severity) => {
-    switch (severity) {
-      case 'critical': return 'bg-red-600 text-white';
-      case 'high': return 'bg-orange-500 text-white';
-      case 'medium': return 'bg-yellow-500 text-white';
-      case 'low': return 'bg-blue-500 text-white';
-      default: return 'bg-gray-500 text-white';
+    try {
+      await reviewIncident(incidentId, { decision, reason });
+      setToast(decision === 'approve' ? 'Incident approved and final email queued.' : 'Incident rejected.');
+      await load({ reset: true });
+    } catch (actionError) {
+      setError(actionError.message || 'Incident review failed.');
+    } finally {
+      setProcessingId('');
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'open': return 'bg-red-500';
-      case 'investigating': return 'bg-yellow-500';
-      case 'resolved': return 'bg-green-500';
-      default: return 'bg-gray-500';
+  const handleQuickEdit = async (incident) => {
+    const summary = window.prompt('Update summary', incident.summary || '');
+    if (summary === null) return;
+
+    setProcessingId(incident.$id);
+    setError('');
+    setToast('');
+
+    try {
+      await updateIncidentDraft(incident.$id, { summary });
+      setToast('Incident draft updated.');
+      await load({ reset: true });
+    } catch (actionError) {
+      setError(actionError.message || 'Failed to update incident draft.');
+    } finally {
+      setProcessingId('');
     }
   };
 
-  const getIncidentTypeLabel = (type) => {
-    const labels = {
-      'security-breach': 'Security Breach',
-      'theft': 'Theft',
-      'vandalism': 'Vandalism',
-      'trespassing': 'Trespassing',
-      'assault': 'Assault',
-      'fire': 'Fire',
-      'medical-emergency': 'Medical Emergency',
-      'suspicious-activity': 'Suspicious Activity',
-      'equipment-failure': 'Equipment Failure',
-      'policy-violation': 'Policy Violation',
-      'other': 'Other',
-    };
-    return labels[type] || type;
-  };
-
-  const getSeverityBadge = (severity) => {
-    switch (severity) {
-      case 'critical': return 'fs-badge-error';
-      case 'high': return 'fs-badge-warning';
-      case 'medium': return 'fs-badge-warning';
-      case 'low': return 'fs-badge-info';
-      default: return 'fs-badge-info';
-    }
-  };
-
-  const getStatusDot = (status) => {
-    switch (status) {
-      case 'open': return 'bg-error';
-      case 'investigating': return 'bg-warning';
-      case 'resolved': return 'bg-success';
-      default: return 'bg-info';
-    }
-  };
-
-  const stats = calculateStats();
-  const filteredIncidents = filterIncidents();
-
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <AiOutlineClockCircle className="mx-auto mb-4 h-12 w-12 animate-spin text-accent" />
-          <p className="text-white/70">Loading incidents...</p>
-        </div>
-      </div>
-    );
-  }
+  const isAdmin = String(user?.role || '').toLowerCase() === 'admin';
 
   return (
-    <div className="fs-page space-y-6 p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="fs-title">Incident Reports</h1>
-          <p className="fs-subtitle">Report and track security incidents</p>
-        </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="fs-btn-primary px-4 py-2"
-        >
-          <AiOutlinePlus className="h-5 w-5" />
-          Report Incident
-        </button>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-white">Incident Workflow</h1>
+        <p className="mt-2 text-sm text-white/70">Draft -&gt; interim notification -&gt; admin review -&gt; final notification.</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-5">
-        <div className="fs-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-text-3">Total Reports</p>
-              <p className="mt-2 text-3xl font-bold text-text">{stats.total}</p>
-            </div>
-            <AiOutlineFile className="h-8 w-8 text-brand" />
-          </div>
-        </div>
+      {toast && (
+        <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">{toast}</div>
+      )}
 
-        <div className="fs-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-text-3">Open</p>
-              <p className="mt-2 text-3xl font-bold text-error">{stats.open}</p>
-            </div>
-            <AiOutlineAlert className="h-8 w-8 text-error" />
-          </div>
-        </div>
-
-        <div className="fs-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-text-3">Investigating</p>
-              <p className="mt-2 text-3xl font-bold text-warning">{stats.investigating}</p>
-            </div>
-            <AiOutlineClockCircle className="h-8 w-8 text-warning" />
-          </div>
-        </div>
-
-        <div className="fs-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-text-3">Resolved</p>
-              <p className="mt-2 text-3xl font-bold text-success">{stats.resolved}</p>
-            </div>
-            <AiOutlineCheckCircle className="h-8 w-8 text-success" />
-          </div>
-        </div>
-
-        <div className="fs-card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-text-3">Critical</p>
-              <p className="mt-2 text-3xl font-bold text-error">{stats.critical}</p>
-            </div>
-            <AiOutlineExclamationCircle className="h-8 w-8 text-error" />
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="fs-card">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          {/* Search */}
-          <div className="relative">
-            <AiOutlineSearch className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-text-3" />
-            <input
-              type="text"
-              placeholder="Search incidents..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-glass w-full pl-10"
-            />
-          </div>
-
-          {/* View Filter */}
-          <select
-            value={view}
-            onChange={(e) => setView(e.target.value)}
-            className="rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
+      {error && (
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-200">
+          <p className="font-semibold">Data Unavailable</p>
+          <p className="mt-1">{error}</p>
+          <button
+            type="button"
+            onClick={() => load({ reset: true })}
+            className="mt-3 rounded-md border border-red-300/40 px-3 py-1 text-xs font-semibold text-red-100 hover:bg-red-500/20"
           >
-            <option value="all">All Incidents</option>
-            <option value="open">Open</option>
-            <option value="investigating">Investigating</option>
-            <option value="resolved">Resolved</option>
-            <option value="critical">Critical Only</option>
-          </select>
-
-          {/* Severity Filter */}
-          <select
-            value={filterSeverity}
-            onChange={(e) => setFilterSeverity(e.target.value)}
-            className="rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
-          >
-            <option value="">All Severities</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-
-          {/* Type Filter */}
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
-          >
-            <option value="">All Types</option>
-            <option value="security-breach">Security Breach</option>
-            <option value="theft">Theft</option>
-            <option value="vandalism">Vandalism</option>
-            <option value="trespassing">Trespassing</option>
-            <option value="assault">Assault</option>
-            <option value="fire">Fire</option>
-            <option value="medical-emergency">Medical Emergency</option>
-            <option value="suspicious-activity">Suspicious Activity</option>
-            <option value="equipment-failure">Equipment Failure</option>
-            <option value="policy-violation">Policy Violation</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Incidents List */}
-      <div className="grid grid-cols-1 gap-4">
-        {filteredIncidents.length === 0 ? (
-          <div className="fs-card p-12 text-center">
-            <AiOutlineFile className="mx-auto mb-4 h-16 w-16 text-text-3/20" />
-            <p className="text-lg text-text-3">No incidents found</p>
-            <p className="mt-2 text-sm text-text-3">Report your first incident to get started</p>
-            <button
-              onClick={() => handleOpenModal()}
-              className="mt-6 fs-btn-ghost"
-            >
-              <AiOutlinePlus className="h-4 w-4" />
-              Report Incident
-            </button>
-          </div>
-        ) : (
-          filteredIncidents.map((incident) => (
-            <div key={incident.$id} className="fs-card hover:bg-surface-2 transition-all">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className={`fs-badge ${getSeverityBadge(incident.severity)}`}>
-                      {incident.severity?.toUpperCase()}
-                    </span>
-                    <span className={`h-3 w-3 rounded-full ${getStatusDot(incident.status)}`} title={incident.status}></span>
-                    <h3 className="text-lg font-semibold text-text">{incident.title}</h3>
-                  </div>
-                  
-                  <p className="mt-2 text-sm text-text-2 line-clamp-2">{incident.description}</p>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-text-3">
-                    <div className="flex items-center gap-1">
-                      <AiOutlineCalendar className="h-4 w-4" />
-                      {incident.incidentDate ? new Date(incident.incidentDate).toLocaleDateString() : 'N/A'}
-                      {incident.incidentTime && ` at ${incident.incidentTime}`}
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <AiOutlineUser className="h-4 w-4" />
-                      {getGuardName(incident.reportedBy)}
-                    </div>
-
-                    {incident.clientId && (
-                      <div className="flex items-center gap-1">
-                        <AiOutlineEnvironment className="h-4 w-4" />
-                        {getClientName(incident.clientId)}
-                      </div>
-                    )}
-
-                    {incident.siteId && (
-                      <div className="text-text-3">
-                        / {getSiteName(incident.siteId)}
-                      </div>
-                    )}
-
-                    <span className="rounded-full bg-bg-2 px-2 py-0.5 text-xs text-text-2">
-                      {getIncidentTypeLabel(incident.incidentType)}
-                    </span>
-
-                    {incident.policeNotified && (
-                      <span className="flex items-center gap-1 rounded-full bg-info/15 px-2 py-0.5 text-xs text-info">
-                        <AiOutlineWarning className="h-3 w-3" />
-                        Police Notified
-                      </span>
-                    )}
-
-                    {incident.injuries && (
-                      <span className="flex items-center gap-1 rounded-full bg-error/15 px-2 py-0.5 text-xs text-error">
-                        <AiOutlineWarning className="h-3 w-3" />
-                        Injuries
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {/* Status Dropdown */}
-                  <select
-                    value={incident.status}
-                    onChange={(e) => handleUpdateStatus(incident.$id, e.target.value)}
-                    className={`rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text ${getStatusDot(incident.status)} hover:opacity-90 transition-all focus:outline-none focus:ring-2 focus:ring-brand`}
-                  >
-                    <option value="open">Open</option>
-                    <option value="investigating">Investigating</option>
-                    <option value="resolved">Resolved</option>
-                  </select>
-
-                  {/* View Button */}
-                  <button
-                    onClick={() => handleViewIncident(incident)}
-                    className="fs-btn-ghost p-2"
-                  >
-                    <AiOutlineEye className="h-4 w-4" />
-                  </button>
-
-                  {/* Edit Button */}
-                  <button
-                    onClick={() => handleOpenModal(incident)}
-                    className="fs-btn-ghost p-2"
-                  >
-                    <AiOutlineEdit className="h-4 w-4" />
-                  </button>
-
-                  {/* Delete Button */}
-                  <button
-                    onClick={() => handleDeleteIncident(incident.$id)}
-                    className="rounded-lg border border-error/30 bg-error/15 p-2 text-error hover:bg-error/20 transition-all"
-                  >
-                    <AiOutlineDelete className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Incident Detail Modal */}
-      {showDetailModal && viewingIncident && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="fs-card w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 border-b border-border bg-bg p-6 z-10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className={`fs-badge ${getSeverityBadge(viewingIncident.severity)}`}>
-                      {viewingIncident.severity?.toUpperCase()}
-                    </span>
-                    <span className={`h-3 w-3 rounded-full ${getStatusDot(viewingIncident.status)}`}></span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-text">{viewingIncident.title}</h2>
-                  <p className="mt-1 text-sm text-text-3">
-                    {viewingIncident.incidentDate ? new Date(viewingIncident.incidentDate).toLocaleDateString() : 'N/A'}
-                    {viewingIncident.incidentTime && ` at ${viewingIncident.incidentTime}`}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowDetailModal(false)}
-                  className="fs-btn-ghost p-2"
-                >
-                  <AiOutlineClose className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Basic Info */}
-              <div>
-                <h3 className="text-lg font-semibold text-text mb-3">Incident Details</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-text-3">Type</p>
-                    <p className="text-text">{getIncidentTypeLabel(viewingIncident.incidentType)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-3">Status</p>
-                    <p className="text-text capitalize">{viewingIncident.status}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-3">Reported By</p>
-                    <p className="text-text">{getGuardName(viewingIncident.reportedBy)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-3">Location</p>
-                    <p className="text-text">{viewingIncident.location || 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <h3 className="text-lg font-semibold text-text mb-3">Description</h3>
-                <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.description}</p>
-              </div>
-
-              {/* Client/Site */}
-              {(viewingIncident.clientId || viewingIncident.siteId) && (
-                <div>
-                  <h3 className="text-lg font-semibold text-text mb-3">Client & Site</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    {viewingIncident.clientId && (
-                      <div>
-                        <p className="text-sm text-text-3">Client</p>
-                        <p className="text-text">{getClientName(viewingIncident.clientId)}</p>
-                      </div>
-                    )}
-                    {viewingIncident.siteId && (
-                      <div>
-                        <p className="text-sm text-text-3">Site</p>
-                        <p className="text-text">{getSiteName(viewingIncident.siteId)}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Witness Info */}
-              {(viewingIncident.witnessName || viewingIncident.witnessContact) && (
-                <div>
-                  <h3 className="text-lg font-semibold text-text mb-3">Witness Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    {viewingIncident.witnessName && (
-                      <div>
-                        <p className="text-sm text-text-3">Name</p>
-                        <p className="text-text">{viewingIncident.witnessName}</p>
-                      </div>
-                    )}
-                    {viewingIncident.witnessContact && (
-                      <div>
-                        <p className="text-sm text-text-3">Contact</p>
-                        <p className="text-text">{viewingIncident.witnessContact}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Taken */}
-              {viewingIncident.actionTaken && (
-                <div>
-                  <h3 className="text-lg font-semibold text-text mb-3">Action Taken</h3>
-                  <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.actionTaken}</p>
-                </div>
-              )}
-
-              {/* Police Information */}
-              {viewingIncident.policeNotified && (
-                <div>
-                  <h3 className="text-lg font-semibold text-text mb-3">Police Information</h3>
-                  <div className="rounded-lg bg-info/15 border border-info/30 p-4">
-                    <p className="text-info font-medium mb-2">Police Notified</p>
-                    {viewingIncident.policeReferenceNumber && (
-                      <p className="text-text-2">Reference: {viewingIncident.policeReferenceNumber}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Injuries */}
-              {viewingIncident.injuries && (
-                <div>
-                  <h3 className="text-lg font-semibold text-text mb-3">Injuries Reported</h3>
-                  <div className="rounded-lg bg-error/15 border border-error/30 p-4">
-                    <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.injuryDetails || 'Details not provided'}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Property Damage */}
-              {viewingIncident.propertyDamage && (
-                <div>
-                  <h3 className="text-lg font-semibold text-text mb-3">Property Damage</h3>
-                  <div className="rounded-lg bg-warning/15 border border-warning/30 p-4">
-                    <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.damageDetails || 'Details not provided'}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Follow Up */}
-              {viewingIncident.followUpRequired && (
-                <div>
-                  <h3 className="text-lg font-semibold text-text mb-3">Follow-Up Required</h3>
-                  <div className="rounded-lg bg-warning/15 border border-warning/30 p-4">
-                    <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.followUpNotes || 'No notes provided'}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Resolution */}
-              {viewingIncident.resolution && (
-                <div>
-                  <h3 className="text-lg font-semibold text-text mb-3">Resolution</h3>
-                  <p className="text-text-2 whitespace-pre-wrap">{viewingIncident.resolution}</p>
-                </div>
-              )}
-            </div>
-          </div>
+            Retry
+          </button>
         </div>
       )}
 
-      {/* Create/Edit Incident Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="fs-card w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 border-b border-white/10 bg-night-sky p-6 z-10">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-text">
-                  {editingIncident ? 'Edit Incident Report' : 'Report New Incident'}
-                </h2>
-                <button
-                  onClick={handleCloseModal}
-                  className="fs-btn-ghost p-2"
-                >
-                  <AiOutlineClose className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
+      <form onSubmit={handleCreateDraft} className="rounded-xl border border-white/10 bg-white/5 p-5">
+        <h2 className="text-lg font-semibold text-white">Create Incident Draft</h2>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+          <input
+            placeholder="Client ID"
+            value={draft.clientId}
+            onChange={(event) => setDraft((prev) => ({ ...prev, clientId: event.target.value }))}
+            className="rounded-lg border border-white/20 bg-night-sky px-3 py-2 text-sm text-white"
+          />
+          <input
+            placeholder="Site ID"
+            value={draft.siteId}
+            onChange={(event) => setDraft((prev) => ({ ...prev, siteId: event.target.value }))}
+            className="rounded-lg border border-white/20 bg-night-sky px-3 py-2 text-sm text-white"
+          />
+          <input
+            placeholder="Shift ID (optional)"
+            value={draft.shiftId}
+            onChange={(event) => setDraft((prev) => ({ ...prev, shiftId: event.target.value }))}
+            className="rounded-lg border border-white/20 bg-night-sky px-3 py-2 text-sm text-white"
+          />
+          <select
+            value={draft.severity}
+            onChange={(event) => setDraft((prev) => ({ ...prev, severity: event.target.value }))}
+            className="rounded-lg border border-white/20 bg-night-sky px-3 py-2 text-sm text-white"
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+          <input
+            placeholder="Summary"
+            value={draft.summary}
+            onChange={(event) => setDraft((prev) => ({ ...prev, summary: event.target.value }))}
+            className="rounded-lg border border-white/20 bg-night-sky px-3 py-2 text-sm text-white md:col-span-2"
+          />
+          <textarea
+            rows={3}
+            placeholder="Details"
+            value={draft.details}
+            onChange={(event) => setDraft((prev) => ({ ...prev, details: event.target.value }))}
+            className="rounded-lg border border-white/20 bg-night-sky px-3 py-2 text-sm text-white md:col-span-3"
+          />
+        </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Title */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-text">
-                  Incident Title <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="input-glass w-full"
-                  placeholder="Brief title of the incident"
-                  required
-                />
-              </div>
+        <button
+          type="submit"
+          disabled={processingId === 'create'}
+          className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-night-sky hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {processingId === 'create' ? 'Creating...' : 'Create Draft'}
+        </button>
+      </form>
 
-              {/* Type, Severity, Status */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Incident Type <span className="text-error">*</span></label>
-                  <select
-                    value={formData.incidentType}
-                    onChange={(e) => setFormData({ ...formData, incidentType: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
-                    required
-                  >
-                    <option value="security-breach">Security Breach</option>
-                    <option value="theft">Theft</option>
-                    <option value="vandalism">Vandalism</option>
-                    <option value="trespassing">Trespassing</option>
-                    <option value="assault">Assault</option>
-                    <option value="fire">Fire</option>
-                    <option value="medical-emergency">Medical Emergency</option>
-                    <option value="suspicious-activity">Suspicious Activity</option>
-                    <option value="equipment-failure">Equipment Failure</option>
-                    <option value="policy-violation">Policy Violation</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/10 bg-white/5 p-4 md:grid-cols-4">
+        <select
+          value={filters.status}
+          onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
+          className="rounded-lg border border-white/20 bg-night-sky px-3 py-2 text-sm text-white"
+        >
+          <option value="">All statuses</option>
+          <option value="draft">draft</option>
+          <option value="submitted">submitted</option>
+          <option value="interim_sent">interim_sent</option>
+          <option value="needs_review">needs_review</option>
+          <option value="approved">approved</option>
+          <option value="final_sent">final_sent</option>
+          <option value="rejected">rejected</option>
+        </select>
+        <input
+          placeholder="Filter clientId"
+          value={filters.clientId}
+          onChange={(event) => setFilters((prev) => ({ ...prev, clientId: event.target.value }))}
+          className="rounded-lg border border-white/20 bg-night-sky px-3 py-2 text-sm text-white"
+        />
+        <input
+          placeholder="Filter siteId"
+          value={filters.siteId}
+          onChange={(event) => setFilters((prev) => ({ ...prev, siteId: event.target.value }))}
+          className="rounded-lg border border-white/20 bg-night-sky px-3 py-2 text-sm text-white"
+        />
+        <button
+          type="button"
+          onClick={() => load({ reset: true })}
+          className="rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+        >
+          Apply Filters
+        </button>
+      </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Severity <span className="text-error">*</span></label>
-                  <select
-                    value={formData.severity}
-                    onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
-                    required
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical</option>
-                  </select>
-                </div>
+      {loading && records.length === 0 && (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center text-white/70">Loading incidents...</div>
+      )}
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
-                  >
-                    <option value="open">Open</option>
-                    <option value="investigating">Investigating</option>
-                    <option value="resolved">Resolved</option>
-                  </select>
-                </div>
-              </div>
+      {!loading && records.length === 0 && !error && (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center text-white/70">No incidents found.</div>
+      )}
 
-              {/* Description */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-text">
-                  Description <span className="text-red-400">*</span>
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="input-glass w-full"
-                  placeholder="Detailed description of the incident"
-                  rows="5"
-                  required
-                />
-              </div>
+      {records.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5">
+          <table className="w-full text-sm">
+            <thead className="bg-white/10 text-left text-xs uppercase tracking-wide text-white/60">
+              <tr>
+                <th className="px-4 py-3">Created</th>
+                <th className="px-4 py-3">Summary</th>
+                <th className="px-4 py-3">Scope</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((incident) => {
+                const ownDraft =
+                  String(incident.status || '') === 'draft' &&
+                  String(incident.reportedBy || '') === String(user?.$id || '');
+                const needsReview = String(incident.status || '') === 'needs_review';
 
-              {/* Date, Time, Location */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Date <span className="text-error">*</span></label>
-                  <input
-                    type="date"
-                    value={formData.incidentDate}
-                    onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
-                    className="input-glass w-full"
-                    required
-                  />
-                </div>
+                return (
+                  <tr key={incident.$id} className="border-t border-white/10 text-white">
+                    <td className="px-4 py-3">{formatDate(incident.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-semibold text-white">{incident.summary || '-'}</p>
+                      <p className="mt-1 text-xs text-white/60 line-clamp-2">{incident.details || 'No details provided.'}</p>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-white/80">{incident.clientId} / {incident.siteId}</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass(incident.status)}`}>
+                        {incident.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        {ownDraft && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleQuickEdit(incident)}
+                              disabled={processingId === incident.$id}
+                              className="rounded-md border border-white/20 px-3 py-1 text-xs font-semibold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSubmitDraft(incident.$id)}
+                              disabled={processingId === incident.$id}
+                              className="rounded-md bg-accent px-3 py-1 text-xs font-semibold text-night-sky hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Submit
+                            </button>
+                          </>
+                        )}
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Time <span className="text-error">*</span></label>
-                  <input
-                    type="time"
-                    value={formData.incidentTime}
-                    onChange={(e) => setFormData({ ...formData, incidentTime: e.target.value })}
-                    className="input-glass w-full"
-                    required
-                  />
-                </div>
+                        {isAdmin && needsReview && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleAdminReview(incident.$id, 'approve')}
+                              disabled={processingId === incident.$id}
+                              className="rounded-md bg-emerald-500 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-500/90 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAdminReview(incident.$id, 'reject')}
+                              disabled={processingId === incident.$id}
+                              className="rounded-md border border-red-400/40 px-3 py-1 text-xs font-semibold text-red-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Location</label>
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="input-glass w-full"
-                    placeholder="Specific location"
-                  />
-                </div>
-              </div>
-
-              {/* Reported By, Client, Site, Shift */}
-              <div className="grid grid-cols-4 gap-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Reported By <span className="text-error">*</span></label>
-                  <select
-                    value={formData.reportedBy}
-                    onChange={(e) => setFormData({ ...formData, reportedBy: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
-                    required
-                  >
-                    <option value="">Select Guard</option>
-                    {guards.map(guard => (
-                      <option key={guard.$id} value={guard.$id}>
-                        {guard.firstName} {guard.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Client</label>
-                  <select
-                    value={formData.clientId}
-                    onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
-                  >
-                    <option value="">None</option>
-                    {clients.map(client => (
-                      <option key={client.$id} value={client.$id}>
-                        {client.companyName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Site</label>
-                  <select
-                    value={formData.siteId}
-                    onChange={(e) => setFormData({ ...formData, siteId: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
-                    disabled={!formData.clientId}
-                  >
-                    <option value="">None</option>
-                    {sites
-                      .filter(site => !formData.clientId || site.clientId === formData.clientId)
-                      .map(site => (
-                        <option key={site.$id} value={site.$id}>
-                          {site.siteName}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Related Shift</label>
-                  <select
-                    value={formData.shiftId}
-                    onChange={(e) => setFormData({ ...formData, shiftId: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-bg py-2 px-4 text-text focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand [&>option]:bg-bg [&>option]:text-text"
-                  >
-                    <option value="">None</option>
-                    {shifts
-                      .filter(shift => !formData.siteId || shift.siteId === formData.siteId)
-                      .slice(0, 50)
-                      .map(shift => (
-                        <option key={shift.$id} value={shift.$id}>
-                          {shift.date} {shift.startTime}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Witness Information */}
-              <div>
-                <h3 className="text-lg font-semibold text-text mb-3">Witness Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-text">Witness Name</label>
-                    <input
-                      type="text"
-                      value={formData.witnessName}
-                      onChange={(e) => setFormData({ ...formData, witnessName: e.target.value })}
-                      className="input-glass w-full"
-                      placeholder="Full name"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-text">Witness Contact</label>
-                    <input
-                      type="text"
-                      value={formData.witnessContact}
-                      onChange={(e) => setFormData({ ...formData, witnessContact: e.target.value })}
-                      className="input-glass w-full"
-                      placeholder="Phone or email"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Taken */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-text">Action Taken</label>
-                <textarea
-                  value={formData.actionTaken}
-                  onChange={(e) => setFormData({ ...formData, actionTaken: e.target.value })}
-                  className="input-glass w-full"
-                  placeholder="Actions taken in response to the incident"
-                  rows="3"
-                />
-              </div>
-
-              {/* Checkboxes and Details */}
-              <div className="space-y-4">
-                {/* Police */}
-                <div className="rounded-lg border border-border bg-bg-2 p-4">
-                  <label className="flex items-center gap-2 mb-3">
-                    <input
-                      type="checkbox"
-                      checked={formData.policeNotified}
-                      onChange={(e) => setFormData({ ...formData, policeNotified: e.target.checked })}
-                      className="h-4 w-4 rounded border-white/10 bg-white/5 text-accent focus:ring-accent"
-                    />
-                    <span className="text-sm font-medium text-text">Police Notified</span>
-                  </label>
-                  {formData.policeNotified && (
-                    <input
-                      type="text"
-                      value={formData.policeReferenceNumber}
-                      onChange={(e) => setFormData({ ...formData, policeReferenceNumber: e.target.value })}
-                      className="input-glass w-full"
-                      placeholder="Police reference number"
-                    />
-                  )}
-                </div>
-
-                {/* Injuries */}
-                <div className="rounded-lg border border-border bg-bg-2 p-4">
-                  <label className="flex items-center gap-2 mb-3">
-                    <input
-                      type="checkbox"
-                      checked={formData.injuries}
-                      onChange={(e) => setFormData({ ...formData, injuries: e.target.checked })}
-                      className="h-4 w-4 rounded border-white/10 bg-white/5 text-accent focus:ring-accent"
-                    />
-                    <span className="text-sm font-medium text-text">Injuries Reported</span>
-                  </label>
-                  {formData.injuries && (
-                    <textarea
-                      value={formData.injuryDetails}
-                      onChange={(e) => setFormData({ ...formData, injuryDetails: e.target.value })}
-                      className="input-glass w-full"
-                      placeholder="Describe the injuries"
-                      rows="2"
-                    />
-                  )}
-                </div>
-
-                {/* Property Damage */}
-                <div className="rounded-lg border border-border bg-bg-2 p-4">
-                  <label className="flex items-center gap-2 mb-3">
-                    <input
-                      type="checkbox"
-                      checked={formData.propertyDamage}
-                      onChange={(e) => setFormData({ ...formData, propertyDamage: e.target.checked })}
-                      className="h-4 w-4 rounded border-white/10 bg-white/5 text-accent focus:ring-accent"
-                    />
-                    <span className="text-sm font-medium text-text">Property Damage</span>
-                  </label>
-                  {formData.propertyDamage && (
-                    <textarea
-                      value={formData.damageDetails}
-                      onChange={(e) => setFormData({ ...formData, damageDetails: e.target.value })}
-                      className="input-glass w-full"
-                      placeholder="Describe the damage"
-                      rows="2"
-                    />
-                  )}
-                </div>
-
-                {/* Follow Up */}
-                <div className="rounded-lg border border-border bg-bg-2 p-4">
-                  <label className="flex items-center gap-2 mb-3">
-                    <input
-                      type="checkbox"
-                      checked={formData.followUpRequired}
-                      onChange={(e) => setFormData({ ...formData, followUpRequired: e.target.checked })}
-                      className="h-4 w-4 rounded border-white/10 bg-white/5 text-accent focus:ring-accent"
-                    />
-                    <span className="text-sm font-medium text-text">Follow-Up Required</span>
-                  </label>
-                  {formData.followUpRequired && (
-                    <textarea
-                      value={formData.followUpNotes}
-                      onChange={(e) => setFormData({ ...formData, followUpNotes: e.target.value })}
-                      className="input-glass w-full"
-                      placeholder="Follow-up notes"
-                      rows="2"
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Resolution (for closed incidents) */}
-              {formData.status === 'resolved' && (
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-text">Resolution</label>
-                  <textarea
-                    value={formData.resolution}
-                    onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
-                    className="input-glass w-full"
-                    placeholder="How was this incident resolved?"
-                    rows="3"
-                  />
-                </div>
-              )}
-
-              {/* Buttons */}
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className="fs-btn-ghost px-4 py-2"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="fs-btn-primary px-4 py-2"
-                >
-                  {editingIncident ? 'Update Report' : 'Submit Report'}
-                </button>
-              </div>
-            </form>
-          </div>
+      {hasMore && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => load({ reset: false })}
+            disabled={loading}
+            className="rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? 'Loading...' : 'Load More'}
+          </button>
         </div>
       )}
     </div>

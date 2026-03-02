@@ -38,7 +38,9 @@ const ClientDetail = lazy(() => import('./pages/portal/ClientDetail.jsx'));
 const Sites = lazy(() => import('./pages/portal/Sites.jsx'));
 const Posts = lazy(() => import('./pages/portal/Posts.jsx'));
 const Guards = lazy(() => import('./pages/portal/Guards.jsx'));
-const TimeTracking = lazy(() => import('./pages/portal/TimeTracking.jsx'));
+const Timesheets = lazy(() => import('./pages/portal/Timesheets.jsx'));
+const TimesheetDetail = lazy(() => import('./pages/portal/TimesheetDetail.jsx'));
+const TimesheetApprovals = lazy(() => import('./pages/portal/TimesheetApprovals.jsx'));
 const Tasks = lazy(() => import('./pages/portal/Tasks.jsx'));
 const Incidents = lazy(() => import('./pages/portal/Incidents.jsx'));
 const Assets = lazy(() => import('./pages/portal/Assets.jsx'));
@@ -51,6 +53,12 @@ const ManageDepartments = lazy(() => import('./pages/portal/ManageDepartments.js
 const Reports = lazy(() => import('./pages/portal/Reports.jsx'));
 const HR = lazy(() => import('./pages/portal/HR.jsx'));
 const Payroll = lazy(() => import('./pages/portal/Payroll.jsx'));
+const Entities = lazy(() => import('./pages/portal/Entities.jsx'));
+const RiskAlerts = lazy(() => import('./pages/portal/RiskAlerts.jsx'));
+const CashflowDashboard = lazy(() => import('./pages/portal/CashflowDashboard.jsx'));
+const ResilienceDashboard = lazy(() => import('./pages/portal/ResilienceDashboard.jsx'));
+const TenderWorkbench = lazy(() => import('./pages/portal/TenderWorkbench.jsx'));
+const EmploymentRiskFlags = lazy(() => import('./pages/portal/EmploymentRiskFlags.jsx'));
 const MySchedule = lazy(() => import('./pages/portal/MySchedule.jsx'));
 const OpenShifts = lazy(() => import('./pages/portal/OpenShifts.jsx'));
 const ShiftApplications = lazy(() => import('./pages/portal/ShiftApplications.jsx'));
@@ -70,6 +78,7 @@ const NewShift = lazy(() => import('./pages/portal/NewShift.jsx'));
 const AdminGrading = lazy(() => import('./pages/portal/AdminGrading.jsx'));
 const InviteManagement = lazy(() => import('./pages/portal/InviteManagement.jsx'));
 const DriveSyncStatus = lazy(() => import('./pages/portal/DriveSyncStatus.jsx'));
+const ComplianceFlags = lazy(() => import('./pages/portal/ComplianceFlags.jsx'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'));
 const PasswordReset = lazy(() => import('./pages/PasswordReset.jsx'));
@@ -431,6 +440,17 @@ const AppContent = () => {
             }
           />
           <Route
+            path="compliance-flags"
+            element={
+              <FeatureRoute
+                feature="COMPLIANCE"
+                name="Compliance Flags"
+                permission={RBAC_PERMISSIONS.MANAGE_COMPLIANCE}
+                element={<ComplianceFlags />}
+              />
+            }
+          />
+          <Route
             path="audit"
             element={
               <FeatureRoute
@@ -465,7 +485,15 @@ const AppContent = () => {
           />
           <Route
             path="time"
-            element={<FeatureRoute feature="TIME_TRACKING" name="Time Tracking" permission={RBAC_PERMISSIONS.VIEW_TIME_TRACKING} element={<TimeTracking />} />}
+            element={<FeatureRoute feature="TIME_TRACKING" name="My Timesheets" permission={RBAC_PERMISSIONS.VIEW_TIME_TRACKING} element={<Timesheets />} />}
+          />
+          <Route
+            path="time/:id"
+            element={<FeatureRoute feature="TIME_TRACKING" name="Timesheet Detail" permission={RBAC_PERMISSIONS.VIEW_TIME_TRACKING} element={<TimesheetDetail />} />}
+          />
+          <Route
+            path="time-approvals"
+            element={<FeatureRoute feature="TIME_TRACKING" name="Timesheet Approvals" permission={RBAC_PERMISSIONS.MANAGE_SHIFTS} element={<TimesheetApprovals />} />}
           />
           <Route
             path="tasks"
@@ -510,6 +538,30 @@ const AppContent = () => {
           <Route
             path="reports"
             element={<FeatureRoute feature="REPORTS" name="Reports" permission={RBAC_PERMISSIONS.VIEW_REPORTS} element={<Reports />} />}
+          />
+          <Route
+            path="entities"
+            element={<FeatureRoute feature="ENTITY_MANAGEMENT" name="Entities" permission={RBAC_PERMISSIONS.VIEW_REPORTS} element={<Entities />} />}
+          />
+          <Route
+            path="enterprise-alerts"
+            element={<FeatureRoute feature="ENTERPRISE_ALERTS" name="Enterprise Alerts" permission={RBAC_PERMISSIONS.VIEW_REPORTS} element={<RiskAlerts />} />}
+          />
+          <Route
+            path="cashflow"
+            element={<FeatureRoute feature="CASHFLOW_DASHBOARD" name="Cashflow" permission={RBAC_PERMISSIONS.VIEW_REPORTS} element={<CashflowDashboard />} />}
+          />
+          <Route
+            path="resilience"
+            element={<FeatureRoute feature="RESILIENCE_DASHBOARD" name="Resilience" permission={RBAC_PERMISSIONS.VIEW_REPORTS} element={<ResilienceDashboard />} />}
+          />
+          <Route
+            path="tender-workbench"
+            element={<FeatureRoute feature="TENDER_WORKBENCH" name="Tender Workbench" permission={RBAC_PERMISSIONS.VIEW_FINANCE} element={<TenderWorkbench />} />}
+          />
+          <Route
+            path="employment-risk"
+            element={<FeatureRoute feature="EMPLOYMENT_RISK" name="Employment Risk" permission={RBAC_PERMISSIONS.VIEW_REPORTS} element={<EmploymentRiskFlags />} />}
           />
           <Route
             path="analytics"

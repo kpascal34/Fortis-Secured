@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import GlassPanel from '../../components/GlassPanel.jsx';
 import PortalHeader from '../../components/PortalHeader.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC';
-import { createStaffInvite, buildInviteLink } from '../../services/staffInviteService.js';
+import { createStaffInvite, buildInviteLink, resendStaffInvite } from '../../services/staffInviteService.js';
 import { databases, config } from '../../lib/appwrite.js';
 import { Query } from 'appwrite';
 
@@ -18,6 +18,7 @@ const InviteManagement = () => {
   const [loadingInvites, setLoadingInvites] = useState(true);
   const [resending, setResending] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [listError, setListError] = useState('');
 
   const showFeedback = (type, message) => {
     setFeedback({ type, message });
@@ -29,6 +30,7 @@ const InviteManagement = () => {
   const loadInvites = async () => {
     try {
       setLoadingInvites(true);
+      setListError('');
       const response = await databases.listDocuments(
         config.databaseId,
         config.staffInvitesCollectionId,
@@ -37,8 +39,7 @@ const InviteManagement = () => {
       setInvites(response.documents);
     } catch (err) {
       console.error('Failed to load invites:', err);
-      setError(err.message || 'Failed to load staff invites.');
-      showFeedback('error', err.message || 'Failed to load staff invites.');
+      setListError(err.message || 'Failed to load staff invites.');
       setInvites([]);
     } finally {
       setLoadingInvites(false);
@@ -54,26 +55,11 @@ const InviteManagement = () => {
   const handleResend = async (invite) => {
     try {
       setResending(invite.$id);
-      const signupUrl = buildInviteLink(invite.code);
-      
-      const response = await fetch('/api/send-invite-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: invite.email,
-          inviteCode: invite.code,
-          signupUrl,
-        }),
-      });
-
-      if (response.ok) {
-        showFeedback('success', `Invite resent to ${invite.email}`);
-      } else {
-        throw new Error('Failed to resend email');
-      }
+      await resendStaffInvite(invite.$id, user);
+      showFeedback('success', `Invite re-queued for ${invite.email}`);
     } catch (err) {
       console.error('Failed to resend invite:', err);
-      showFeedback('error', `Failed to resend invite email: ${err.message}`);
+      showFeedback('error', `Failed to resend invite email: ${err.message || 'Unknown error'}`);
     } finally {
       setResending(null);
     }
@@ -229,6 +215,19 @@ const InviteManagement = () => {
           {loadingInvites ? (
             <GlassPanel className="border-white/10 bg-[#1a1f2e] backdrop-blur-md">
               <p className="text-white/70 text-center py-8">Loading invites...</p>
+            </GlassPanel>
+          ) : listError ? (
+            <GlassPanel className="border-red-500/30 bg-red-500/10 backdrop-blur-md">
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <p className="text-red-200">{listError}</p>
+                <button
+                  type="button"
+                  onClick={loadInvites}
+                  className="rounded-lg border border-red-400/40 px-4 py-2 text-sm font-semibold text-red-100 hover:bg-red-500/20"
+                >
+                  Retry
+                </button>
+              </div>
             </GlassPanel>
           ) : invites.length === 0 ? (
             <GlassPanel className="border-white/10 bg-[#1a1f2e] backdrop-blur-md">

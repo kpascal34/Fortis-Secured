@@ -39,12 +39,24 @@ const assertScopedAccess = (resourceType, doc, scope) => {
   }
 
   if (scope.role === ROLES.MANAGER) {
-    const siteMatch = asArray(scope.assignedSiteIds).includes(doc.siteId);
-    const clientMatch = asArray(scope.assignedClientIds).includes(doc.clientId);
-    if (!siteMatch && !clientMatch) {
-      throw new Error('Manager scope violation');
+    const assignedSites = asArray(scope.assignedSiteIds);
+    const assignedClients = asArray(scope.assignedClientIds);
+
+    if (assignedSites.length > 0) {
+      if (!assignedSites.includes(doc.siteId)) {
+        throw new Error('Manager site scope violation');
+      }
+      return true;
     }
-    return true;
+
+    if (assignedClients.length > 0) {
+      if (!assignedClients.includes(doc.clientId)) {
+        throw new Error('Manager client scope violation');
+      }
+      return true;
+    }
+
+    throw new Error('Manager has no scope assignments');
   }
 
   if (scope.role === ROLES.STAFF) {
@@ -108,7 +120,7 @@ const checks = [
         assignedSiteIds: ['site-1', 'site-2'],
         assignedClientIds: ['client-a'],
       };
-      const doc = { $id: 'site-x', siteId: 'site-x', clientId: 'client-z' };
+      const doc = { $id: 'site-x', siteId: 'site-x', clientId: 'client-a' };
 
       let blocked = false;
       try {
@@ -118,7 +130,7 @@ const checks = [
       }
 
       if (!blocked) {
-        throw new Error('Manager was able to access unassigned site/client');
+        throw new Error('Manager was able to bypass site-first scope precedence');
       }
     },
   },

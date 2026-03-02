@@ -20,8 +20,6 @@ const OfferShiftModal = ({ shift, guards, onClose, onOffer }) => {
   const [message, setMessage] = useState('');
   const [payRateBonus, setPayRateBonus] = useState(0);
   const [notifyEmail, setNotifyEmail] = useState(true);
-  const [notifySMS, setNotifySMS] = useState(false);
-  const [notifyPush, setNotifyPush] = useState(true);
   const [offering, setOffering] = useState(false);
 
   const toggleGuard = (guardId) => {
@@ -46,7 +44,7 @@ const OfferShiftModal = ({ shift, guards, onClose, onOffer }) => {
       return;
     }
 
-    if (!notifyEmail && !notifySMS && !notifyPush) {
+    if (!notifyEmail) {
       alert('Please select at least one notification method');
       return;
     }
@@ -85,8 +83,8 @@ const OfferShiftModal = ({ shift, guards, onClose, onOffer }) => {
           read: false,
           channels: {
             email: notifyEmail,
-            sms: notifySMS,
-            push: notifyPush,
+            sms: false,
+            push: false,
           },
         };
       });
@@ -265,24 +263,7 @@ const OfferShiftModal = ({ shift, guards, onClose, onOffer }) => {
                 />
                 <span className="text-white">Email</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={notifySMS}
-                  onChange={(e) => setNotifySMS(e.target.checked)}
-                  className="rounded border-white/10 bg-night-sky text-accent focus:ring-accent"
-                />
-                <span className="text-white">SMS</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={notifyPush}
-                  onChange={(e) => setNotifyPush(e.target.checked)}
-                  className="rounded border-white/10 bg-night-sky text-accent focus:ring-accent"
-                />
-                <span className="text-white">Push</span>
-              </label>
+              <span className="text-sm text-white/60">Email only (SMS disabled).</span>
             </div>
           </div>
 
@@ -352,7 +333,7 @@ const OfferShiftModal = ({ shift, guards, onClose, onOffer }) => {
               <p>
                 • Notifications:{' '}
                 <span className="text-white">
-                  {[notifyEmail && 'Email', notifySMS && 'SMS', notifyPush && 'Push']
+                  {[notifyEmail && 'Email']
                     .filter(Boolean)
                     .join(', ')}
                 </span>

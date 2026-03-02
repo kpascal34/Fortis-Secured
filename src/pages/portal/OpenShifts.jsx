@@ -42,6 +42,8 @@ const OpenShifts = () => {
   const [sites, setSites] = useState([]);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [feedback, setFeedback] = useState('');
   const [currentGuard] = useState(() =>
     user
       ? {
@@ -68,6 +70,7 @@ const OpenShifts = () => {
   const fetchOpenShifts = async () => {
     try {
       setLoading(true);
+      setError('');
 
       // Fetch sites
       try {
@@ -94,11 +97,13 @@ const OpenShifts = () => {
       } catch (error) {
         console.log('Shifts collection unavailable. No demo data loaded.', error);
         setOpenShifts([]);
+        setError('SchemaMissing: shifts collection could not be loaded.');
       }
 
       setLoading(false);
     } catch (error) {
       console.error('Error fetching open shifts:', error);
+      setError(error.message || 'NetworkError: failed to load open shifts.');
       setLoading(false);
     }
   };
@@ -189,16 +194,15 @@ const OpenShifts = () => {
 
         // Refresh applications list
         await fetchApplications();
-        
-        alert(`Application submitted for ${shift.siteName}! You'll be notified when it's reviewed.`);
+        setFeedback(`Application submitted for ${shift.siteName}. You'll be notified when it's reviewed.`);
         setSelectedShift(null);
       } catch (error) {
         console.error('Error creating application:', error);
-        alert('Failed to submit application. Please try again.');
+        setError(error.message || 'NetworkError: failed to submit application.');
       }
     } catch (error) {
       console.error('Error applying for shift:', error);
-      alert('Failed to submit application. Please try again.');
+      setError(error.message || 'NetworkError: failed to submit application.');
     } finally {
       setApplying(false);
     }
@@ -305,6 +309,26 @@ const OpenShifts = () => {
             Apply for available shifts - manager will review your application
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            <div className="flex items-center justify-between gap-3">
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={fetchOpenShifts}
+                className="rounded-md border border-red-300/40 px-3 py-1 text-xs font-semibold text-red-100 hover:bg-red-500/20"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+        {feedback && (
+          <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-200">
+            {feedback}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { validateRequired, validateEmail, validateRange, parseDate, formatCurrency } from '../lib/validation';
 import { AiOutlineClose, AiOutlineLoading3Quarters } from 'react-icons/ai';
 import { logEvent } from '../services/auditLogService.js';
+import { notifyInviteSent } from '../services/notificationService.js';
 
 const ClientFormModal = ({ client, onClose }) => {
   const { user } = useAuth();
@@ -147,6 +148,26 @@ const ClientFormModal = ({ client, onClose }) => {
           clientId: created.$id,
           metadata: { companyName: payload.companyName },
         });
+
+        try {
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30);
+          await notifyInviteSent({
+            toEmail: payload.email,
+            inviteCode: created.$id,
+            signupUrl: `${window.location.origin}/portal`,
+            expiresAt: expiresAt.toISOString(),
+            clientId: created.$id,
+            siteId: null,
+            userId: created.userId || null,
+          });
+        } catch (notifyError) {
+          console.error('Failed to enqueue client invite email:', notifyError);
+          setValidationMessage(`Client created, but invite email queue failed: ${notifyError.message}`);
+          setLoading(false);
+          return;
+        }
+
         setValidationMessage('Client created successfully!');
       }
       

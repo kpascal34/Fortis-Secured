@@ -10,6 +10,7 @@ import { buildPermissionsForDoc } from '../lib/appwritePermissions.js';
 import { ensureDatabaseConfig, getAuthorizedScope, withScopedQueries, assertScopedDocument, resolveActor } from '../lib/serviceSecurity.js';
 import { RESOURCE_TYPES, normalizeTenancyDocument } from '../lib/tenancyScope.js';
 import { logEvent } from './auditLogService.js';
+import { notifyComplianceApproved, notifyComplianceRejected, notifyComplianceSubmitted } from './notificationService.js';
 
 const dbId = config.databaseId;
 const compCol = config.staffComplianceCollectionId || 'staff_compliance';
@@ -122,6 +123,15 @@ export async function submitStep1Identity(staffId, data, actor = null) {
     metadata: { step: 1, addresses: toArray(data.addresses).length },
   });
 
+  try {
+    await notifyComplianceSubmitted(staffId, comp.$id, [], {
+      clientId: comp.clientId || null,
+      siteId: comp.siteId || null,
+    });
+  } catch (notifyError) {
+    console.error('[complianceService] Failed to enqueue complianceSubmitted notification:', notifyError);
+  }
+
   return normalizeTenancyDocument(RESOURCE_TYPES.STAFF_COMPLIANCE, updated);
 }
 
@@ -168,6 +178,26 @@ export async function submitStep2Employment(staffId, data, actor = null) {
     siteId: comp.siteId || null,
     metadata: { step: 2, jobs: toArray(data.jobs).length },
   });
+
+  try {
+    if (approved) {
+      await notifyComplianceApproved(
+        staffId,
+        comp.$id,
+        resolvedActor.name || resolvedActor.email || 'Reviewer',
+        null
+      );
+    } else {
+      await notifyComplianceRejected(
+        staffId,
+        comp.$id,
+        rejectionReason || 'Rejected by reviewer',
+        resolvedActor.name || resolvedActor.email || 'Reviewer'
+      );
+    }
+  } catch (notifyError) {
+    console.error('[complianceService] Failed to enqueue compliance review notification:', notifyError);
+  }
 
   return normalizeTenancyDocument(RESOURCE_TYPES.STAFF_COMPLIANCE, updated);
 }

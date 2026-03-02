@@ -164,24 +164,43 @@ export default async function handler(req, res) {
         try {
           doc = await databases.createDocument(databaseId, 'compliance_uploads', ID.unique(), {
             staff_id: staffId,
+            staffId: staffId,
+            guardId: staffId,
             file_id: appwriteFileId,
             file_name: resolvedFileName,
+            fileName: resolvedFileName,
             file_type: fileType,
+            fileType: fileType,
             appwrite_file_id: appwriteFileId,
+            appwriteFileId: appwriteFileId,
             uploaded_at: new Date().toISOString(),
+            uploadedAt: new Date().toISOString(),
             sync_status: 'pending',
+            syncStatus: 'pending',
+            driveSyncStatus: 'pending',
+            drive_sync_status: 'pending',
+            status: 'pending',
             sync_attempts: 0,
+            syncAttempts: 0,
           });
         } catch (_) {}
       }
       if (doc) {
         await databases.updateDocument(databaseId, 'compliance_uploads', doc.$id, {
           google_drive_file_id: uploaded.data.id,
+          googleDriveFileId: uploaded.data.id,
           google_drive_folder_id: typeFolderId,
+          googleDriveFolderId: typeFolderId,
           sync_status: 'synced',
+          syncStatus: 'synced',
+          driveSyncStatus: 'success',
+          drive_sync_status: 'success',
           sync_attempts: (doc.sync_attempts || 0) + 1,
+          syncAttempts: (doc.sync_attempts || 0) + 1,
           last_sync_attempt: new Date().toISOString(),
+          lastSyncAttempt: new Date().toISOString(),
           sync_error: null,
+          syncError: null,
         });
       }
     } catch (_) {}

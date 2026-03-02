@@ -16,9 +16,11 @@ import {
 const ClientPortal = () => {
   const [shifts, setShifts] = useState([]);
   const [sites, setSites] = useState([]);
+  const [clientRecord, setClientRecord] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const { user } = useAuth();
-  const currentClient = user || { $id: 'client', companyName: 'Client', contactName: 'User' };
+  const currentClient = clientRecord || user || { $id: 'client', companyName: 'Client', contactName: 'User' };
   
   const [view, setView] = useState('calendar'); // 'calendar', 'list'
   const [filterSite, setFilterSite] = useState('all');
@@ -26,18 +28,79 @@ const ClientPortal = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
+    if (!user?.$id) {
+      setLoading(false);
+      setError('PermissionDenied: client session is required.');
+      return;
+    }
+
     fetchClientData();
-  }, []);
+  }, [user?.$id]);
+
+  const listAllDocuments = async (collectionId, baseQueries = []) => {
+    const all = [];
+    const pageSize = 100;
+    let offset = 0;
+
+    while (true) {
+      const response = await databases.listDocuments(
+        config.databaseId,
+        collectionId,
+        [...baseQueries, Query.limit(pageSize), Query.offset(offset)]
+      );
+
+      all.push(...response.documents);
+      if (response.documents.length < pageSize) break;
+      offset += pageSize;
+      if (response.total && all.length >= response.total) break;
+    }
+
+    return all;
+  };
 
   const fetchClientData = async () => {
     try {
       setLoading(true);
+      setError('');
 
-      setSites([]);
-      setShifts([]);
-      setLoading(false);
+      const clientResponse = await databases.listDocuments(
+        config.databaseId,
+        config.clientsCollectionId,
+        [Query.equal('userId', user.$id), Query.limit(1)]
+      );
+
+      if (clientResponse.documents.length === 0) {
+        throw new Error('SchemaMissing: no client profile linked to this account.');
+      }
+
+      const client = clientResponse.documents[0];
+      setClientRecord(client);
+
+      const [sitesDocs, shiftsDocs] = await Promise.all([
+        listAllDocuments(config.sitesCollectionId, [Query.equal('clientId', client.$id)]),
+        listAllDocuments(config.shiftsCollectionId, [
+          Query.equal('clientId', client.$id),
+          Query.orderAsc('date'),
+        ]),
+      ]);
+
+      const sitesById = new Map(sitesDocs.map((site) => [site.$id, site]));
+      const hydratedShifts = shiftsDocs.map((shift) => ({
+        ...shift,
+        siteName: sitesById.get(shift.siteId)?.siteName || shift.siteName || 'Unknown site',
+        postName: shift.positionTitle || shift.position || 'Security Guard',
+        guardName: shift.assignedGuardName || 'TBC',
+      }));
+
+      setSites(sitesDocs);
+      setShifts(hydratedShifts);
     } catch (error) {
       console.error('Error fetching client data:', error);
+      setError(error.message || 'NetworkError: failed to load client portal data.');
+      setSites([]);
+      setShifts([]);
+      setClientRecord(null);
+    } finally {
       setLoading(false);
     }
   };
@@ -157,6 +220,24 @@ const ClientPortal = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-dark via-night-sky to-night-sky p-6">
+        <div className="max-w-xl rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-white">
+          <h2 className="text-xl font-semibold">Unable to load client portal</h2>
+          <p className="mt-2 text-sm text-red-200">{error}</p>
+          <button
+            type="button"
+            onClick={fetchClientData}
+            className="mt-4 rounded-lg border border-red-300/40 px-4 py-2 text-sm font-semibold text-red-100 hover:bg-red-500/20"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-dark via-night-sky to-night-sky p-6">
       <div className="mx-auto max-w-7xl">
@@ -164,7 +245,7 @@ const ClientPortal = () => {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-white">Client Portal</h1>
           <p className="mt-2 text-white/70">
-            Welcome, {currentClient.contactName} ({currentClient.companyName})
+            Welcome, {currentClient.contactPerson || currentClient.contactName || 'Client User'} ({currentClient.companyName || 'Client'})
           </p>
           <p className="mt-1 text-sm text-white/50">
             View your security schedule and coverage across all sites
@@ -266,6 +347,13 @@ const ClientPortal = () => {
               <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-8 text-center">
                 <AiOutlineCalendar className="mx-auto text-4xl text-white/30" />
                 <p className="mt-4 text-white/70">No shifts scheduled for selected period</p>
+                <button
+                  type="button"
+                  onClick={fetchClientData}
+                  className="mt-3 rounded-lg border border-white/20 px-3 py-2 text-sm text-white hover:bg-white/10"
+                >
+                  Retry
+                </button>
               </div>
             ) : (
               Object.keys(groupedShifts)

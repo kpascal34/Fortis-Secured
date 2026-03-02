@@ -201,6 +201,7 @@ export async function updateSyncStatus(recordId, status, updates = {}, actor = n
   const updateData = {
     ...updates,
     driveSyncStatus: status,
+    drive_sync_status: status,
     updatedAt: new Date().toISOString(),
   };
 
@@ -245,9 +246,12 @@ export async function logSyncAttempt(
 
   const recordData = {
     staffId,
+    guardId: staffId,
     fileName,
     fileType,
     driveSyncStatus: status,
+    drive_sync_status: status,
+    status: 'pending',
     appwriteFileId,
     googleDriveFileId: driveFileId,
     syncError,

@@ -152,7 +152,16 @@ const Dashboard = () => {
 
         {error && (
           <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-6 py-4 text-sm text-amber-200">
-            {error}
+            <div className="flex items-center justify-between gap-3">
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={fetchDashboardData}
+                className="rounded-md border border-amber-300/50 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-amber-500/20"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         )}
 

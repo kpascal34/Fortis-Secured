@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AiOutlineLogout, AiOutlineDown } from 'react-icons/ai';
 import { navigationGroups } from '../config/navigation.ts';
+import { isFeatureEnabled } from '../config/features.ts';
 
 const SIDEBAR_STATE_KEY = 'fortis_sidebar_state';
 
@@ -51,10 +52,15 @@ const PortalNav = ({ user, onSignOut }) => {
   const [collapsedGroups, setCollapsedGroups] = React.useState(getInitialCollapsedState);
   const role = normalizeRole(user?.role);
 
-  const visibleGroups = React.useMemo(
-    () => navigationGroups.filter((group) => group.roles.includes(role)),
-    [role],
-  );
+  const visibleGroups = React.useMemo(() => {
+    return navigationGroups
+      .filter((group) => group.roles.includes(role))
+      .map((group) => ({
+        ...group,
+        children: group.children.filter((item) => !item.feature || isFeatureEnabled(item.feature)),
+      }))
+      .filter((group) => group.children.length > 0);
+  }, [role]);
 
   React.useEffect(() => {
     if (mobileOpen) {

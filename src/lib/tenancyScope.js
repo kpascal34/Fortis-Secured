@@ -6,16 +6,54 @@ export const RESOURCE_TYPES = {
   SITES: 'sites',
   SHIFTS: 'shifts',
   SHIFT_ASSIGNMENTS: 'shift_assignments',
+  TIMESHEETS: 'timesheets',
+  TIMESHEET_ENTRIES: 'timesheet_entries',
+  PAYROLL_EXPORTS: 'payroll_exports',
+  BILLING_EXPORTS: 'billing_exports',
+  RATE_CARDS: 'rate_cards',
   APPLICATIONS: 'applications',
   AUDIT_LOGS: 'audit_logs',
   STAFF_PROFILES: 'staff_profiles',
   STAFF_COMPLIANCE: 'staff_compliance',
   COMPLIANCE_UPLOADS: 'compliance_uploads',
+  COMPLIANCE_RULES: 'compliance_rules',
+  COMPLIANCE_FLAGS: 'compliance_flags',
   STAFF_GRADES: 'staff_grades',
   ADMIN_GRADING: 'admin_grading',
+  INCIDENTS: 'incidents',
+  CONTRACTS: 'contracts',
+  MARGIN_ALERTS: 'margin_alerts',
+  FORECAST_MODELS: 'forecast_models',
+  FORECAST_SNAPSHOTS: 'forecast_snapshots',
+  DEMAND_PREDICTIONS: 'demand_predictions',
+  CONTRACT_HEALTH_SNAPSHOTS: 'contract_health_snapshots',
+  FINANCE_EVENTS: 'finance_events',
+  LEGAL_ENTITIES: 'legal_entities',
+  PROFIT_SNAPSHOTS: 'profit_snapshots',
+  ACQUISITION_TARGETS: 'acquisition_targets',
+  ACQUISITION_MODELS: 'acquisition_models',
+  TENDER_MODELS: 'tender_models',
+  STRATEGIC_FORECASTS: 'strategic_forecasts',
+  ENTERPRISE_RISK_SCORES: 'enterprise_risk_scores',
+  SECURITY_EVENTS: 'security_events',
+  CASHFLOW_SNAPSHOTS: 'cashflow_snapshots',
+  CONCENTRATION_ALERTS: 'concentration_alerts',
+  MARGIN_LEAKAGE_ALERTS: 'margin_leakage_alerts',
+  CONTRACT_DEPENDENCY_ALERTS: 'contract_dependency_alerts',
+  RESILIENCE_SNAPSHOTS: 'resilience_snapshots',
+  TENDER_WIN_MODELS: 'tender_win_models',
+  EMPLOYMENT_RISK_FLAGS: 'employment_risk_flags',
 };
 
-const ARRAY_JSON_FIELDS = ['assignedClients', 'assignedSites', 'assignedClientIds', 'assignedSiteIds'];
+const ARRAY_JSON_FIELDS = [
+  'assignedClients',
+  'assignedSites',
+  'assignedClientIds',
+  'assignedSiteIds',
+  'assignedEntities',
+  'assignedEntityIds',
+  'entityIds',
+];
 
 const normalizeArray = (value) => {
   if (!value) return [];
@@ -42,30 +80,38 @@ const readProfileArray = (profile, camelField, aliasField) => {
 };
 
 const buildManagerScopeQuery = (siteField, clientField, assignedSiteIds, assignedClientIds) => {
-  const parts = [];
-
-  if (siteField && assignedSiteIds.length > 0) {
-    parts.push(Query.equal(siteField, assignedSiteIds));
+  // Model A authoritative precedence:
+  // 1) assignedSiteIds => site-based scope only
+  // 2) assignedClientIds => client-based scope only
+  // 3) neither => deny
+  if (assignedSiteIds.length > 0) {
+    if (!siteField) return denyQueries();
+    return [Query.equal(siteField, assignedSiteIds)];
   }
 
-  if (clientField && assignedClientIds.length > 0) {
-    parts.push(Query.equal(clientField, assignedClientIds));
+  if (assignedClientIds.length > 0) {
+    if (!clientField) return denyQueries();
+    return [Query.equal(clientField, assignedClientIds)];
   }
 
-  if (parts.length === 0) {
+  if (assignedSiteIds.length === 0 && assignedClientIds.length === 0) {
     return denyQueries();
   }
+  return denyQueries();
+};
 
-  if (parts.length === 1) {
-    return parts;
+const buildEntityScopeQuery = (entityField, entityId, assignedEntityIds) => {
+  if (!entityField) return denyQueries();
+
+  if (Array.isArray(assignedEntityIds) && assignedEntityIds.length > 0) {
+    return [Query.equal(entityField, assignedEntityIds)];
   }
 
-  if (typeof Query.or === 'function') {
-    return [Query.or(parts)];
+  if (entityId) {
+    return [Query.equal(entityField, String(entityId))];
   }
 
-  // Fallback: narrower scope if OR is unavailable in this SDK version.
-  return [parts[0]];
+  return denyQueries();
 };
 
 const denyQueries = () => [Query.equal('$id', '__TENANCY_DENY__')];
@@ -73,29 +119,89 @@ const denyQueries = () => [Query.equal('$id', '__TENANCY_DENY__')];
 const getResourceFields = (resourceType) => {
   switch (resourceType) {
     case RESOURCE_TYPES.CLIENTS:
-      return { clientField: '$id' };
+      return { clientField: '$id', entityField: 'entityId' };
     case RESOURCE_TYPES.SITES:
-      return { clientField: 'clientId' };
+      return { clientField: 'clientId', entityField: 'entityId' };
     case RESOURCE_TYPES.SHIFTS:
-      return { clientField: 'clientId', siteField: 'siteId', ownerField: 'guardId' };
+      return { clientField: 'clientId', siteField: 'siteId', ownerField: 'guardId', entityField: 'entityId' };
     case RESOURCE_TYPES.SHIFT_ASSIGNMENTS:
-      return { clientField: 'clientId', siteField: 'siteId', ownerField: 'guardId' };
+      return { clientField: 'clientId', siteField: 'siteId', ownerField: 'guardId', entityField: 'entityId' };
+    case RESOURCE_TYPES.TIMESHEETS:
+      return { ownerField: 'guardId', entityField: 'entityId' };
+    case RESOURCE_TYPES.TIMESHEET_ENTRIES:
+      return { clientField: 'clientId', siteField: 'siteId', ownerField: 'guardId', entityField: 'entityId' };
+    case RESOURCE_TYPES.PAYROLL_EXPORTS:
+      return { ownerField: 'runBy', entityField: 'entityId' };
+    case RESOURCE_TYPES.BILLING_EXPORTS:
+      return { ownerField: 'runBy', entityField: 'entityId' };
+    case RESOURCE_TYPES.RATE_CARDS:
+      return { clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
     case RESOURCE_TYPES.APPLICATIONS:
-      return { clientField: 'clientId', siteField: 'siteId', ownerField: 'guardId' };
+      return { clientField: 'clientId', siteField: 'siteId', ownerField: 'guardId', entityField: 'entityId' };
     case RESOURCE_TYPES.AUDIT_LOGS:
-      return { clientField: 'clientId', siteField: 'siteId', ownerField: 'actorId' };
+      return { clientField: 'clientId', siteField: 'siteId', ownerField: 'actorId', entityField: 'entityId' };
     case RESOURCE_TYPES.STAFF_PROFILES:
-      return { ownerField: 'userId', clientField: 'clientId', siteField: 'siteId' };
+      return { ownerField: 'userId', clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
     case RESOURCE_TYPES.STAFF_COMPLIANCE:
-      return { ownerField: 'staffId', clientField: 'clientId', siteField: 'siteId' };
+      return { ownerField: 'staffId', clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
     case RESOURCE_TYPES.COMPLIANCE_UPLOADS:
-      return { ownerField: 'staffId', clientField: 'clientId', siteField: 'siteId' };
+      return { ownerField: 'staffId', clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
+    case RESOURCE_TYPES.COMPLIANCE_RULES:
+      return {};
+    case RESOURCE_TYPES.COMPLIANCE_FLAGS:
+      return { ownerField: 'guardId', clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
     case RESOURCE_TYPES.STAFF_GRADES:
-      return { ownerField: 'staffId', clientField: 'clientId', siteField: 'siteId' };
+      return { ownerField: 'staffId', clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
     case RESOURCE_TYPES.ADMIN_GRADING:
-      return { ownerField: 'staffId', clientField: 'clientId', siteField: 'siteId' };
+      return { ownerField: 'staffId', clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
+    case RESOURCE_TYPES.INCIDENTS:
+      return { clientField: 'clientId', siteField: 'siteId', ownerField: 'reportedBy', entityField: 'entityId' };
+    case RESOURCE_TYPES.CONTRACTS:
+      return { clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
+    case RESOURCE_TYPES.MARGIN_ALERTS:
+      return { clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
+    case RESOURCE_TYPES.FORECAST_MODELS:
+      return { clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
+    case RESOURCE_TYPES.FORECAST_SNAPSHOTS:
+      return { clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
+    case RESOURCE_TYPES.DEMAND_PREDICTIONS:
+      return { clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
+    case RESOURCE_TYPES.CONTRACT_HEALTH_SNAPSHOTS:
+      return { ownerField: 'contractId', entityField: 'entityId' };
+    case RESOURCE_TYPES.FINANCE_EVENTS:
+      return { clientField: 'clientId', entityField: 'entityId' };
+    case RESOURCE_TYPES.LEGAL_ENTITIES:
+      return { entityField: '$id' };
+    case RESOURCE_TYPES.PROFIT_SNAPSHOTS:
+      return { clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
+    case RESOURCE_TYPES.ACQUISITION_TARGETS:
+      return { entityField: 'entityId' };
+    case RESOURCE_TYPES.ACQUISITION_MODELS:
+      return { entityField: 'entityId' };
+    case RESOURCE_TYPES.TENDER_MODELS:
+      return { entityField: 'entityId', clientField: 'clientId', siteField: 'siteId' };
+    case RESOURCE_TYPES.STRATEGIC_FORECASTS:
+      return { entityField: 'entityId' };
+    case RESOURCE_TYPES.ENTERPRISE_RISK_SCORES:
+      return { entityField: 'entityId' };
+    case RESOURCE_TYPES.SECURITY_EVENTS:
+      return { entityField: 'entityId', ownerField: 'actorId' };
+    case RESOURCE_TYPES.CASHFLOW_SNAPSHOTS:
+      return { entityField: 'entityId' };
+    case RESOURCE_TYPES.CONCENTRATION_ALERTS:
+      return { entityField: 'entityId' };
+    case RESOURCE_TYPES.MARGIN_LEAKAGE_ALERTS:
+      return { entityField: 'entityId', clientField: 'clientId', siteField: 'siteId' };
+    case RESOURCE_TYPES.CONTRACT_DEPENDENCY_ALERTS:
+      return { entityField: 'entityId' };
+    case RESOURCE_TYPES.RESILIENCE_SNAPSHOTS:
+      return { entityField: 'entityId' };
+    case RESOURCE_TYPES.TENDER_WIN_MODELS:
+      return { entityField: 'entityId' };
+    case RESOURCE_TYPES.EMPLOYMENT_RISK_FLAGS:
+      return { entityField: 'entityId', clientField: 'clientId', siteField: 'siteId', ownerField: 'guardId' };
     default:
-      return { clientField: 'clientId', siteField: 'siteId' };
+      return { clientField: 'clientId', siteField: 'siteId', entityField: 'entityId' };
   }
 };
 
@@ -114,13 +220,24 @@ export const getScope = (user, profiles = {}) => {
 
   const assignedClientIds = readProfileArray(profile, 'assignedClientIds', 'assignedClients');
   const assignedSiteIds = readProfileArray(profile, 'assignedSiteIds', 'assignedSites');
+  const assignedEntityIds = readProfileArray(profile, 'assignedEntityIds', 'assignedEntities');
+
+  const entityId = pick(
+    profile.entityId,
+    profile.entity_id,
+    user?.entityId,
+    user?.entity_id,
+    user?.profile?.entityId,
+  );
 
   return {
     role,
     userId,
     clientId,
+    entityId,
     assignedClientIds,
     assignedSiteIds,
+    assignedEntityIds,
   };
 };
 
@@ -131,15 +248,31 @@ export const scopeQueries = (resourceType, scope) => {
     return [];
   }
 
-  const { clientField, siteField, ownerField } = getResourceFields(resourceType);
+  const { clientField, siteField, ownerField, entityField } = getResourceFields(resourceType);
+  const hasEntityContext = Boolean(scope.entityId) || (scope.assignedEntityIds || []).length > 0;
+  const entityScopedQuery = hasEntityContext
+    ? buildEntityScopeQuery(entityField, scope.entityId, scope.assignedEntityIds || [])
+    : [];
+
+  if (scope.role === ROLES.ENTITY_ADMIN) {
+    return buildEntityScopeQuery(entityField, scope.entityId, scope.assignedEntityIds || []);
+  }
 
   if (scope.role === ROLES.CLIENT) {
     if (!scope.clientId || !clientField) return denyQueries();
-    return [Query.equal(clientField, scope.clientId)];
+    const clientQueries = [Query.equal(clientField, scope.clientId)];
+    if (entityField && hasEntityContext) {
+      return [...clientQueries, ...entityScopedQuery];
+    }
+    return clientQueries;
   }
 
   if (scope.role === ROLES.MANAGER) {
-    return buildManagerScopeQuery(siteField, clientField, scope.assignedSiteIds || [], scope.assignedClientIds || []);
+    const managerQueries = buildManagerScopeQuery(siteField, clientField, scope.assignedSiteIds || [], scope.assignedClientIds || []);
+    if (entityField && hasEntityContext) {
+      return [...managerQueries, ...entityScopedQuery];
+    }
+    return managerQueries;
   }
 
   // STAFF
@@ -156,14 +289,26 @@ export const scopeQueries = (resourceType, scope) => {
     ];
 
     if (typeof Query.or === 'function') {
-      return [Query.or(ownShiftQueries)];
+      const staffQueries = [Query.or(ownShiftQueries)];
+      if (entityField && hasEntityContext) {
+        return [...staffQueries, ...entityScopedQuery];
+      }
+      return staffQueries;
     }
 
-    return [ownShiftQueries[0]];
+    const fallback = [ownShiftQueries[0]];
+    if (entityField && hasEntityContext) {
+      return [...fallback, ...entityScopedQuery];
+    }
+    return fallback;
   }
 
   if (ownerField) {
-    return [Query.equal(ownerField, scope.userId)];
+    const ownerQueries = [Query.equal(ownerField, scope.userId)];
+    if (entityField && hasEntityContext) {
+      return [...ownerQueries, ...entityScopedQuery];
+    }
+    return ownerQueries;
   }
 
   if (resourceType === RESOURCE_TYPES.SITES) {
@@ -175,6 +320,13 @@ export const scopeQueries = (resourceType, scope) => {
 };
 
 const arrayHas = (arr, value) => Array.isArray(arr) && arr.includes(value);
+const normalizeScopeEntityIds = (scope) => {
+  if (Array.isArray(scope?.assignedEntityIds) && scope.assignedEntityIds.length > 0) {
+    return scope.assignedEntityIds.map(String);
+  }
+  if (scope?.entityId) return [String(scope.entityId)];
+  return [];
+};
 
 export const assertScopedAccess = (resourceType, doc, scope) => {
   if (!scope || !scope.role) {
@@ -189,7 +341,23 @@ export const assertScopedAccess = (resourceType, doc, scope) => {
     throw new Error('Scoped access check requires a document object.');
   }
 
-  const { clientField, siteField, ownerField } = getResourceFields(resourceType);
+  const { clientField, siteField, ownerField, entityField } = getResourceFields(resourceType);
+  const allowedEntityIds = normalizeScopeEntityIds(scope);
+
+  if (scope.role === ROLES.ENTITY_ADMIN) {
+    const docEntityValue = entityField === '$id' ? doc.$id : doc[entityField];
+    if (!entityField || !allowedEntityIds.length || !allowedEntityIds.includes(String(docEntityValue || ''))) {
+      throw new Error('Access denied: document is outside entity-admin scope.');
+    }
+    return true;
+  }
+
+  if (entityField && allowedEntityIds.length > 0) {
+    const docEntityValue = entityField === '$id' ? doc.$id : doc[entityField];
+    if (!allowedEntityIds.includes(String(docEntityValue || ''))) {
+      throw new Error('Access denied: document is outside entity scope.');
+    }
+  }
 
   if (scope.role === ROLES.CLIENT) {
     const docClientValue = clientField === '$id' ? doc.$id : doc[clientField];
@@ -200,14 +368,23 @@ export const assertScopedAccess = (resourceType, doc, scope) => {
   }
 
   if (scope.role === ROLES.MANAGER) {
-    const matchesSite = siteField ? arrayHas(scope.assignedSiteIds, doc[siteField]) : false;
-    const matchesClient = clientField && clientField !== '$id' ? arrayHas(scope.assignedClientIds, doc[clientField]) : false;
-
-    if (!matchesSite && !matchesClient) {
-      throw new Error('Access denied: document is outside manager tenancy scope.');
+    if (Array.isArray(scope.assignedSiteIds) && scope.assignedSiteIds.length > 0) {
+      const matchesSite = siteField ? arrayHas(scope.assignedSiteIds, doc[siteField]) : false;
+      if (!matchesSite) {
+        throw new Error('Access denied: document is outside manager site scope.');
+      }
+      return true;
     }
 
-    return true;
+    if (Array.isArray(scope.assignedClientIds) && scope.assignedClientIds.length > 0) {
+      const matchesClient = clientField && clientField !== '$id' ? arrayHas(scope.assignedClientIds, doc[clientField]) : false;
+      if (!matchesClient) {
+        throw new Error('Access denied: document is outside manager client scope.');
+      }
+      return true;
+    }
+
+    throw new Error('Access denied: manager has no assigned site/client scope.');
   }
 
   // STAFF
@@ -239,7 +416,32 @@ export const TENANCY_FIELD_REQUIREMENTS = {
   shifts: ['clientId', 'siteId', 'date'],
   shift_assignments: ['shiftId', 'clientId', 'siteId', 'guardId'],
   applications: ['guardId', 'shiftId', 'clientId', 'siteId'],
+  timesheet_entries: ['timesheetId', 'guardId', 'clientId', 'siteId', 'workDate'],
+  payroll_exports: ['entityId', 'runBy', 'rangeStart', 'rangeEnd'],
+  billing_exports: ['entityId', 'runBy', 'rangeStart', 'rangeEnd'],
+  incidents: ['clientId', 'siteId', 'reportedBy'],
   audit_logs: ['clientId', 'siteId'],
+  contracts: ['entityId', 'clientId'],
+  margin_alerts: ['clientId', 'siteId', 'periodStart', 'periodEnd', 'alertType'],
+  forecast_models: ['clientId'],
+  forecast_snapshots: ['clientId', 'siteId', 'periodStart', 'periodEnd'],
+  demand_predictions: ['clientId', 'siteId', 'date'],
+  finance_events: ['entityId', 'eventType', 'referenceId'],
+  profit_snapshots: ['entityId', 'periodStart', 'periodEnd'],
+  legal_entities: ['name', 'entityType', 'active'],
+  acquisition_targets: ['entityId', 'name'],
+  acquisition_models: ['entityId', 'targetId', 'generatedAt'],
+  tender_models: ['entityId', 'recommendedHourlyRate', 'generatedAt'],
+  strategic_forecasts: ['entityId', 'periodStart', 'periodEnd', 'generatedAt'],
+  enterprise_risk_scores: ['entityId', 'periodStart', 'periodEnd', 'generatedAt'],
+  security_events: ['actorId', 'eventType', 'severity', 'createdAt'],
+  cashflow_snapshots: ['entityId', 'periodStart', 'periodEnd', 'generatedAt'],
+  concentration_alerts: ['entityId', 'periodStart', 'periodEnd', 'createdAt'],
+  margin_leakage_alerts: ['entityId', 'clientId', 'siteId', 'leakageType', 'createdAt'],
+  contract_dependency_alerts: ['entityId', 'periodStart', 'periodEnd', 'createdAt'],
+  resilience_snapshots: ['entityId', 'periodStart', 'periodEnd', 'generatedAt'],
+  tender_win_models: ['entityId', 'region', 'sector', 'generatedAt'],
+  employment_risk_flags: ['entityId', 'guardId', 'riskType', 'createdAt'],
 };
 
 export const enforceTenancyFields = (resourceType, payload) => {
@@ -266,6 +468,10 @@ export const normalizeTenancyDocument = (resourceType, doc) => {
 
   if (normalized.site_id && !normalized.siteId) {
     normalized.siteId = normalized.site_id;
+  }
+
+  if (normalized.entity_id && !normalized.entityId) {
+    normalized.entityId = normalized.entity_id;
   }
 
   if (resourceType === RESOURCE_TYPES.SHIFT_ASSIGNMENTS && normalized.staffId && !normalized.guardId) {

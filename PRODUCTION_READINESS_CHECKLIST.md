@@ -348,11 +348,26 @@
 - Provision command: `npm run schema:provision`
 - Verify command: `npm run schema:verify`
 - Tenancy smoke command: `npm run smoke:tenancy`
+- Gold path smoke command: `npm run smoke:gold-paths`
+- Data integrity command: `npm run data:check`
+- Notification retry command: `npm run notifications:retry`
+- Production release gate: `npm run verify:production`
 - Expected output: summary table showing `created/skipped/failed` counts for collections, attributes, and indexes
 - Troubleshooting:
   - Missing env vars: set `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, `APPWRITE_DATABASE_ID`
   - Index creation failure: remove conflicting duplicate data, then rerun `npm run schema:provision`
   - Tenancy smoke failure: review `src/lib/tenancyScope.js`, `/portal` route permission gates in `src/App.jsx`, and scoped service methods
+  - Notify failures: verify `NOTIFY_SECRET`, SMTP env, and `notification_outbox` collection provisioning
+
+### 8.4 Phase 4 Operational Hardening (REQUIRED)
+- [x] Email-only outbox collection `notification_outbox` provisioned by schema automation
+- [x] Server-side notifier route `/api/notify` with shared-secret protection (`x-notify-secret`)
+- [x] Nodemailer SMTP transport configured via server-only env vars
+- [x] Notification queue helper wired into invite/scheduling/compliance workflows
+- [x] Gold path smoke checks added (`scripts/smoke-gold-paths.mjs`)
+- [x] Data integrity checks added (`scripts/data-integrity-check.mjs`)
+- [x] Retry worker for queued/failed email outbox items (`scripts/notifications-retry.mjs`)
+- [x] Production release gate added (`verify:production`)
 
 ### 8.3 Database Attributes
 - [x] All RBAC collections have required attributes
@@ -408,9 +423,10 @@
 
 ### Before Going Live:
 - [ ] Run `npm run schema:provision`
-- [ ] Run `npm run schema:verify`
-- [ ] Run `npm run smoke:tenancy`
+- [ ] Run `npm run verify:production`
+- [ ] Run `npm run notifications:retry` (or schedule it)
 - [ ] Verify all environment variables in `.env.production`
+- [ ] Verify SMTP + notify env vars in Vercel (`NOTIFY_SECRET`, `SMTP_*`, `EMAIL_FROM`, `APP_URL`, `OPS_EMAIL`)
 - [ ] Test each feature in production environment
 - [ ] Verify database connections
 - [ ] Check API endpoints are accessible
@@ -418,7 +434,7 @@
 - [ ] Verify audit logging is working
 - [ ] Test authentication flow
 - [ ] Verify file uploads work
-- [ ] Check email sending (invites)
+- [ ] Check email outbox enqueue and server-side send path (`/api/notify`)
 - [ ] Test password reset flow
 - [ ] Verify dashboard metrics load
 - [ ] Test role-based access control
@@ -431,10 +447,11 @@
 
 ### Ongoing Checks:
 - [ ] Monitor error logs in `/api/log-error`
+- [ ] Monitor `/api/notify` logs for SMTP and queue processing errors
 - [ ] Track audit log entries for suspicious activity
 - [ ] Monitor API response times
 - [ ] Check for missing Appwrite attribute errors
-- [ ] Verify email delivery for invites
+- [ ] Verify email delivery from `notification_outbox` and retry failed queue items
 - [ ] Monitor compliance wizard submissions
 - [ ] Track user authentication success/failures
 - [ ] Monitor disk/storage usage for uploads
@@ -468,3 +485,135 @@ All 10 originally reported "UX problems" have been verified as **fully implement
 - [x] Compliance v1 feature is hard-disabled by default and requires explicit collection IDs + feature flag before enablement.
 - [x] Duplicate `* 2.*` files removed and blocked by verification script.
 - [ ] Appwrite console confirmation still required for final collection provisioning IDs.
+
+## 2026-03-02 Phase 5 Operations Gate
+- [x] Timesheets + timesheet_entries schema added to provision/verify with required indexes.
+- [x] Payroll + billing export collections and rate_cards added to provision/verify.
+- [x] Compliance automation collections (`compliance_rules`, `compliance_flags`) added to provision/verify.
+- [x] Incident workflow schema aligned to draft/interim/review/final status model.
+- [x] Notification outbox event types extended for timesheet, incident, and compliance reminder automation.
+- [x] `scripts/compliance-scan.mjs` added (supports `--dry-run`).
+- [x] `scripts/smoke-gold-paths.mjs` expanded with Phase 5 checks:
+  - [x] timesheet lifecycle writeability
+  - [x] payroll CSV smoke
+  - [x] billing CSV smoke
+  - [x] incident interim outbox smoke
+  - [x] compliance-scan dry-run execution
+- [x] `scripts/data-integrity-check.mjs` expanded with Phase 5 invariants:
+  - [x] timesheet entry parent references
+  - [x] entry-in-week validation
+  - [x] no approved/locked timesheets with open entries
+  - [x] incident/compliance flag status validation
+- [x] `verify:production` updated to include compliance dry-run.
+
+### Phase 5 Release Commands
+- `npm run schema:provision`
+- `npm run schema:verify`
+- `npm run smoke:tenancy`
+- `npm run smoke:gold-paths`
+- `node scripts/margin-monitor.mjs --dry-run`
+- `node scripts/forecast-run.mjs --dry-run`
+- `node scripts/profit-snapshot.mjs`
+- `node scripts/sla-calc.mjs`
+- `node scripts/contract-health-run.mjs --dry-run`
+- `npm run compliance:scan -- --dry-run`
+- `npm run data:check`
+- `npm run verify:production`
+
+## 2026-03-02 Phase 5 Intelligence & Finance Extensions
+- [x] Schema source of truth includes:
+  - [x] `margin_alerts`
+  - [x] `forecast_models`
+  - [x] `forecast_snapshots`
+  - [x] `demand_predictions`
+  - [x] `contract_health_snapshots`
+  - [x] `finance_events`
+  - [x] contracts extension fields (`autoRenew`, `renewalNoticeDays`, `lastReviewAt`, `healthScore`)
+- [x] Margin anomaly service + script added:
+  - [x] `src/services/marginAlertService.js`
+  - [x] `scripts/margin-monitor.mjs`
+  - [x] audit action `MARGIN_ALERT_CREATED`
+  - [x] outbox event `marginAlertCreated`
+- [x] Forecast/demand service + script added:
+  - [x] `src/services/forecastService.js`
+  - [x] `scripts/forecast-run.mjs`
+  - [x] staffing shortage alerts create `margin_alerts` + audit action `DEMAND_SHORTAGE_ALERT`
+- [x] Contract intelligence service + script added:
+  - [x] `src/services/contractIntelligenceService.js`
+  - [x] `scripts/contract-health-run.mjs`
+  - [x] contract risk alerts + audit action `CONTRACT_RISK_ALERT`
+- [x] Finance integration layer added:
+  - [x] `src/services/financeIntegrationService.js`
+  - [x] payroll/billing export flows create `finance_events` (`pending`)
+  - [x] admin approval path (`approveFinanceEvent`)
+  - [x] feature flag `VITE_FINANCE_INTEGRATION_ENABLED`
+- [x] Executive dashboard upgraded (admin-only):
+  - [x] Real-Time Margin Overview
+  - [x] Active Margin Alerts
+  - [x] PAYE vs SELF_EMPLOYED cost distribution
+  - [x] Forecast vs Actual trend
+  - [x] SLA Performance summary
+  - [x] Contract Renewal Risk
+  - [x] Staffing Shortage Risk
+- [x] `verify:production` extended with:
+  - [x] `scripts/margin-monitor.mjs --dry-run --simulate-checks`
+  - [x] `scripts/forecast-run.mjs --dry-run --simulate-checks`
+  - [x] `scripts/profit-snapshot.mjs`
+  - [x] `scripts/sla-calc.mjs`
+  - [x] `scripts/contract-health-run.mjs --dry-run --simulate-checks`
+
+## 2026-03-02 Phase 8 Multi-Entity + Board Intelligence Gate
+- [x] Schema source-of-truth/provision/verify updated for:
+  - [x] `legal_entities`
+  - [x] `acquisition_targets`
+  - [x] `acquisition_models`
+  - [x] `tender_models`
+  - [x] `strategic_forecasts`
+  - [x] `enterprise_risk_scores`
+  - [x] `security_events`
+  - [x] `cashflow_snapshots`
+  - [x] `concentration_alerts`
+  - [x] `margin_leakage_alerts`
+  - [x] `contract_dependency_alerts`
+  - [x] `resilience_snapshots`
+  - [x] `tender_win_models`
+  - [x] `employment_risk_flags`
+- [x] `entityId` propagated into financial/contract records and verified by `data-integrity-check`.
+- [x] `scripts/migrate-entityId.mjs` added (default entity creation + backfill, supports `--dry-run`).
+- [x] Append-only strategic engines added:
+  - [x] `scripts/acquisition-simulate.mjs`
+  - [x] `scripts/strategic-forecast-run.mjs`
+  - [x] `scripts/risk-evaluate.mjs`
+  - [x] `scripts/cashflow-run.mjs`
+  - [x] `scripts/concentration-scan.mjs`
+  - [x] `scripts/margin-leakage-scan.mjs`
+  - [x] `scripts/contract-dependency-scan.mjs`
+  - [x] `scripts/resilience-run.mjs`
+  - [x] `scripts/employment-risk-scan.mjs`
+- [x] Security hardening additions:
+  - [x] AES-GCM field encryption helper (`src/server/security/encryption.js`)
+  - [x] Security event service + outbox notifications (`src/services/securityEventService.js`)
+  - [x] Break-glass session controls with allowlist checks
+- [x] Admin-only entity/board pages added under `/portal/*`:
+  - [x] `/portal/entities`
+  - [x] `/portal/risk-alerts`
+  - [x] `/portal/cashflow`
+  - [x] `/portal/resilience`
+  - [x] `/portal/tender-workbench`
+  - [x] `/portal/employment-risk`
+- [x] `verify:production` extended to run all Phase 8 dry-run/simulation checks and fail on script/schema/integrity errors.
+
+### Phase 8 Release Commands
+- `npm run schema:provision`
+- `npm run schema:verify`
+- `node scripts/migrate-entityId.mjs`
+- `node scripts/acquisition-simulate.mjs`
+- `node scripts/strategic-forecast-run.mjs`
+- `node scripts/risk-evaluate.mjs`
+- `node scripts/cashflow-run.mjs`
+- `node scripts/concentration-scan.mjs`
+- `node scripts/margin-leakage-scan.mjs`
+- `node scripts/contract-dependency-scan.mjs`
+- `node scripts/resilience-run.mjs`
+- `node scripts/employment-risk-scan.mjs`
+- `npm run verify:production`

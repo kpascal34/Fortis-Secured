@@ -5,9 +5,7 @@ import {
   generateNotification,
 } from '../lib/scheduleUtils';
 import {
-  AiOutlineBell,
   AiOutlineMail,
-  AiOutlineMessage,
   AiOutlineClose,
   AiOutlineCheckCircle,
   AiOutlineWarning,
@@ -16,8 +14,6 @@ import {
 const PublishScheduleModal = ({ shifts, guards, onClose, onPublish }) => {
   const [selectedShifts, setSelectedShifts] = useState(shifts.map(s => s.$id));
   const [notifyByEmail, setNotifyByEmail] = useState(true);
-  const [notifyBySMS, setNotifyBySMS] = useState(false);
-  const [notifyByPush, setNotifyByPush] = useState(true);
   const [customMessage, setCustomMessage] = useState('');
   const [publishing, setPublishing] = useState(false);
 
@@ -46,8 +42,8 @@ const PublishScheduleModal = ({ shifts, guards, onClose, onPublish }) => {
               guard,
               {
                 email: notifyByEmail,
-                sms: notifyBySMS,
-                push: notifyByPush,
+                sms: false,
+                push: false,
                 customMessage,
               }
             );
@@ -148,37 +144,9 @@ const PublishScheduleModal = ({ shifts, guards, onClose, onPublish }) => {
               />
             </label>
 
-            <label className="flex items-center justify-between cursor-pointer">
-              <div className="flex items-center gap-3">
-                <AiOutlineMessage className="text-xl text-accent" />
-                <div>
-                  <p className="font-medium text-white">SMS Notifications</p>
-                  <p className="text-sm text-white/60">Send text messages to guards</p>
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={notifyBySMS}
-                onChange={(e) => setNotifyBySMS(e.target.checked)}
-                className="h-5 w-5 rounded border-white/20 bg-white/10 text-accent focus:ring-accent"
-              />
-            </label>
-
-            <label className="flex items-center justify-between cursor-pointer">
-              <div className="flex items-center gap-3">
-                <AiOutlineBell className="text-xl text-accent" />
-                <div>
-                  <p className="font-medium text-white">Push Notifications</p>
-                  <p className="text-sm text-white/60">Send in-app notifications</p>
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                checked={notifyByPush}
-                onChange={(e) => setNotifyByPush(e.target.checked)}
-                className="h-5 w-5 rounded border-white/20 bg-white/10 text-accent focus:ring-accent"
-              />
-            </label>
+            <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70">
+              Notification policy: <span className="font-semibold text-white">Email only</span>
+            </div>
           </div>
         </div>
 
@@ -282,7 +250,7 @@ const PublishScheduleModal = ({ shifts, guards, onClose, onPublish }) => {
           </button>
           <button
             onClick={handlePublish}
-            disabled={publishing || shiftsToPublish.length === 0 || (!notifyByEmail && !notifyBySMS && !notifyByPush)}
+            disabled={publishing || shiftsToPublish.length === 0 || !notifyByEmail}
             className="flex items-center gap-2 rounded-lg bg-accent px-6 py-2 text-white hover:bg-accent/80 transition-colors disabled:opacity-50"
           >
             {publishing ? (

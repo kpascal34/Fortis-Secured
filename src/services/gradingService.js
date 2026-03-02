@@ -10,7 +10,6 @@ import { buildPermissionsForDoc } from '../lib/appwritePermissions.js';
 import { ensureDatabaseConfig, getAuthorizedScope, withScopedQueries, assertScopedDocument } from '../lib/serviceSecurity.js';
 import { RESOURCE_TYPES, normalizeTenancyDocument } from '../lib/tenancyScope.js';
 import { logEvent } from './auditLogService.js';
-import { notifyGradingFeedback } from './notificationService.js';
 
 const dbId = config.databaseId;
 const adminGradingCol = config.adminGradingCollectionId || 'admin_grading';
@@ -285,12 +284,6 @@ export async function submitStaffGrade(adminId, staffId, grade, criteria = null,
       criteriaKeys: Object.keys(criteria || {}),
     },
   });
-
-  try {
-    await notifyGradingFeedback(baseData.staffId, grade, comment);
-  } catch (notifyError) {
-    console.error('Failed to send grading feedback notification:', notifyError);
-  }
 
   return enrichGradeRecord(normalizeTenancyDocument(RESOURCE_TYPES.ADMIN_GRADING, adminRecord));
 }

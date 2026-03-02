@@ -90,6 +90,7 @@ const toRole = (role) => {
   if (!role) return null;
   const normalized = String(role).toLowerCase();
   if (normalized === ROLE_ENUM.ADMIN) return ROLE_ENUM.ADMIN;
+  if (normalized === ROLE_ENUM.ENTITY_ADMIN) return ROLE_ENUM.ENTITY_ADMIN;
   if (normalized === ROLE_ENUM.MANAGER) return ROLE_ENUM.MANAGER;
   if (normalized === ROLE_ENUM.CLIENT || normalized === 'customer') return ROLE_ENUM.CLIENT;
   if (normalized === ROLE_ENUM.STAFF || normalized === 'guard' || normalized === 'employee') return ROLE_ENUM.STAFF;
@@ -153,6 +154,21 @@ const staffScopePasses = (scope, context) => {
   return String(scopedUserId) === String(scope.userId);
 };
 
+const entityScopePasses = (scope, context) => {
+  if (!context.entityId) return true;
+
+  const allowedEntityIds = toArray(scope.assignedEntityIds);
+  if (allowedEntityIds.length > 0) {
+    return allowedEntityIds.includes(String(context.entityId));
+  }
+
+  if (scope.entityId) {
+    return String(scope.entityId) === String(context.entityId);
+  }
+
+  return false;
+};
+
 export function canAccess(user, resource, permission, context = {}) {
   const role = toRole(user?.role);
   if (!role) return false;
@@ -161,6 +177,10 @@ export function canAccess(user, resource, permission, context = {}) {
   if (role === ROLE_ENUM.ADMIN) return true;
 
   const scope = getScope({ ...user, role }, user?.profile || {});
+
+  if (role === ROLE_ENUM.ENTITY_ADMIN) {
+    return entityScopePasses(scope, context);
+  }
 
   if (role === ROLE_ENUM.CLIENT) return clientScopePasses(scope, context);
   if (role === ROLE_ENUM.MANAGER) return managerScopePasses(scope, context);

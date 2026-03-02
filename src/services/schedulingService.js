@@ -15,6 +15,7 @@ import {
   normalizeTenancyDocument,
 } from '../lib/tenancyScope.js';
 import { logEvent } from './auditLogService.js';
+import { notifyApplicationApproved, notifyApplicationRejected, notifyShiftAssigned } from './notificationService.js';
 
 const dbId = config.databaseId;
 const shiftsCol = config.shiftsCollectionId || 'shifts';
@@ -473,6 +474,20 @@ export async function reviewApplication(adminId, applicationId, accepted, actor 
 
       await databases.createDocument(dbId, assignmentsCol, ID.unique(), assignmentPayload);
     }
+
+    try {
+      await notifyShiftAssigned(normalizedApp.guardId, {
+        $id: normalizedShift.$id,
+        siteName: normalizedShift.siteName || normalizedApp.shiftDetails?.siteName || null,
+        date: normalizedShift.date,
+        startTime: normalizedShift.startTime,
+        endTime: normalizedShift.endTime,
+        clientId: normalizedShift.clientId || normalizedApp.clientId || null,
+        siteId: normalizedShift.siteId || normalizedApp.siteId || null,
+      });
+    } catch (notifyError) {
+      console.error('[schedulingService] Failed to enqueue shiftAssigned notification:', notifyError);
+    }
   }
 
   await logEvent({
@@ -488,6 +503,21 @@ export async function reviewApplication(adminId, applicationId, accepted, actor 
       shiftId: normalizedApp.shiftId,
     },
   });
+
+  try {
+    if (accepted) {
+      await notifyApplicationApproved(normalizedApp.guardId, normalizedApp, resolvedActor.name || resolvedActor.email || 'Reviewer');
+    } else {
+      await notifyApplicationRejected(
+        normalizedApp.guardId,
+        normalizedApp,
+        resolvedActor.name || resolvedActor.email || 'Reviewer',
+        normalizedApp.rejectionReason || 'Application not approved'
+      );
+    }
+  } catch (notifyError) {
+    console.error('[schedulingService] Failed to enqueue application review notification:', notifyError);
+  }
 
   return parseEligibility(normalizeTenancyDocument(RESOURCE_TYPES.APPLICATIONS, updated));
 }

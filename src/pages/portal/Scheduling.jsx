@@ -50,6 +50,7 @@ const Scheduling = () => {
   const [sites, setSites] = useState([]);
   const [guards, setGuards] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
   const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
@@ -71,6 +72,7 @@ const Scheduling = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setLoadError('');
       
       let shiftsData = [];
       let clientsData = [];
@@ -119,6 +121,7 @@ const Scheduling = () => {
       setAssignments(assignmentsData);
     } catch (error) {
       console.error('Error fetching data:', error);
+      setLoadError(error.message || 'NetworkError: failed to load scheduling data.');
     } finally {
       setLoading(false);
     }
@@ -326,6 +329,19 @@ const Scheduling = () => {
             </button>
           </div>
         </PortalHeader>
+
+        {loadError && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            <span>{loadError}</span>
+            <button
+              type="button"
+              onClick={fetchData}
+              className="rounded-md border border-red-300/40 px-3 py-1 text-xs font-semibold text-red-100 hover:bg-red-500/20"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="mb-6 glass-panel p-6">

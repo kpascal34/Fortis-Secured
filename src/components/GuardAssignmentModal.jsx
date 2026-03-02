@@ -154,16 +154,21 @@ const GuardAssignmentModal = ({ isOpen, onClose, shift, onAssignmentComplete }) 
         assignmentData
       );
 
-      // Notify guard
-      await notifyShiftAssigned(guardId, {
-        id: shift.$id,
-        date: shift.date,
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        position: shift.shiftType || shift.positionTitle,
-        siteId: shift.siteId,
-        siteName: shift.siteName,
-      });
+      // Notify guard (best-effort: assignment should not fail if enqueue fails).
+      try {
+        await notifyShiftAssigned(guardId, {
+          id: shift.$id,
+          date: shift.date,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          position: shift.shiftType || shift.positionTitle,
+          siteId: shift.siteId,
+          clientId: shift.clientId,
+          siteName: shift.siteName,
+        });
+      } catch (notifyError) {
+        console.error('Failed to enqueue shift assignment email:', notifyError);
+      }
 
       // Refresh assignments
       await fetchData();

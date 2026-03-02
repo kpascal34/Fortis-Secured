@@ -7,6 +7,7 @@ import { Query } from 'appwrite';
 import { useAuth } from '../../context/AuthContext';
 import { can } from '../../lib/rbac.ts';
 import { logEvent } from '../../services/auditLogService.js';
+import { notifyInviteSent } from '../../services/notificationService.js';
 import {
   AiOutlineSearch,
   AiOutlinePlus,
@@ -19,49 +20,80 @@ import {
   AiOutlineCalendar,
   AiOutlineFileDone,
   AiOutlineLoading3Quarters,
+  AiOutlineSend,
 } from 'react-icons/ai';
+
+const PAGE_SIZE = 50;
 
 const Clients = () => {
   const { user, resolvedRole, permissions } = useAuth();
   const [clients, setClients] = useState([]);
   const [filteredClients, setFilteredClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [isDeleting, setIsDeleting] = useState(null);
+  const [feedback, setFeedback] = useState('');
+  const [resendingInviteFor, setResendingInviteFor] = useState(null);
 
   const canManageUsers = can('manageUsers', { role: user?.role, resolvedRole, permissions });
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    if (!user?.$id) return;
+    fetchClients({ append: false });
+  }, [canManageUsers, user?.$id]);
 
   useEffect(() => {
     filterClients();
   }, [clients, searchTerm, statusFilter]);
 
-  const fetchClients = async () => {
+  const fetchClients = async ({ append = false } = {}) => {
     try {
-      setLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setLoadError('');
+      }
+
+      const nextPage = append ? page : 0;
+      const queries = [
+        Query.orderDesc('$createdAt'),
+        Query.limit(PAGE_SIZE),
+        Query.offset(nextPage * PAGE_SIZE),
+      ];
+
+      if (!canManageUsers && user?.$id) {
+        queries.push(Query.equal('userId', user.$id));
+      }
+
       const response = await databases.listDocuments(
         config.databaseId,
         config.clientsCollectionId,
-        [Query.orderDesc('$createdAt')]
+        queries
       );
-      
-      // If not admin, filter to show only their own client data
-      const clientData = canManageUsers
-        ? response.documents 
-        : response.documents.filter(doc => doc.userId === user.$id);
-      
-      setClients(clientData);
-      setFilteredClients(clientData);
+
+      const incoming = response.documents;
+      const nextClients = append ? [...clients, ...incoming] : incoming;
+      setClients(nextClients);
+      setFilteredClients(nextClients);
+      setPage(nextPage + 1);
+      setHasMore(incoming.length === PAGE_SIZE);
     } catch (error) {
       console.error('Error fetching clients:', error);
+      setLoadError(error.message || 'NetworkError: failed to load clients.');
     } finally {
-      setLoading(false);
+      if (append) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
     }
   };
 
@@ -121,13 +153,13 @@ const Clients = () => {
         clientId,
       });
       setClients(clients.filter((c) => c.$id !== clientId));
-      alert('Client deleted successfully!');
+      setFeedback('Client deleted successfully.');
     } catch (error) {
       console.error('Full error object:', error);
       console.error('Error message:', error.message);
       console.error('Error code:', error.code);
       console.error('Error type:', error.type);
-      alert(`Failed to delete client: ${error.message || 'Unknown error. Check console for details.'}`);
+      setFeedback(`Failed to delete client: ${error.message || 'Unknown error.'}`);
     } finally {
       setIsDeleting(null);
     }
@@ -137,7 +169,38 @@ const Clients = () => {
     setIsModalOpen(false);
     setEditingClient(null);
     if (shouldRefresh) {
-      fetchClients();
+      setPage(0);
+      fetchClients({ append: false });
+    }
+  };
+
+  const handleResendClientInvite = async (client) => {
+    if (!client?.email) {
+      setFeedback('PermissionDenied: client has no email address for invite.');
+      return;
+    }
+
+    try {
+      setResendingInviteFor(client.$id);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      await notifyInviteSent({
+        toEmail: client.email,
+        inviteCode: client.$id,
+        signupUrl: `${window.location.origin}/portal`,
+        expiresAt: expiresAt.toISOString(),
+        clientId: client.$id,
+        siteId: null,
+        userId: client.userId || null,
+      });
+
+      setFeedback(`Invite queued for ${client.companyName || client.email}.`);
+    } catch (error) {
+      console.error('Failed to enqueue client invite:', error);
+      setFeedback(`Failed to queue invite: ${error.message || 'Unknown error'}`);
+    } finally {
+      setResendingInviteFor(null);
     }
   };
 
@@ -179,6 +242,27 @@ const Clients = () => {
             </button>
           )}
         </PortalHeader>
+
+        {loadError && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            <span>{loadError}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setPage(0);
+                fetchClients({ append: false });
+              }}
+              className="rounded-md border border-red-300/40 px-3 py-1 text-xs font-semibold text-red-100 hover:bg-red-500/20"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {feedback && (
+          <div className="mb-4 rounded-lg border border-white/20 bg-white/5 p-3 text-sm text-white/90">
+            {feedback}
+          </div>
+        )}
 
         {/* Search and Filter Bar */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -303,6 +387,18 @@ const Clients = () => {
                       {canManageUsers && (
                         <>
                           <button
+                            onClick={() => handleResendClientInvite(client)}
+                            disabled={resendingInviteFor === client.$id}
+                            className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/70 transition-all hover:border-accent hover:bg-accent/10 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                            title="Send Portal Invite"
+                          >
+                            {resendingInviteFor === client.$id ? (
+                              <AiOutlineLoading3Quarters className="h-5 w-5 animate-spin" />
+                            ) : (
+                              <AiOutlineSend className="h-5 w-5" />
+                            )}
+                          </button>
+                          <button
                             onClick={() => handleEditClient(client)}
                             className="rounded-lg border border-white/10 bg-white/5 p-2 text-white/70 transition-all hover:border-accent hover:bg-accent/10 hover:text-accent"
                             title="Edit Client"
@@ -328,6 +424,18 @@ const Clients = () => {
                 </div>
               </div>
             ))}
+            {hasMore && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  disabled={loadingMore}
+                  onClick={() => fetchClients({ append: true })}
+                  className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-50"
+                >
+                  {loadingMore ? 'Loading…' : 'Load More'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

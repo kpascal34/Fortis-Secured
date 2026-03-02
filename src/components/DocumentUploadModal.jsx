@@ -125,6 +125,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onSuccess, staffId = null }) => 
 
       const documentData = {
         staffId: relatedStaffId,
+        guardId: relatedStaffId,
         documentName: formData.documentName.trim(),
         documentType: formData.documentType,
         description: formData.description.trim(),
@@ -134,6 +135,7 @@ const DocumentUploadModal = ({ isOpen, onClose, onSuccess, staffId = null }) => 
         fileType: file.type,
         appwriteFileId: uploadedFile.$id,
         driveSyncStatus: 'pending',
+        drive_sync_status: 'pending',
         syncStatus: 'pending',
         fileUrl: fileUrl.href,
         uploadedBy: user.$id,

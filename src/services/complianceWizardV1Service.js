@@ -3,6 +3,7 @@ import { databases, config } from '../lib/appwrite.js';
 import { PERMISSIONS } from '../lib/rbac.ts';
 import { ensureDatabaseConfig, getAuthorizedScope } from '../lib/serviceSecurity.js';
 import { logEvent } from './auditLogService.js';
+import { notifyComplianceApproved, notifyComplianceRejected, notifyComplianceSubmitted } from './notificationService.js';
 
 const collectionIds = {
   templates: config.documentTemplatesCollectionId,
@@ -193,6 +194,28 @@ export async function updateSubmissionStatus(submissionId, status, notes = '', r
       reviewedBy: reviewedBy || resolvedActor.$id,
     },
   });
+
+  try {
+    if (status === 'submitted') {
+      await notifyComplianceSubmitted(submission.staffId, submissionId);
+    } else if (status === 'approved') {
+      await notifyComplianceApproved(
+        submission.staffId,
+        submissionId,
+        resolvedActor.name || resolvedActor.email || 'Reviewer',
+        notes || null
+      );
+    } else if (status === 'rejected') {
+      await notifyComplianceRejected(
+        submission.staffId,
+        submissionId,
+        notes || 'Rejected by reviewer',
+        resolvedActor.name || resolvedActor.email || 'Reviewer'
+      );
+    }
+  } catch (notifyError) {
+    console.error('[complianceWizardV1Service] Failed to enqueue compliance notification:', notifyError);
+  }
 
   return updated;
 }
