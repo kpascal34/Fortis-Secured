@@ -68,6 +68,16 @@ const summary = {
   },
 };
 
+const listCollectionAttributes = async (collectionId) => {
+  const response = await databases.listAttributes(env.databaseId, collectionId, [Query.limit(200)]);
+  return new Map(
+    (response?.attributes || []).map((attribute) => [String(attribute.key), String(attribute.type || '')]),
+  );
+};
+
+const pickKnownAttributes = (payload, knownAttributes) =>
+  Object.fromEntries(Object.entries(payload).filter(([key]) => knownAttributes.has(key)));
+
 const tryEncryptBankDetails = async (value) => {
   try {
     const { maybeEncryptJson } = await import('../src/server/security/encryption.js');
@@ -78,6 +88,7 @@ const tryEncryptBankDetails = async (value) => {
 };
 
 const ensureDefaultEntity = async () => {
+  const knownAttributes = await listCollectionAttributes(env.legalEntitiesCollectionId);
   const entities = await listAllDocuments(databases, env.databaseId, env.legalEntitiesCollectionId, [
     Query.limit(50),
     Query.orderAsc('createdAt'),
@@ -87,7 +98,7 @@ const ensureDefaultEntity = async () => {
     return entities[0];
   }
 
-  const payload = {
+  const payload = pickKnownAttributes({
     name: 'Fortis Default Entity',
     entityType: 'operating',
     registrationNumber: null,
@@ -96,7 +107,11 @@ const ensureDefaultEntity = async () => {
     active: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  };
+  }, knownAttributes);
+
+  if (knownAttributes.get('bankDetails') === 'string' && payload.bankDetails && typeof payload.bankDetails !== 'string') {
+    payload.bankDetails = JSON.stringify(payload.bankDetails);
+  }
 
   if (dryRun) {
     summary.entitiesCreated += 1;

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import dotenv from 'dotenv';
-import { Client, Databases } from 'node-appwrite';
+import { Client, Databases, Query } from 'node-appwrite';
 import { COLLECTION_DEFINITIONS } from './schema/collections.js';
 
 const PAGE_SIZE = 100;
@@ -16,6 +16,8 @@ validateEnv(env);
 
 const client = new Client().setEndpoint(env.endpoint).setProject(env.projectId).setKey(env.apiKey);
 const databases = new Databases(client);
+
+validateSchemaDefinitions(COLLECTION_DEFINITIONS);
 
 (async () => {
   const issues = [];
@@ -169,7 +171,7 @@ async function listAll(fetchPage, key) {
   let offset = 0;
 
   while (true) {
-    const response = await fetchPage([`limit(${PAGE_SIZE})`, `offset(${offset})`]);
+    const response = await fetchPage([Query.limit(PAGE_SIZE), Query.offset(offset)]);
     const pageItems = response?.[key] || [];
     items.push(...pageItems);
 
@@ -183,6 +185,10 @@ async function listAll(fetchPage, key) {
 }
 
 function isExpectedAttributeType(foundType, expectedType) {
+  if (expectedType === 'enum' || expectedType === 'email') {
+    return { ok: foundType === expectedType || foundType === 'string' };
+  }
+
   if (expectedType === 'json') {
     return { ok: foundType === 'json' || foundType === 'string' };
   }
@@ -212,4 +218,37 @@ function summarize(collections) {
     },
     { collections: 0, attributes: 0, indexes: 0 }
   );
+}
+
+function validateSchemaDefinitions(definitions) {
+  const issues = [];
+
+  for (const collection of definitions) {
+    const attributesByKey = new Map((collection.attributes || []).map((attribute) => [attribute.key, attribute]));
+
+    for (const index of collection.indexes || []) {
+      if ((index.key || '').length > 36) {
+        issues.push(
+          `${collection.collectionId}.${index.key}: index key length ${(index.key || '').length} exceeds Appwrite limit 36`
+        );
+      }
+
+      const arrayAttributes = (index.attributes || []).filter(
+        (attributeKey) => attributesByKey.get(attributeKey)?.array === true
+      );
+      if (arrayAttributes.length > 0) {
+        issues.push(
+          `${collection.collectionId}.${index.key}: array attributes are not indexable (${arrayAttributes.join(', ')})`
+        );
+      }
+    }
+  }
+
+  if (issues.length > 0) {
+    console.error('Schema definition validation failed:');
+    for (const issue of issues) {
+      console.error(`- ${issue}`);
+    }
+    process.exit(1);
+  }
 }

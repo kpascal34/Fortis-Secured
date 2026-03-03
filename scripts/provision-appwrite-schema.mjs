@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import dotenv from 'dotenv';
-import { Client, Databases } from 'node-appwrite';
+import { Client, Databases, Query } from 'node-appwrite';
 import { COLLECTION_DEFINITIONS } from './schema/collections.js';
 
 const PAGE_SIZE = 100;
@@ -33,6 +33,8 @@ const summary = {
   indexes: { created: 0, skipped: 0, failed: 0 },
   failures: [],
 };
+
+validateSchemaDefinitions(COLLECTION_DEFINITIONS);
 
 (async () => {
   console.log(`Provisioning Appwrite schema for database ${env.databaseId}...`);
@@ -239,7 +241,7 @@ async function listAll(fetchPage, key) {
   let offset = 0;
 
   while (true) {
-    const response = await fetchPage([`limit(${PAGE_SIZE})`, `offset(${offset})`]);
+    const response = await fetchPage([Query.limit(PAGE_SIZE), Query.offset(offset)]);
     const pageItems = response?.[key] || [];
     items.push(...pageItems);
 
@@ -254,6 +256,7 @@ async function listAll(fetchPage, key) {
 
 async function createAttribute(databases, databaseId, collectionId, attribute) {
   const required = attribute.required ?? false;
+  const defaultValue = required ? undefined : attribute.default;
 
   switch (attribute.type) {
     case 'string':
@@ -263,7 +266,7 @@ async function createAttribute(databases, databaseId, collectionId, attribute) {
         attribute.key,
         attribute.size ?? 255,
         required,
-        attribute.default,
+        defaultValue,
         attribute.array ?? false,
         attribute.encrypt ?? false
       );
@@ -274,7 +277,7 @@ async function createAttribute(databases, databaseId, collectionId, attribute) {
         collectionId,
         attribute.key,
         required,
-        attribute.default,
+        defaultValue,
         attribute.array ?? false
       );
 
@@ -285,7 +288,7 @@ async function createAttribute(databases, databaseId, collectionId, attribute) {
         attribute.key,
         attribute.elements || [],
         required,
-        attribute.default,
+        defaultValue,
         attribute.array ?? false
       );
 
@@ -295,7 +298,7 @@ async function createAttribute(databases, databaseId, collectionId, attribute) {
         collectionId,
         attribute.key,
         required,
-        attribute.default,
+        defaultValue,
         attribute.array ?? false
       );
 
@@ -305,7 +308,7 @@ async function createAttribute(databases, databaseId, collectionId, attribute) {
         collectionId,
         attribute.key,
         required,
-        attribute.default,
+        defaultValue,
         attribute.array ?? false
       );
 
@@ -317,7 +320,7 @@ async function createAttribute(databases, databaseId, collectionId, attribute) {
         required,
         attribute.min,
         attribute.max,
-        attribute.default,
+        defaultValue,
         attribute.array ?? false
       );
 
@@ -329,7 +332,7 @@ async function createAttribute(databases, databaseId, collectionId, attribute) {
         required,
         attribute.min,
         attribute.max,
-        attribute.default,
+        defaultValue,
         attribute.array ?? false
       );
 
@@ -340,15 +343,15 @@ async function createAttribute(databases, databaseId, collectionId, attribute) {
           collectionId,
           attribute.key,
           required,
-          attribute.default,
+          defaultValue,
           attribute.array ?? false
         );
       }
 
       const jsonDefault =
-        attribute.default === undefined || attribute.default === null
-          ? attribute.default
-          : JSON.stringify(attribute.default);
+        defaultValue === undefined || defaultValue === null
+          ? defaultValue
+          : JSON.stringify(defaultValue);
 
       return databases.createStringAttribute(
         databaseId,
@@ -368,6 +371,10 @@ async function createAttribute(databases, databaseId, collectionId, attribute) {
 }
 
 function isExpectedAttributeType(foundType, expectedType) {
+  if (expectedType === 'enum' || expectedType === 'email') {
+    return { ok: foundType === expectedType || foundType === 'string' };
+  }
+
   if (expectedType === 'json') {
     return { ok: foundType === 'json' || foundType === 'string' };
   }
@@ -443,5 +450,38 @@ function printSummary(summary) {
     for (const failure of summary.failures) {
       console.error(`- ${failure.scope}: ${failure.message}`);
     }
+  }
+}
+
+function validateSchemaDefinitions(definitions) {
+  const errors = [];
+
+  for (const collection of definitions) {
+    const attributesByKey = new Map((collection.attributes || []).map((attribute) => [attribute.key, attribute]));
+
+    for (const index of collection.indexes || []) {
+      if ((index.key || '').length > 36) {
+        errors.push(
+          `${collection.collectionId}.${index.key}: index key length ${(index.key || '').length} exceeds Appwrite limit 36`
+        );
+      }
+
+      const arrayAttributes = (index.attributes || []).filter(
+        (attributeKey) => attributesByKey.get(attributeKey)?.array === true
+      );
+      if (arrayAttributes.length > 0) {
+        errors.push(
+          `${collection.collectionId}.${index.key}: array attributes are not indexable (${arrayAttributes.join(', ')})`
+        );
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error('Schema definition validation failed:');
+    for (const error of errors) {
+      console.error(`- ${error}`);
+    }
+    process.exit(1);
   }
 }

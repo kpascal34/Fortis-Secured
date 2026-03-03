@@ -26,12 +26,22 @@ unless an active Appwrite session exists.
 Copy `.env.example` to `.env.local` (or configure in Vercel) and populate the Appwrite identifiers:
 
 ```ini
-VITE_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
-VITE_APPWRITE_PROJECT_ID=your-project-id
-VITE_APPWRITE_DATABASE_ID=security
+VITE_APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1
+VITE_APPWRITE_PROJECT_ID=68fbe225003cf4576a12
+VITE_APPWRITE_DATABASE_ID=fortis_prod_v2
+VITE_APPWRITE_CLIENTS_COLLECTION_ID=clients
+VITE_APPWRITE_GUARDS_COLLECTION_ID=guards
+VITE_APPWRITE_SITES_COLLECTION_ID=sites
+VITE_APPWRITE_POSTS_COLLECTION_ID=posts
+VITE_APPWRITE_SHIFTS_COLLECTION_ID=shifts
+VITE_APPWRITE_SHIFT_ASSIGNMENTS_COLLECTION_ID=shift_assignments
 VITE_APPWRITE_INCIDENTS_COLLECTION_ID=incidents
 VITE_APPWRITE_ASSETS_COLLECTION_ID=assets
-VITE_APPWRITE_SHIFTS_COLLECTION_ID=shifts
+VITE_APPWRITE_APPLICATIONS_COLLECTION_ID=applications
+VITE_APPWRITE_STAFF_INVITES_COLLECTION_ID=staff_invites
+VITE_APPWRITE_STAFF_PROFILES_COLLECTION_ID=staff_profiles
+VITE_APPWRITE_STAFF_COMPLIANCE_COLLECTION_ID=staff_compliance
+VITE_APPWRITE_RECURRING_PATTERNS_COLLECTION_ID=recurring_patterns
 VITE_FINANCE_INTEGRATION_ENABLED=false
 ```
 
@@ -45,7 +55,7 @@ In production, missing required `VITE_APPWRITE_*` values now trigger a fatal con
 ```bash
 export APPWRITE_ENDPOINT="https://fra.cloud.appwrite.io/v1"
 export APPWRITE_PROJECT_ID="68fbe225003cf4576a12"
-export APPWRITE_DATABASE_ID="<your-database-id>"
+export APPWRITE_DATABASE_ID="fortis_prod_v2"
 export APPWRITE_API_KEY="<server-api-key-with-databases-scope>"
 ```
 
