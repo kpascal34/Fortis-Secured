@@ -28,10 +28,17 @@ const LoginForm = () => {
       await login(formState);
     } catch (err) {
       const errorMessage = err?.message || '';
+      const normalizedMessage = errorMessage.toLowerCase();
       // Check if MFA is required
       if (errorMessage.includes('factor') || errorMessage.includes('MFA') || errorMessage.includes('challenge')) {
         setMfaRequired(true);
         setError('Please enter your 2FA code to continue.');
+      } else if (normalizedMessage.includes('network request failed')) {
+        setError(
+          'Sign-in request was blocked by browser privacy/content settings. Disable content blockers for this site and fra.cloud.appwrite.io, then retry.'
+        );
+      } else if (normalizedMessage.includes('invalid credentials')) {
+        setError('Invalid email or password. Use "Forgot password?" to reset access.');
       } else {
         setError(errorMessage || 'Unable to sign in. Please try again.');
       }
