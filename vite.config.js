@@ -6,7 +6,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
+      cleanupOutdatedCaches: true,
       includeAssets: ['favicon.svg', 'robots.txt', 'sitemap.xml'],
       manifest: {
         name: 'Fortis Secured - Workforce Management',
@@ -27,6 +28,8 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       workbox: {
+        clientsClaim: true,
+        skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp}'],
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB limit
         runtimeCaching: [
@@ -59,7 +62,7 @@ export default defineConfig(({ mode }) => ({
             }
           },
           {
-            urlPattern: /^https:\/\/cloud\.appwrite\.io\/.*/i,
+            urlPattern: /^https:\/\/(fra\.cloud\.appwrite\.io|cloud\.appwrite\.io)\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'appwrite-api-cache',

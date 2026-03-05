@@ -17,11 +17,15 @@ export const registerServiceWorker = async () => {
   try {
     const { registerSW } = await import('virtual:pwa-register');
 
-    const updateSW = registerSW({
+    let updateSW;
+    updateSW = registerSW({
       immediate: true,
       onNeedRefresh() {
         console.log('[PWA] New version available');
-        showUpdateNotification();
+        updateSW?.(true).catch((error) => {
+          console.error('[PWA] Failed to apply service worker update:', error);
+          showUpdateNotification();
+        });
       },
       onOfflineReady() {
         console.log('[PWA] App ready to work offline');
