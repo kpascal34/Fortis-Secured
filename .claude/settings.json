@@ -1,0 +1,95 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run test:*)",
+      "Bash(npm run build)",
+      "Bash(npm start)",
+      "Bash(yarn:*)",
+      "Bash(node:*)",
+      "Bash(git:*)",
+      "Bash(docker:*)",
+      "Bash(python:*)",
+      "Bash(pip:*)",
+      "Bash(npx:*)",
+      "Read(**/*.json)",
+      "Read(**/*.js)",
+      "Read(**/*.ts)",
+      "Read(**/*.jsx)",
+      "Read(**/*.tsx)",
+      "Read(**/*.py)",
+      "Read(**/*.md)",
+      "Read(**/*.css)",
+      "Read(**/*.html)",
+      "Read(**/*.vue)",
+      "Edit(**/*.js)",
+      "Edit(**/*.ts)",
+      "Edit(**/*.jsx)",
+      "Edit(**/*.tsx)",
+      "Edit(**/*.py)",
+      "Edit(**/*.json)",
+      "Edit(**/*.css)",
+      "Edit(**/*.html)",
+      "Edit(**/*.vue)",
+      "Edit(**/*.md)",
+      "Write(**/*.js)",
+      "Write(**/*.ts)",
+      "Write(**/*.jsx)",
+      "Write(**/*.tsx)",
+      "Write(**/*.py)",
+      "Write(**/*.json)",
+      "Write(**/*.css)",
+      "Write(**/*.html)",
+      "Write(**/*.md)"
+    ],
+    "deny": [
+      "Read(./.env*)",
+      "Read(./secrets/**)",
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import json, sys, os; agents_content = open('AGENTS.md', 'r').read() if os.path.exists('AGENTS.md') else ''; output = {'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': agents_content}}; print(json.dumps(output))\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ -f package.json ]] && npm run test:quick --silent >/dev/null 2>&1; then echo '✅ Tests passed'; else echo '⚠️ Tests may need attention'; fi"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [[ -f \"$CLAUDE_TOOL_FILE_PATH\" ]]; then cp \"$CLAUDE_TOOL_FILE_PATH\" \"$CLAUDE_TOOL_FILE_PATH.backup.$(date +%s)\" 2>/dev/null || true; fi"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8000",
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1",
+    "DISABLE_COST_WARNINGS": "1",
+    "CLAUDE_CODE_API_KEY_HELPER_TTL_MS": "3600000"
+  }
+}
