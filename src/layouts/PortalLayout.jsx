@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Outlet, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PortalNav from '../components/PortalNav';
+import NotificationBell from '../components/NotificationBell';
+import MobileBottomNav from '../components/MobileBottomNav';
 import LoginForm from '../components/LoginForm';
 import Breadcrumb from '../components/Breadcrumb';
 import { useSEO } from '../lib/seo.js';
@@ -33,11 +35,14 @@ const PortalTopBar = ({ user, resolvedRole, onSignOut }) => {
         </kbd>
       </button>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         {/* Role badge */}
         <span className="rounded-full border border-accent/20 bg-accent/5 px-3 py-1 text-xs font-medium capitalize text-accent">
           {roleBadge}
         </span>
+
+        {/* Notification bell */}
+        <NotificationBell userId={user?.$id} />
 
         {/* User menu */}
         <div className="relative">
@@ -157,13 +162,15 @@ const PortalLayout = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Portal top bar */}
         <PortalTopBar user={user} resolvedRole={resolvedRole} onSignOut={logout} />
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <div className="p-4 lg:p-8">
             <Breadcrumb />
             <Outlet />
           </div>
         </div>
       </div>
+      {/* Mobile bottom navigation */}
+      <MobileBottomNav resolvedRole={resolvedRole} />
     </div>
   );
 };
