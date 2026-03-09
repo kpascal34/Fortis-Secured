@@ -1,8 +1,11 @@
 import React, { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import PortalHeader from '../../components/PortalHeader';
+import { SkeletonDashboard } from '../../components/ui/Skeleton';
 import { databases, config } from '../../lib/appwrite';
 import { Query } from 'appwrite';
+import { can, PERMISSIONS } from '../../lib/rbac.ts';
 import { trackModuleAccess } from '../../lib/analyticsUtils';
 
 const statusColours = {
@@ -141,6 +144,34 @@ const Dashboard = () => {
     }
   };
 
+  const quickActions = React.useMemo(() => {
+    const actions = [];
+    const ctx = { role: user?.role, resolvedRole, permissions: {} };
+    if (can('manageShifts', ctx)) {
+      actions.push({ label: 'Create Shift', href: '/portal/new-shift', icon: 'M12 4v16m8-8H4' });
+    }
+    if (can('viewIncidents', ctx)) {
+      actions.push({ label: 'Log Incident', href: '/portal/incidents', icon: 'M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' });
+    }
+    if (can('viewTimeTracking', ctx)) {
+      actions.push({ label: 'Submit Timesheet', href: '/portal/time', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' });
+    }
+    if (can('viewClients', ctx)) {
+      actions.push({ label: 'View Clients', href: '/portal/clients', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' });
+    }
+    return actions;
+  }, [user, resolvedRole]);
+
+  if (loading) {
+    return (
+      <div className="fs-page px-6 py-10">
+        <div className="mx-auto max-w-6xl">
+          <SkeletonDashboard />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fs-page px-6 py-10">
       <div className="mx-auto max-w-6xl">
@@ -149,6 +180,24 @@ const Dashboard = () => {
           description="Security Management Overview"
           eyebrow={resolvedRole || 'Operations'}
         />
+
+        {/* Quick Actions */}
+        {quickActions.length > 0 && (
+          <section className="mb-8 flex flex-wrap gap-3">
+            {quickActions.map((action) => (
+              <Link
+                key={action.label}
+                to={action.href}
+                className="inline-flex items-center gap-2 rounded-xl border border-accent/20 bg-accent/5 px-4 py-2.5 text-sm font-medium text-accent hover:bg-accent/10 hover:border-accent/40 transition-all"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={action.icon} />
+                </svg>
+                {action.label}
+              </Link>
+            ))}
+          </section>
+        )}
 
         {error && (
           <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-400/10 px-6 py-4 text-sm text-amber-200">

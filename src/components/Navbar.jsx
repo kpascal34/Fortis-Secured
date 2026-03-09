@@ -20,17 +20,38 @@ const navigation = [
   { href: '/join-the-team', label: 'Join the Team' },
 ];
 
+const isActive = (pathname, href) => {
+  if (href === '/') return pathname === '/';
+  return pathname === href || pathname.startsWith(`${href}/`);
+};
+
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setOpen(false);
+    setServicesOpen(false);
+  }, [location.pathname]);
+
+  // Track scroll for navbar background effect
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
     <motion.header
       initial={{ opacity: 0, y: -40 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="fixed inset-x-0 top-0 z-50 bg-white shadow-sm"
+      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+        scrolled ? 'bg-white/95 backdrop-blur-md shadow-md' : 'bg-white shadow-sm'
+      }`}
     >
       <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6">
         <div className="flex h-24 items-center justify-between">
@@ -44,27 +65,35 @@ const Navbar = () => {
               decoding="auto"
             />
           </Link>
-          <nav className="hidden md:flex items-center gap-12">
+          <nav className="hidden md:flex items-center gap-8 lg:gap-12">
             {navigation.map((item) => (
               item.children ? (
                 <div key={item.href} className="relative">
                   <button
                     type="button"
                     onClick={() => setServicesOpen((s) => !s)}
-                    className="text-sm font-medium text-gray-800 hover:text-primary transition inline-flex items-center gap-2"
+                    className={`text-sm font-medium transition inline-flex items-center gap-2 ${
+                      isActive(location.pathname, item.href) ? 'text-primary' : 'text-gray-800 hover:text-primary'
+                    }`}
                     aria-expanded={servicesOpen}
                   >
                     {item.label}
-                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                    <svg className={`h-4 w-4 transition-transform ${servicesOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="none" stroke="currentColor">
                       <path d="M6 8l4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
                   <div
-                    className={`absolute right-0 mt-2 w-60 rounded-md bg-white shadow-lg ring-1 ring-black/5 transition-opacity ${servicesOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+                    className={`absolute right-0 mt-2 w-60 rounded-xl bg-white shadow-xl ring-1 ring-black/5 transition-all duration-200 ${servicesOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'}`}
                   >
                     <div className="py-2">
                       {item.children.map((child) => (
-                        <Link key={child.href} to={child.href} className="block px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100">
+                        <Link
+                          key={child.href}
+                          to={child.href}
+                          className={`block px-4 py-2.5 text-sm font-medium transition-colors ${
+                            isActive(location.pathname, child.href) ? 'text-primary bg-primary/5' : 'text-gray-800 hover:bg-gray-50 hover:text-primary'
+                          }`}
+                        >
                           {child.label}
                         </Link>
                       ))}
@@ -75,15 +104,25 @@ const Navbar = () => {
                 <Link
                   key={item.href}
                   to={item.href}
-                  className="text-sm font-medium text-gray-800 hover:text-primary transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full"
+                  className={`text-sm font-medium transition-colors relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:bg-primary after:transition-all ${
+                    isActive(location.pathname, item.href)
+                      ? 'text-primary after:w-full'
+                      : 'text-gray-800 hover:text-primary after:w-0 hover:after:w-full'
+                  }`}
                 >
                   {item.label}
                 </Link>
               )
             ))}
+            <a
+              href="#contact"
+              className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-night-sky hover:bg-accent/90 transition-colors shadow-lg hover:shadow-xl"
+            >
+              Get a Quote
+            </a>
             <Link
               to="/portal"
-              className="rounded-full bg-primary px-8 py-3 text-sm font-medium text-white hover:bg-primary-dark transition-colors shadow-lg hover:shadow-xl"
+              className="rounded-full border border-primary/20 px-6 py-2.5 text-sm font-medium text-primary hover:bg-primary hover:text-white transition-all"
             >
               Client Login
             </Link>
@@ -100,30 +139,35 @@ const Navbar = () => {
           </button>
         </div>
       </div>
-      
-      {/* Mobile menu */}
-      <div className={`md:hidden ${open ? "block" : "hidden"}`}>
-        <div className="space-y-1 px-4 pb-3 pt-2">
+
+      {/* Mobile menu with backdrop */}
+      {open && (
+        <div className="fixed inset-0 top-24 z-40 bg-black/20 md:hidden" onClick={() => setOpen(false)} />
+      )}
+      <div className={`md:hidden transition-all duration-300 overflow-hidden ${open ? 'max-h-screen' : 'max-h-0'}`}>
+        <div className="space-y-1 px-4 pb-4 pt-2 bg-white border-t border-gray-100">
           {navigation.map((item) => (
             item.children ? (
               <div key={item.href} className="space-y-1">
                 <button
                   type="button"
                   onClick={() => setServicesOpen((s) => !s)}
-                  className="w-full flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100"
+                  className="w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50"
                 >
                   <span>{item.label}</span>
-                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                  <svg className={`h-4 w-4 transition-transform ${servicesOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="none" stroke="currentColor">
                     <path d="M6 8l4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
                 {servicesOpen && (
-                  <div className="pl-4">
+                  <div className="pl-4 space-y-0.5">
                     {item.children.map((child) => (
                       <Link
                         key={child.href}
                         to={child.href}
-                        className="block rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                        className={`block rounded-lg px-3 py-2 text-sm font-medium ${
+                          isActive(location.pathname, child.href) ? 'text-primary bg-primary/5' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
                         onClick={() => setOpen(false)}
                       >
                         {child.label}
@@ -136,20 +180,31 @@ const Navbar = () => {
               <Link
                 key={item.href}
                 to={item.href}
-                className="block rounded-md px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100"
+                className={`block rounded-lg px-3 py-2.5 text-sm font-medium ${
+                  isActive(location.pathname, item.href) ? 'text-primary bg-primary/5' : 'text-gray-800 hover:bg-gray-50'
+                }`}
                 onClick={() => setOpen(false)}
               >
                 {item.label}
               </Link>
             )
           ))}
-          <Link
-            to="/portal"
-            className="block w-full rounded-md bg-primary px-3 py-2 text-center text-sm font-medium text-white hover:bg-primary-dark"
-            onClick={() => setOpen(false)}
-          >
-            Client Login
-          </Link>
+          <div className="pt-2 space-y-2">
+            <a
+              href="#contact"
+              className="block w-full rounded-lg bg-accent px-3 py-2.5 text-center text-sm font-semibold text-night-sky hover:bg-accent/90"
+              onClick={() => setOpen(false)}
+            >
+              Get a Quote
+            </a>
+            <Link
+              to="/portal"
+              className="block w-full rounded-lg border border-primary/20 px-3 py-2.5 text-center text-sm font-medium text-primary hover:bg-primary hover:text-white transition-all"
+              onClick={() => setOpen(false)}
+            >
+              Client Login
+            </Link>
+          </div>
         </div>
       </div>
     </motion.header>

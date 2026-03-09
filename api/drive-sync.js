@@ -88,7 +88,9 @@ export default async function handler(req, res) {
       if (existing.total > 0) {
         staffFolderId = existing.documents[0].folder_id;
       }
-    } catch (_) {}
+    } catch (e) {
+      console.warn('[drive-sync] Could not look up existing folder mapping:', e.message);
+    }
 
     if (!staffFolderId) {
       // Try locate by name under parent
@@ -116,7 +118,9 @@ export default async function handler(req, res) {
           created_at: new Date().toISOString(),
           parent_folder_id: driveParentId,
         });
-      } catch (_) {}
+      } catch (e) {
+        console.warn('[drive-sync] Could not persist folder mapping:', e.message);
+      }
     }
 
     // Ensure type subfolder
@@ -144,7 +148,8 @@ export default async function handler(req, res) {
     try {
       const meta = await storage.getFile(bucketId, appwriteFileId);
       if (!resolvedFileName) resolvedFileName = meta?.name || `file-${appwriteFileId}`;
-    } catch (_) {
+    } catch (e) {
+      console.warn('[drive-sync] Could not fetch file metadata:', e.message);
       resolvedFileName = resolvedFileName || `file-${appwriteFileId}`;
     }
     const fileBuffer = await storage.getFileDownload(bucketId, appwriteFileId);
@@ -183,7 +188,9 @@ export default async function handler(req, res) {
             sync_attempts: 0,
             syncAttempts: 0,
           });
-        } catch (_) {}
+        } catch (e) {
+          console.warn('[drive-sync] Could not create compliance_uploads record:', e.message);
+        }
       }
       if (doc) {
         await databases.updateDocument(databaseId, 'compliance_uploads', doc.$id, {
@@ -203,7 +210,9 @@ export default async function handler(req, res) {
           syncError: null,
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      console.error('[drive-sync] Failed to update compliance_uploads sync status:', e.message);
+    }
 
     return res.status(200).json({ ok: true, driveFileId: uploaded.data.id, folderId: typeFolderId });
   } catch (error) {

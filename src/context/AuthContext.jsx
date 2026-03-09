@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(msg);
       }
 
-      await account.createEmailSession(email, password);
+      await account.createEmailPasswordSession(email, password);
       await fetchUser();
 
       // Track login event

@@ -5,6 +5,7 @@ import Services from '../sections/Services.jsx';
 import Platform from '../sections/Platform.jsx';
 import About from '../sections/About.jsx';
 import Resources from '../sections/Resources.jsx';
+import Stats from '../sections/Stats.jsx';
 import Contact from '../sections/Contact.jsx';
 import Footer from '../components/Footer.jsx';
 import { useSEO } from '../lib/seo.js';
@@ -30,6 +31,7 @@ const PublicSite = () => {
       <main>
         <Hero />
         <Services />
+        <Stats />
         <Platform />
         <About />
         <Resources />

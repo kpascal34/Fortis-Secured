@@ -112,3 +112,11 @@ export const getFatalConfigError = () => {
   }
   return null;
 };
+
+// Log missing config in development so devs notice early
+if (env.isDev && !config.isDemoMode && !config.hasRequiredConfig) {
+  console.warn(
+    '[Fortis Config] Missing configuration (will be fatal in production):',
+    config.missingRequiredConfig.join(', ')
+  );
+}

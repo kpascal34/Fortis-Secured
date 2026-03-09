@@ -1,6 +1,7 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { ToastProvider } from './components/ui/Toast.jsx';
 import { isFeatureEnabled } from './config/features.ts';
 import { FeatureDisabled } from './components/FeatureDisabled.jsx';
 import AccessDenied from './components/AccessDenied.jsx';
@@ -600,9 +601,11 @@ const App = () => {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 };
