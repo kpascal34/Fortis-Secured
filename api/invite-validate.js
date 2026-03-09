@@ -3,8 +3,11 @@
 // Response: { ok: true, invite: { invite_code, email, expires_at, status, used_by } }
 
 import { Client, Databases, Query } from 'node-appwrite';
+import { cors } from './_cors.js';
 
 export default async function handler(req, res) {
+  if (cors(req, res)) return;
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

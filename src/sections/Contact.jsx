@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-  const initialState = {
+const initialState = {
   name: '',
   company: '',
   email: '',
@@ -9,19 +9,71 @@ import React, { useState } from 'react';
   service: 'Integrated Guarding',
 };
 
+const validators = {
+  name: (v) => (v.trim().length < 2 ? 'Please enter your name' : ''),
+  company: (v) => (v.trim().length < 2 ? 'Please enter your company name' : ''),
+  email: (v) => {
+    if (!v.trim()) return 'Email is required';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Please enter a valid email';
+    return '';
+  },
+  phone: () => '',
+  message: () => '',
+  service: () => '',
+};
+
 const Contact = () => {
   const [form, setForm] = useState(initialState);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (touched[name]) {
+      setErrors((prev) => ({ ...prev, [name]: validators[name]?.(value) || '' }));
+    }
+  };
+
+  const handleBlur = (event) => {
+    const { name, value } = event.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    setErrors((prev) => ({ ...prev, [name]: validators[name]?.(value) || '' }));
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    setSubmitted(true);
+
+    const newErrors = {};
+    let hasError = false;
+    for (const [key, validate] of Object.entries(validators)) {
+      const err = validate(form[key]);
+      if (err) {
+        newErrors[key] = err;
+        hasError = true;
+      }
+    }
+    setErrors(newErrors);
+    setTouched({ name: true, company: true, email: true, phone: true, message: true, service: true });
+
+    if (hasError) return;
+
+    setSubmitting(true);
+    // Simulate form submission (replace with actual API call when backend endpoint is ready)
+    setTimeout(() => {
+      setSubmitting(false);
+      setSubmitted(true);
+    }, 800);
   };
+
+  const fieldClass = (name) =>
+    `mt-2 rounded-2xl border ${
+      errors[name] && touched[name]
+        ? 'border-red-400 focus:border-red-500'
+        : 'border-gray-200 focus:border-accent'
+    } bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none transition-colors`;
 
   return (
     <section id="contact" className="relative py-24 bg-white">
@@ -67,11 +119,15 @@ const Contact = () => {
             </div>
             <div>
               <dt className="text-sm font-semibold text-gray-900">Email</dt>
-              <dd className="text-sm">engage@fortissecured.com</dd>
+              <dd className="text-sm">
+                <a href="mailto:engage@fortissecured.com" className="hover:text-primary transition-colors">engage@fortissecured.com</a>
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-semibold text-gray-900">Phone</dt>
-              <dd className="text-sm">+44 (0)20 1234 5678</dd>
+              <dd className="text-sm">
+                <a href="tel:+442012345678" className="hover:text-primary transition-colors">+44 (0)20 1234 5678</a>
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-semibold text-gray-900">Hours</dt>
@@ -81,59 +137,82 @@ const Contact = () => {
         </div>
         <div className="glass-panel p-10">
           {submitted ? (
-            <div className="space-y-4 text-center">
+            <div className="space-y-4 text-center py-8">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
               <h3 className="text-2xl font-semibold text-gray-900">Thank you!</h3>
               <p className="text-sm text-gray-600">
                 Your request has been captured. A member of the Fortis mobilisation team will reach out within one business day.
               </p>
               <button
                 type="button"
-                onClick={() => setSubmitted(false)}
-                className="mt-6 inline-flex items-center rounded-full bg-accent px-6 py-2 text-sm font-semibold text-night-sky"
+                onClick={() => { setSubmitted(false); setForm(initialState); setTouched({}); setErrors({}); }}
+                className="mt-6 inline-flex items-center rounded-full bg-accent px-6 py-2 text-sm font-semibold text-night-sky hover:bg-accent/90 transition-colors"
               >
                 Submit another enquiry
               </button>
             </div>
           ) : (
-            <form className="space-y-5" onSubmit={handleSubmit}>
+            <form className="space-y-5" onSubmit={handleSubmit} noValidate>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="flex flex-col text-sm text-gray-600">
-                  Name
+                  Name <span className="text-red-400">*</span>
                   <input
                     required
                     type="text"
                     name="name"
                     value={form.name}
                     onChange={handleChange}
-                    className="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-accent focus:outline-none"
+                    onBlur={handleBlur}
+                    className={fieldClass('name')}
                     placeholder="Your name"
+                    aria-invalid={!!(errors.name && touched.name)}
+                    aria-describedby={errors.name ? 'name-error' : undefined}
                   />
+                  {errors.name && touched.name && (
+                    <span id="name-error" className="mt-1 text-xs text-red-500" role="alert">{errors.name}</span>
+                  )}
                 </label>
                 <label className="flex flex-col text-sm text-gray-600">
-                  Company
+                  Company <span className="text-red-400">*</span>
                   <input
                     required
                     type="text"
                     name="company"
                     value={form.company}
                     onChange={handleChange}
-                    className="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-accent focus:outline-none"
+                    onBlur={handleBlur}
+                    className={fieldClass('company')}
                     placeholder="Company or site"
+                    aria-invalid={!!(errors.company && touched.company)}
+                    aria-describedby={errors.company ? 'company-error' : undefined}
                   />
+                  {errors.company && touched.company && (
+                    <span id="company-error" className="mt-1 text-xs text-red-500" role="alert">{errors.company}</span>
+                  )}
                 </label>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="flex flex-col text-sm text-gray-600">
-                  Email
+                  Email <span className="text-red-400">*</span>
                   <input
                     required
                     type="email"
                     name="email"
                     value={form.email}
                     onChange={handleChange}
-                    className="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-accent focus:outline-none"
+                    onBlur={handleBlur}
+                    className={fieldClass('email')}
                     placeholder="you@company.com"
+                    aria-invalid={!!(errors.email && touched.email)}
+                    aria-describedby={errors.email ? 'email-error' : undefined}
                   />
+                  {errors.email && touched.email && (
+                    <span id="email-error" className="mt-1 text-xs text-red-500" role="alert">{errors.email}</span>
+                  )}
                 </label>
                 <label className="flex flex-col text-sm text-gray-600">
                   Phone
@@ -142,7 +221,7 @@ const Contact = () => {
                     name="phone"
                     value={form.phone}
                     onChange={handleChange}
-                    className="mt-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-accent focus:outline-none"
+                    className={fieldClass('phone')}
                     placeholder="Contact number"
                   />
                 </label>
@@ -174,13 +253,21 @@ const Contact = () => {
               </label>
               <button
                 type="submit"
-                className="w-full rounded-full bg-accent px-6 py-3 text-sm font-semibold text-night-sky shadow-lg shadow-accent/40 hover:bg-accent/90"
+                disabled={submitting}
+                className="w-full rounded-full bg-accent px-6 py-3 text-sm font-semibold text-night-sky shadow-lg shadow-accent/40 hover:bg-accent/90 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
               >
-                Request consultation
+                {submitting && (
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                )}
+                {submitting ? 'Sending...' : 'Request consultation'}
               </button>
               <p className="text-xs text-gray-500">
-                By submitting this form you agree to the Fortis Secured privacy statement. We’ll only use your details to respond
-                to your enquiry.
+                By submitting this form you agree to the Fortis Secured{' '}
+                <a href="/privacy-policy" className="underline hover:text-primary">privacy statement</a>.
+                We'll only use your details to respond to your enquiry.
               </p>
             </form>
           )}

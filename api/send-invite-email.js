@@ -1,9 +1,11 @@
 /**
  * Serverless function to send staff invite emails via AWS SES
  */
+import { cors } from './_cors.js';
 
 export default async function handler(req, res) {
-  // Only allow POST requests
+  if (cors(req, res)) return;
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
