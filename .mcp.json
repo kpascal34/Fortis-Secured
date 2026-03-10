@@ -7,11 +7,11 @@
         "GOOGLE_MAPS_API_KEY": "<YOUR_GOOGLE_MAPS_API_KEY>"
       }
     },
-    "nanobanana": {
+    "nanobanana-mcp": {
       "command": "npx",
-      "args": ["-y", "gemini-nanobanana-mcp@latest"],
+      "args": ["-y", "@ycse/nanobanana-mcp"],
       "env": {
-        "GEMINI_API_KEY": "<YOUR_GEMINI_API_KEY>"
+        "GOOGLE_AI_API_KEY": "<YOUR_GOOGLE_AI_API_KEY>"
       }
     },
     "@21st-dev/magic": {
