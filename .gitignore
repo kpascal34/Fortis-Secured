@@ -39,6 +39,9 @@ build/
 coverage/
 .nyc_output/
 
+# MCP config (contains API keys)
+.mcp.json
+
 # Misc
 .cache
 .parcel-cache
