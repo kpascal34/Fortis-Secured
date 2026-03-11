@@ -119,11 +119,29 @@ export const AuthProvider = ({ children }) => {
         throw new Error(msg);
       }
 
-      await account.createEmailSession(email, password);
+      const normalizedEmail = String(email || '').trim().toLowerCase();
+      const rawPassword = String(password || '');
+      if (!normalizedEmail || !rawPassword.trim()) {
+        const validationError = new Error('Email and password are required.');
+        validationError.type = 'auth_validation_error';
+        validationError.code = 400;
+        throw validationError;
+      }
+
+      try {
+        await account.createEmailSession(normalizedEmail, rawPassword);
+      } catch (error) {
+        const authError = new Error(error?.message || 'Unable to sign in. Please try again.');
+        authError.type = error?.type || 'auth_login_failed';
+        authError.code = error?.code || 500;
+        authError.response = error?.response || null;
+        throw authError;
+      }
+
       await fetchUser();
 
       // Track login event
-      trackEvent(EVENT_CATEGORIES.USER, EVENT_TYPES.LOGIN, { email });
+      trackEvent(EVENT_CATEGORIES.USER, EVENT_TYPES.LOGIN, { email: normalizedEmail });
     },
     [fetchUser]
   );
