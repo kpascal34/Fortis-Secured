@@ -1,3 +1,4 @@
+import { env } from './env.js';
 /**
  * Advanced Performance Optimization Utilities
  * ==========================================
@@ -114,7 +115,7 @@ export function monitorLongTasks() {
         if (entry.duration > 50) {
           const message = `⚠️ Long Task: ${entry.name} (${entry.duration.toFixed(0)}ms)`;
           
-          if (process.env.NODE_ENV === 'development') {
+          if (env.isDev) {
             console.warn(message);
           }
           
@@ -290,7 +291,7 @@ export function measureRenderPerformance(componentName) {
       const measure = performance.getEntriesByName(`${componentName}`)[0];
       renderTime = measure.duration;
 
-      if (process.env.NODE_ENV === 'development') {
+      if (env.isDev) {
         console.log(`[Render] ${componentName}: ${renderTime.toFixed(2)}ms`);
       }
 
@@ -322,7 +323,7 @@ export function monitorMemory() {
     percentUsed: ((usedMemory / limit) * 100).toFixed(1),
   };
 
-  if (process.env.NODE_ENV === 'development') {
+  if (env.isDev) {
     console.log('[Memory]', usage);
   }
 
@@ -343,7 +344,7 @@ export function createPerformanceMark(label, data = {}) {
       }
     }
 
-    if (process.env.NODE_ENV === 'development') {
+    if (env.isDev) {
       console.log(`[Mark] ${label}`, data);
     }
   } catch (e) {
@@ -361,7 +362,7 @@ export function measureBetweenMarks(startLabel, endLabel, resultLabel) {
     
     const measure = performance.getEntriesByName(resultLabel)[0];
     
-    if (process.env.NODE_ENV === 'development') {
+    if (env.isDev) {
       console.log(`[Measure] ${resultLabel}: ${measure.duration.toFixed(2)}ms`);
     }
 
@@ -376,7 +377,7 @@ export function measureBetweenMarks(startLabel, endLabel, resultLabel) {
  * Log performance summary
  */
 export function logPerformanceSummary() {
-  if (process.env.NODE_ENV !== 'development' || typeof window === 'undefined') return;
+  if (!env.isDev || typeof window === 'undefined') return;
 
   const perfData = window.performance;
   if (!perfData.timing) return;

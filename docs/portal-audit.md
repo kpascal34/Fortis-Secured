@@ -92,3 +92,9 @@ Last updated: 2026-02-26
 - **Appwrite schema pressure points**
   - High-traffic collections: `shifts`, `shift_assignments`, `clients`, `sites`, `guards`.
   - Compliance-specific: `compliance_wizard`, `admin_grading`, `compliance_uploads`, invite collection.
+
+## 2026-03-02 Remediation Phase 1 Update
+- Centralized runtime env access into `src/lib/env.js` and normalized portal config in `src/lib/config.js`.
+- Production now forces demo mode off and shows a fatal configuration UI when required Appwrite IDs are missing.
+- Compliance Wizard v1 is now hard-disabled by default behind `VITE_ENABLE_COMPLIANCE_V1` until required collections are provisioned.
+- Duplicate `* 2.*` source files removed; repo-level verification scripts added for env coverage, forbidden `process.env` in `src/`, duplicate-file drift, and schema checks.

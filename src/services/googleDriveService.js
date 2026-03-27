@@ -7,23 +7,19 @@
 
 import { ID, Query } from 'appwrite';
 import { google } from 'googleapis';
-import { databases, storage } from '../lib/appwrite.js';
+import { config, databases, storage } from '../lib/appwrite.js';
 import { logAudit } from './auditService.js';
 
 const isBrowser = typeof window !== 'undefined';
 
-// Prefer Vite env vars in the browser; fall back to process.env when server-side
-const dbId = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPWRITE_DATABASE_ID) || process.env.VITE_APPWRITE_DATABASE_ID;
+const dbId = config.databaseId;
 
 let driveService = null;
 
 function getDriveService() {
   if (driveService) return driveService;
 
-  const serviceAccountRaw =
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON) ||
-    process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON ||
-    '{}';
+  const serviceAccountRaw = config.googleDriveServiceAccountJson || '{}';
   const serviceAccount = JSON.parse(serviceAccountRaw);
 
   const auth = new google.auth.GoogleAuth({
@@ -49,9 +45,7 @@ export async function ensureStaffFolder(staffId, employeeNumber, fullName) {
   }
 
   const drive = getDriveService();
-  const parentFolderId =
-    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_DRIVE_PARENT_FOLDER_ID) ||
-    process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID;
+  const parentFolderId = config.googleDriveParentFolderId;
 
   if (!parentFolderId) {
     throw new Error('GOOGLE_DRIVE_PARENT_FOLDER_ID not set');
@@ -132,11 +126,11 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
     const data = await resp.json();
     // Also update local DB record to reflect success if it exists
     try {
-      const uploads = await databases.listDocuments(dbId, 'compliance_uploads', [
+      const uploads = await databases.listDocuments(dbId, config.complianceUploadsCollectionId, [
         Query.equal('appwriteFileId', appwriteFileId),
       ]);
       if (uploads.documents.length > 0) {
-        await databases.updateDocument(dbId, 'compliance_uploads', uploads.documents[0].$id, {
+        await databases.updateDocument(dbId, config.complianceUploadsCollectionId, uploads.documents[0].$id, {
           googleDriveFileId: data.driveFileId,
           googleDriveFolderId: data.folderId,
           syncStatus: 'synced',
@@ -148,7 +142,7 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
     return data;
   }
   // Check if already synced
-  const uploads = await databases.listDocuments(dbId, 'compliance_uploads', [
+  const uploads = await databases.listDocuments(dbId, config.complianceUploadsCollectionId, [
     Query.equal('appwriteFileId', appwriteFileId),
   ]);
 
@@ -164,7 +158,7 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
   if (uploads.documents.length > 0) {
     uploadRecord = uploads.documents[0];
   } else {
-    uploadRecord = await databases.createDocument(dbId, 'compliance_uploads', ID.unique(), {
+    uploadRecord = await databases.createDocument(dbId, config.complianceUploadsCollectionId, ID.unique(), {
       staffId: staffId,
       fileId: fileId,
       fileName: fileName,
@@ -196,8 +190,7 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
 
     // Download file from Appwrite
     const filesBucket =
-      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPWRITE_FILES_BUCKET) ||
-      process.env.VITE_APPWRITE_FILES_BUCKET;
+      config.documentsBucketId;
     const appwriteFile = await storage.getFileDownload(
       filesBucket,
       appwriteFileId
@@ -223,7 +216,7 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
     const driveFileId = response.data.id;
 
     // Update record
-    await databases.updateDocument(dbId, 'compliance_uploads', uploadRecord.$id, {
+    await databases.updateDocument(dbId, config.complianceUploadsCollectionId, uploadRecord.$id, {
       googleDriveFileId: driveFileId,
       googleDriveFolderId: typeFolderId,
       syncStatus: 'synced',
@@ -236,7 +229,7 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
       actorId: staffId,
       actorRole: 'staff',
       action: 'UPDATE',
-      entity: 'compliance_uploads',
+      entity: config.complianceUploadsCollectionId,
       entityId: uploadRecord.$id,
       diff: JSON.stringify({ driveFileId, status: 'synced' }),
       driveSyncStatus: 'synced',
@@ -248,7 +241,7 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
 
     if (attempts < 3) {
       // Retry: schedule for 5 minutes later (TBD: use job queue)
-      await databases.updateDocument(dbId, 'compliance_uploads', uploadRecord.$id, {
+      await databases.updateDocument(dbId, config.complianceUploadsCollectionId, uploadRecord.$id, {
         syncAttempts: attempts,
         lastSyncAttempt: new Date().toISOString(),
         syncError: err.message,
@@ -259,7 +252,7 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
       console.error(`[Retry ${attempts}/3] File sync failed:`, err.message);
     } else {
       // Give up after 3 attempts
-      await databases.updateDocument(dbId, 'compliance_uploads', uploadRecord.$id, {
+      await databases.updateDocument(dbId, config.complianceUploadsCollectionId, uploadRecord.$id, {
         syncAttempts: attempts,
         syncStatus: 'failed',
         lastSyncAttempt: new Date().toISOString(),
@@ -270,7 +263,7 @@ export async function syncFileToGoogleDrive(staffId, fileId, fileName, fileType,
         actorId: staffId,
         actorRole: 'system',
         action: 'UPDATE',
-        entity: 'compliance_uploads',
+        entity: config.complianceUploadsCollectionId,
         entityId: uploadRecord.$id,
         diff: JSON.stringify({ status: 'failed', error: err.message }),
         driveSyncStatus: 'failed',
@@ -338,7 +331,7 @@ function getMimeType(fileName) {
  * Retry failed syncs (call periodically)
  */
 export async function retryFailedSyncs() {
-  const failed = await databases.listDocuments(dbId, 'compliance_uploads', [
+  const failed = await databases.listDocuments(dbId, config.complianceUploadsCollectionId, [
     Query.equal('syncStatus', 'pending'),
     Query.lessThan('syncAttempts', 3),
   ]);
@@ -362,7 +355,7 @@ export async function retryFailedSyncs() {
  * Get staff's uploaded files (with sync status)
  */
 export async function getStaffUploads(staffId) {
-  const uploads = await databases.listDocuments(dbId, 'compliance_uploads', [
+  const uploads = await databases.listDocuments(dbId, config.complianceUploadsCollectionId, [
     Query.equal('staffId', staffId),
     Query.orderDesc('uploadedAt'),
   ]);
@@ -374,7 +367,7 @@ export async function getStaffUploads(staffId) {
  * Get failed syncs for admin review
  */
 export async function getFailedSyncs() {
-  const failed = await databases.listDocuments(dbId, 'compliance_uploads', [
+  const failed = await databases.listDocuments(dbId, config.complianceUploadsCollectionId, [
     Query.equal('syncStatus', 'failed'),
   ]);
 

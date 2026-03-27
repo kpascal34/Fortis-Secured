@@ -2,15 +2,31 @@ import { ID, Query } from 'appwrite';
 import { databases, config } from '../lib/appwrite.js';
 
 const collectionIds = {
-  templates: import.meta.env.VITE_APPWRITE_DOCUMENT_TEMPLATES_COLLECTION_ID || 'documentTemplates',
-  submissions: import.meta.env.VITE_APPWRITE_COMPLIANCE_SUBMISSIONS_COLLECTION_ID || 'complianceSubmissions',
-  instances: import.meta.env.VITE_APPWRITE_DOCUMENT_INSTANCES_COLLECTION_ID || 'documentInstances',
-  auditLogs: config.auditLogsCollectionId || 'auditLogs',
+  templates: config.documentTemplatesCollectionId,
+  submissions: config.complianceSubmissionsCollectionId,
+  instances: config.documentInstancesCollectionId,
+  auditLogs: config.auditLogsCollectionId,
 };
 
-const functionUrl = import.meta.env.VITE_COMPLIANCE_PDF_FUNCTION_URL;
+const functionUrl = config.compliancePdfFunctionUrl;
+
+const assertComplianceV1Enabled = () => {
+  if (!config.enableComplianceV1) {
+    throw new Error('Compliance Wizard v1 is disabled. Set VITE_ENABLE_COMPLIANCE_V1=true after schema provisioning.');
+  }
+  const missing = Object.entries(collectionIds)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+  if (missing.length) {
+    throw new Error(`Compliance Wizard v1 configuration is incomplete. Missing: ${missing.join(', ')}`);
+  }
+  if (!databases) {
+    throw new Error('Compliance Wizard v1 requires an active Appwrite connection.');
+  }
+};
 
 export async function getMySubmission(staffId) {
+  assertComplianceV1Enabled();
   const response = await databases.listDocuments(config.databaseId, collectionIds.submissions, [
     Query.equal('staffId', staffId),
     Query.equal('templateKey', 'pre_employment_declaration_v1'),
@@ -21,6 +37,7 @@ export async function getMySubmission(staffId) {
 }
 
 export async function getSubmissionInstances(staffId) {
+  assertComplianceV1Enabled();
   const response = await databases.listDocuments(config.databaseId, collectionIds.instances, [
     Query.equal('staffId', staffId),
     Query.equal('templateKey', 'pre_employment_declaration_v1'),
@@ -31,6 +48,7 @@ export async function getSubmissionInstances(staffId) {
 }
 
 export async function upsertDraftSubmission({ existingId, staffId, formData }) {
+  assertComplianceV1Enabled();
   const payload = {
     staffId,
     templateKey: 'pre_employment_declaration_v1',
@@ -50,6 +68,7 @@ export async function upsertDraftSubmission({ existingId, staffId, formData }) {
 }
 
 export async function createAuditLog({ actorUserId, action, entityType, entityId, metadata }) {
+  assertComplianceV1Enabled();
   return databases.createDocument(config.databaseId, collectionIds.auditLogs, ID.unique(), {
     actorUserId,
     action,
@@ -61,6 +80,7 @@ export async function createAuditLog({ actorUserId, action, entityType, entityId
 }
 
 export async function submitToComplianceFunction({ staffId, fullName, submissionId, formData }) {
+  assertComplianceV1Enabled();
   if (!functionUrl) {
     throw new Error('Missing VITE_COMPLIANCE_PDF_FUNCTION_URL');
   }
@@ -80,6 +100,7 @@ export async function submitToComplianceFunction({ staffId, fullName, submission
 }
 
 export async function updateSubmissionStatus(submissionId, status, notes = '', reviewedBy = null) {
+  assertComplianceV1Enabled();
   const payload = { status, adminNotes: notes };
   if (status === 'submitted') payload.submittedAt = new Date().toISOString();
   if (status === 'approved') {
@@ -91,6 +112,7 @@ export async function updateSubmissionStatus(submissionId, status, notes = '', r
 }
 
 export async function listAllSubmissions() {
+  assertComplianceV1Enabled();
   const response = await databases.listDocuments(config.databaseId, collectionIds.submissions, [
     Query.orderDesc('$createdAt'),
     Query.limit(200),

@@ -1,3 +1,4 @@
+import { env } from './env.js';
 /**
  * PWA Registration and Management
  * 
@@ -343,7 +344,7 @@ export const subscribeToPushNotifications = async () => {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(
         // Replace with your VAPID public key
-        process.env.VITE_VAPID_PUBLIC_KEY || ''
+        env.vapidPublicKey || ''
       ),
     });
 

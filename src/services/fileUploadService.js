@@ -3,9 +3,9 @@
  * Minimal helpers to upload compliance files to Appwrite Storage
  */
 import { ID } from 'appwrite';
-import { storage } from '../lib/appwrite.js';
+import { config, storage } from '../lib/appwrite.js';
 
-const bucketId = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPWRITE_FILES_BUCKET) || process.env.VITE_APPWRITE_FILES_BUCKET;
+const bucketId = config.documentsBucketId;
 
 /**
  * Upload a File object to Appwrite Storage

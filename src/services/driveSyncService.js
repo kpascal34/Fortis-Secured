@@ -190,23 +190,11 @@ export async function getSuccessfulSyncs() {
  */
 export async function getSyncSummary() {
   if (!dbId || !complianceUploadsCol) {
-    return {
-      total: 0,
-      failed: 0,
-      pending: 0,
-      successful: 0,
-      failureRate: 0,
-    };
+    throw new Error('Compliance uploads collection not configured.');
   }
 
   if (config.isDemoMode) {
-    return {
-      total: 0,
-      failed: 0,
-      pending: 0,
-      successful: 0,
-      failureRate: 0,
-    };
+    throw new Error('Drive sync is disabled in demo mode.');
   }
 
   try {
@@ -229,13 +217,7 @@ export async function getSyncSummary() {
     };
   } catch (error) {
     console.error('Error getting sync summary:', error);
-    return {
-      total: 0,
-      failed: 0,
-      pending: 0,
-      successful: 0,
-      failureRate: 0,
-    };
+    throw error;
   }
 }
 

@@ -51,14 +51,17 @@ const RecurringPatterns = () => {
     try {
       setLoading(true);
 
+      if (!config.recurringPatternsCollectionId) {
+        throw new Error('Recurring patterns collection is not configured. Set VITE_APPWRITE_RECURRING_PATTERNS_COLLECTION_ID.');
+      }
+
       let patternsData = [];
       let clientsData = [];
       let sitesData = [];
       let shiftsData = [];
 
-      try {
-        const [patternsRes, clientsRes, sitesRes, shiftsRes] = await Promise.all([
-          databases.listDocuments(config.databaseId, 'recurring_patterns', [
+      const [patternsRes, clientsRes, sitesRes, shiftsRes] = await Promise.all([
+          databases.listDocuments(config.databaseId, config.recurringPatternsCollectionId, [
             Query.limit(100),
             Query.orderDesc('$createdAt'),
           ]),
@@ -73,13 +76,10 @@ const RecurringPatterns = () => {
           ]),
         ]);
 
-        patternsData = patternsRes.documents;
-        clientsData = clientsRes.documents;
-        sitesData = sitesRes.documents;
-        shiftsData = shiftsRes.documents;
-      } catch (err) {
-        console.warn('Using demo mode or collection not found:', err);
-      }
+      patternsData = patternsRes.documents;
+      clientsData = clientsRes.documents;
+      sitesData = sitesRes.documents;
+      shiftsData = shiftsRes.documents;
 
       setPatterns(patternsData);
       setClients(clientsData);
@@ -107,14 +107,14 @@ const RecurringPatterns = () => {
       if (editingPattern) {
         await databases.updateDocument(
           config.databaseId,
-          'recurring_patterns',
+          config.recurringPatternsCollectionId,
           editingPattern.$id,
           patternData
         );
       } else {
         await databases.createDocument(
           config.databaseId,
-          'recurring_patterns',
+          config.recurringPatternsCollectionId,
           ID.unique(),
           patternData
         );
@@ -140,7 +140,7 @@ const RecurringPatterns = () => {
 
       await databases.deleteDocument(
         config.databaseId,
-        'recurring_patterns',
+        config.recurringPatternsCollectionId,
         patternId
       );
 
@@ -162,7 +162,7 @@ const RecurringPatterns = () => {
 
       await databases.updateDocument(
         config.databaseId,
-        'recurring_patterns',
+        config.recurringPatternsCollectionId,
         pattern.$id,
         { isActive: !pattern.isActive }
       );

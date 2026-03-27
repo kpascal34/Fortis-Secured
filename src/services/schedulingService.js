@@ -7,11 +7,11 @@ import { ID, Query } from 'appwrite';
 import { databases, config } from '../lib/appwrite.js';
 import { logAudit } from './auditService.js';
 
-const dbId = config.databaseId || process.env.VITE_APPWRITE_DATABASE_ID;
+const dbId = config.databaseId;
 const shiftsCol = 'shifts';
 const applicationsCol = 'shift_applications';
 const staffProfilesCol = config.staffProfilesCollectionId || 'staff_profiles';
-const LICENSE_EXPIRY_THRESHOLD_DAYS = Number(process.env.VITE_LICENSE_EXPIRY_THRESHOLD_DAYS || 30);
+const LICENSE_EXPIRY_THRESHOLD_DAYS = config.licenseExpiryThresholdDays;
 
 /**
  * Create shift (admin/manager only)

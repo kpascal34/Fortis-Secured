@@ -5,6 +5,7 @@ import SignaturePad from '../../components/compliance/SignaturePad.jsx';
 import EmploymentHistoryStep, { employmentEmptyRow } from '../../components/compliance/EmploymentHistoryStep.jsx';
 import { useCurrentUser, useRole } from '../../hooks/useRBAC.js';
 import Button from '../../components/ui/Button.jsx';
+import { config } from '../../lib/appwrite.js';
 import {
   createAuditLog,
   getMySubmission,
@@ -156,6 +157,14 @@ const ComplianceWizard = () => {
     }
   };
 
+  if (!config.enableComplianceV1) {
+    return (
+      <div className="p-6 text-white">
+        <PortalHeader eyebrow="Compliance" title="Compliance Wizard v1 disabled" description="This module is disabled until required Appwrite collections are provisioned." />
+        <Alert tone="error" message="Set VITE_ENABLE_COMPLIANCE_V1=true and configure VITE_APPWRITE_DOCUMENT_TEMPLATES_COLLECTION_ID, VITE_APPWRITE_COMPLIANCE_SUBMISSIONS_COLLECTION_ID, and VITE_APPWRITE_DOCUMENT_INSTANCES_COLLECTION_ID to enable." />
+      </div>
+    );
+  }
   if (userLoading || roleLoading) return <div className="p-6 text-white">Loading...</div>;
   if (!isStaff && !isAdmin) return <div className="p-6 text-white">Access denied.</div>;
 

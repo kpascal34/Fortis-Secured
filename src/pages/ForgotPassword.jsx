@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import GlassPanel from '../components/GlassPanel.jsx';
 import PortalHeader from '../components/PortalHeader.jsx';
 import { account } from '../lib/appwrite.js';
+import { config } from '../lib/config.js';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -22,7 +23,7 @@ const ForgotPassword = () => {
     setError(null);
     try {
       // Send password recovery email via Appwrite using configured base URL
-      const baseUrl = (import.meta.env.VITE_PUBLIC_BASE_URL || window.location.origin).replace(/\/$/, '');
+      const baseUrl = (config.publicBaseUrl || window.location.origin).replace(/\/$/, '');
       await account.createRecovery(email, `${baseUrl}/portal/reset-password`);
       setSuccess('Check your email for a password reset link. It expires in 1 hour.');
       setStep('check-inbox');

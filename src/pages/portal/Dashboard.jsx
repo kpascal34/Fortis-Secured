@@ -65,11 +65,11 @@ const Dashboard = () => {
       const tasksEnabled = Boolean(config.tasksCollectionId);
       const [clientsResponse, shiftsResponse, staffResponse, incidentsResponse, tasksResponse] = await Promise.all([
         databases.listDocuments(config.databaseId, config.clientsCollectionId, [Query.limit(5), Query.orderDesc('$createdAt')]),
-        databases.listDocuments(config.databaseId, config.shiftsCollectionId, [Query.limit(100)]).catch(() => ({ documents: [], total: 0 })),
-        databases.listDocuments(config.databaseId, config.staffProfilesCollectionId, [Query.limit(100)]).catch(() => ({ documents: [], total: 0 })),
-        databases.listDocuments(config.databaseId, config.incidentsCollectionId, [Query.limit(3), Query.orderDesc('$createdAt')]).catch(() => ({ documents: [] })),
+        databases.listDocuments(config.databaseId, config.shiftsCollectionId, [Query.limit(100)]),
+        databases.listDocuments(config.databaseId, config.staffProfilesCollectionId, [Query.limit(100)]),
+        databases.listDocuments(config.databaseId, config.incidentsCollectionId, [Query.limit(3), Query.orderDesc('$createdAt')]),
         tasksEnabled
-          ? databases.listDocuments(config.databaseId, config.tasksCollectionId, [Query.limit(5), Query.orderDesc('updatedAt')]).catch(() => ({ documents: [] }))
+          ? databases.listDocuments(config.databaseId, config.tasksCollectionId, [Query.limit(5), Query.orderDesc('updatedAt')])
           : Promise.resolve({ documents: [] }),
       ]);
 
@@ -134,9 +134,7 @@ const Dashboard = () => {
       ]);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
-      setError('Unable to load dashboard data. Connect Appwrite to display live metrics.');
-      setClients([]);
-      setStats(baseStats);
+      setError(err.message || 'Unable to load dashboard data.');
     } finally {
       setSyncing(false);
       setLoading(false);
